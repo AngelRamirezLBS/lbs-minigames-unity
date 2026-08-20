@@ -1,0 +1,5 @@
+{
+  "name": "Lbs.MiniGames.NumberPull.Domain",
+  "rootNamespace": "Lbs.MiniGames.Games.NumberPull.Domain",
+  "autoReferenced": true
+}

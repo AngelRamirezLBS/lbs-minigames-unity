@@ -1,0 +1,9 @@
+{
+  "name": "Lbs.MiniGames.NumberPull.Tests.PlayMode",
+  "rootNamespace": "Lbs.MiniGames.Games.NumberPull.Tests",
+  "references": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}
