@@ -164,6 +164,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Lobby.LobbyController
   catalog: {fileID: 11400000, guid: 79f8214eedb464eb6996dcb6a63c5e9b, type: 2}
+  interfaceFont: {fileID: 12800000, guid: dbefde803f6e494eaa7003061af0e9cf, type: 3}
+  brandLogo: {fileID: 21300000, guid: d131303e244941778df42456b937f2de, type: 3}
+  mascotSprite: {fileID: 21300000, guid: c6a3c7252039400390698250221e4b4f, type: 3}
+  mascotAreaWidthFraction: 0.25
+  mascotBottomRightInset: {x: 18, y: 18}
 --- !u!1 &1615906361
 GameObject:
   m_ObjectHideFlags: 0

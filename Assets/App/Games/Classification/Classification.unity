@@ -163,6 +163,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b11f3ed3c6ea4f8db2de42572adf45c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Games.Classification.ClassificationGame
+  interfaceFont: {fileID: 12800000, guid: dbefde803f6e494eaa7003061af0e9cf, type: 3}
+  dolphinSprite: {fileID: 21300000, guid: 1a99aa5d41a54a1c90799c89a99d1810, type: 3}
+  octopusSprite: {fileID: 21300000, guid: 2b88bb6d52b64b2d9188bb79b88d2920, type: 3}
+  lionSprite: {fileID: 21300000, guid: 3c77cc7d63c74c3da277cc69c77d3030, type: 3}
+  giraffeSprite: {fileID: 21300000, guid: 4d66dd8d74d84d4eb366dd59d66e4140, type: 3}
 --- !u!1 &1615906361
 GameObject:
   m_ObjectHideFlags: 0

@@ -18,6 +18,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CategoryPath = CatalogFolder + "/AnimalsCategory.asset";
         private const string DefinitionPath = CatalogFolder + "/ClassificationGame.asset";
         private const string CatalogPath = CatalogFolder + "/MiniGameCatalog.asset";
+        private const string VolteRegularPath = "Assets/App/Theme/Fonts/Volte-Regular.otf";
+        private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
+        private const string WolfieHubPath = "Assets/App/Theme/Brand/WolfieHub.png";
+        private const string ClassificationThumbnailPath = "Assets/App/Games/Classification/ClassificationThumbnail.png";
 
         [MenuItem("Tools/LBS Mini Games/Install First Vertical Slice")]
         public static void Install()
@@ -35,6 +39,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 animals,
                 "Classification",
                 "Drag the dolphin to the correct group.");
+            classification.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(ClassificationThumbnailPath));
 
             GameCatalog catalog = CreateOrLoad<GameCatalog>(CatalogPath);
             if (catalog == null)
@@ -93,6 +98,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             controllerObject.transform.SetParent(canvas.transform, false);
             LobbyController controller = controllerObject.AddComponent<LobbyController>();
             controller.SetCatalog(catalog);
+            controller.SetInterfaceFont(AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath));
+            controller.SetBrandLogo(AssetDatabase.LoadAssetAtPath<Sprite>(BrandLogoPath));
+            controller.SetMascotSprite(AssetDatabase.LoadAssetAtPath<Sprite>(WolfieHubPath));
             EditorUtility.SetDirty(controller);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, "Assets/App/Lobby/Lobby.unity");

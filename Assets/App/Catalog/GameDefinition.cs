@@ -40,5 +40,10 @@ namespace Lbs.MiniGames.Catalog
             sceneName = targetSceneName;
             description = gameDescription;
         }
+
+        public void SetThumbnail(Sprite sprite)
+        {
+            thumbnail = sprite;
+        }
     }
 }
