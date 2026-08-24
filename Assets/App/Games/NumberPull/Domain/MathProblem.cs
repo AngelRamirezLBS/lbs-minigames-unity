@@ -3,7 +3,9 @@ namespace Lbs.MiniGames.Games.NumberPull.Domain
     public enum MathOperation
     {
         Addition,
-        Subtraction
+        Subtraction,
+        Multiplication,
+        Division
     }
 
     public readonly struct MathProblem
@@ -13,9 +15,14 @@ namespace Lbs.MiniGames.Games.NumberPull.Domain
             LeftOperand = leftOperand;
             RightOperand = rightOperand;
             Operation = operation;
-            Answer = operation == MathOperation.Addition
-                ? leftOperand + rightOperand
-                : leftOperand - rightOperand;
+            Answer = operation switch
+            {
+                MathOperation.Addition => leftOperand + rightOperand,
+                MathOperation.Subtraction => leftOperand - rightOperand,
+                MathOperation.Multiplication => leftOperand * rightOperand,
+                MathOperation.Division => leftOperand / rightOperand,
+                _ => throw new System.ArgumentOutOfRangeException(nameof(operation))
+            };
         }
 
         public int LeftOperand { get; }
@@ -25,9 +32,20 @@ namespace Lbs.MiniGames.Games.NumberPull.Domain
 
         public string Format()
         {
-            return Operation == MathOperation.Addition
-                ? $"{LeftOperand} + {RightOperand}"
-                : $"{LeftOperand} − {RightOperand}";
+            string symbol = Operation switch
+            {
+                MathOperation.Addition => "+",
+                MathOperation.Subtraction => "−",
+                MathOperation.Multiplication => "×",
+                MathOperation.Division => "÷",
+                _ => throw new System.ArgumentOutOfRangeException()
+            };
+            return $"{FormatOperand(LeftOperand)} {symbol} {FormatOperand(RightOperand)}";
+        }
+
+        private static string FormatOperand(int value)
+        {
+            return value < 0 ? $"({value})" : value.ToString();
         }
     }
 }

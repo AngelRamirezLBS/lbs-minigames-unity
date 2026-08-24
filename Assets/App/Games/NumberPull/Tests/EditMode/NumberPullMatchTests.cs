@@ -202,6 +202,96 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             }
         }
 
+        [TestCase(NumberPullDifficultyTier.LowerPrimary, 4, 105f, 20)]
+        [TestCase(NumberPullDifficultyTier.UpperPrimaryAndSecondary, 5, 90f, 100)]
+        [TestCase(NumberPullDifficultyTier.PreparatoryHighSchool, 6, 75f, 144)]
+        public void DifficultyConfigurationDefinesMatchPacingAndAnswerBounds(NumberPullDifficultyTier tier, int targetPulls, float duration, int maximumMagnitude)
+        {
+            NumberPullDifficulty difficulty = NumberPullDifficulty.For(tier);
+
+            Assert.That(difficulty.TargetPulls, Is.EqualTo(targetPulls));
+            Assert.That(difficulty.DurationSeconds, Is.EqualTo(duration));
+            Assert.That(difficulty.MaximumAnswerMagnitude, Is.EqualTo(maximumMagnitude));
+        }
+
+        [Test]
+        public void LowerPrimaryGeneratesOnlyNonNegativeAdditionAndSubtractionToTwenty()
+        {
+            MathProblemGenerator generator = new(1452, NumberPullDifficultyTier.LowerPrimary);
+
+            for (int index = 0; index < 500; index++)
+            {
+                MathProblem problem = generator.Next();
+                Assert.That(
+                    problem.Operation == MathOperation.Addition || problem.Operation == MathOperation.Subtraction,
+                    Is.True);
+                Assert.That(problem.Answer, Is.InRange(0, 20));
+                Assert.That(problem.LeftOperand, Is.GreaterThanOrEqualTo(0));
+                Assert.That(problem.RightOperand, Is.GreaterThanOrEqualTo(0));
+            }
+        }
+
+        [Test]
+        public void UpperPrimaryAndSecondaryUsesWholeNumberOperationsWithinSupportedInputBounds()
+        {
+            MathProblemGenerator generator = new(2567, NumberPullDifficultyTier.UpperPrimaryAndSecondary);
+            bool sawMultiplication = false;
+            bool sawDivision = false;
+
+            for (int index = 0; index < 1000; index++)
+            {
+                MathProblem problem = generator.Next();
+                Assert.That(problem.Answer, Is.InRange(0, 100));
+                Assert.That(problem.LeftOperand, Is.GreaterThanOrEqualTo(0));
+                Assert.That(problem.RightOperand, Is.GreaterThanOrEqualTo(0));
+                if (problem.Operation == MathOperation.Multiplication)
+                {
+                    sawMultiplication = true;
+                    Assert.That(problem.LeftOperand, Is.InRange(2, 10));
+                    Assert.That(problem.RightOperand, Is.InRange(2, 10));
+                }
+                else if (problem.Operation == MathOperation.Division)
+                {
+                    sawDivision = true;
+                    Assert.That(problem.RightOperand, Is.InRange(2, 10));
+                    Assert.That(problem.LeftOperand % problem.RightOperand, Is.Zero);
+                }
+            }
+
+            Assert.That(sawMultiplication, Is.True);
+            Assert.That(sawDivision, Is.True);
+        }
+
+        [Test]
+        public void PreparatoryHighSchoolUsesSignedIntegersAndExactDivisionOnly()
+        {
+            MathProblemGenerator generator = new(3789, NumberPullDifficultyTier.PreparatoryHighSchool);
+            bool sawNegativeAnswer = false;
+            bool sawMultiplication = false;
+            bool sawDivision = false;
+
+            for (int index = 0; index < 1000; index++)
+            {
+                MathProblem problem = generator.Next();
+                Assert.That(System.Math.Abs(problem.Answer), Is.LessThanOrEqualTo(144));
+                sawNegativeAnswer |= problem.Answer < 0;
+                if (problem.Operation == MathOperation.Multiplication)
+                {
+                    sawMultiplication = true;
+                }
+                else if (problem.Operation == MathOperation.Division)
+                {
+                    sawDivision = true;
+                    Assert.That(problem.RightOperand, Is.Not.Zero);
+                    Assert.That(problem.LeftOperand % problem.RightOperand, Is.Zero);
+                }
+            }
+
+            Assert.That(sawNegativeAnswer, Is.True);
+            Assert.That(sawMultiplication, Is.True);
+            Assert.That(sawDivision, Is.True);
+        }
+
         private static NumberPullMatch CreateMatch(int target = 5, float duration = 90f)
         {
             return new NumberPullMatch(

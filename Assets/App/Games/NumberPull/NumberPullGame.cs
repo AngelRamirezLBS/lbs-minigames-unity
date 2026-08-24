@@ -18,10 +18,17 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const int ParticleCount = 28;
 
         private static readonly Color Purple = Hex(0x9448F4);
+        private static readonly Color PurpleSecondaryKeyFill = Hex(0x63349D);
         private static readonly Color Orange = Hex(0xFFB740);
+        private static readonly Color OrangeSecondaryKeyFill = Hex(0xD48616);
         private static readonly Color Ink = Hex(0x241A35);
-        private static readonly Color CanvasColor = Hex(0xF7F5FA);
-        private static readonly Color Surface = Color.white;
+        private static readonly Color CanvasColor = Hex(0x0D0920);
+        private static readonly Color Surface = Hex(0x241A3D);
+        private static readonly Color SurfaceRaised = Hex(0x30224E);
+        private static readonly Color SurfaceDeep = Hex(0x17102B);
+        private static readonly Color TextLight = Hex(0xF0EBFF);
+        private static readonly Color TextMuted = Hex(0xC9BDDD);
+        private static readonly Color RopeColor = Hex(0xFFD588);
         private static readonly Color Success = Hex(0x167A4A);
         private static readonly Color Error = Hex(0xB3261E);
 
@@ -63,11 +70,17 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Text soundLabel;
         private Text motionLabel;
         private GameObject resultOverlay;
+        private GameObject difficultyOverlay;
+        private GameObject pauseOverlay;
+        private GameObject restartPauseAction;
+        private GameObject changeDifficultyPauseAction;
 
         private int leftEntry;
         private int rightEntry;
         private bool leftHasEntry;
         private bool rightHasEntry;
+        private bool leftEntryIsNegative;
+        private bool rightEntryIsNegative;
         private int? pendingLeftAnswer;
         private int? pendingRightAnswer;
         private int matchIndex;
@@ -84,9 +97,12 @@ namespace Lbs.MiniGames.Games.NumberPull
         private bool resultReported;
         private bool muted;
         private bool reducedMotion;
+        private bool isPaused;
+        private NumberPullDifficulty? selectedDifficulty;
 
         public string GameId => StableGameId;
         public bool IsCompleted => match != null && match.IsComplete;
+        public bool HasSelectedDifficulty => selectedDifficulty.HasValue;
         public event Action<MiniGameResult> Completed;
 
         public void Configure(AppServices appServices)
@@ -98,7 +114,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 interfaceBuilt = true;
             }
 
-            StartMatch();
+            ShowDifficultySelector();
         }
 
         private void Update()
@@ -111,6 +127,11 @@ namespace Lbs.MiniGames.Games.NumberPull
             float delta = Time.unscaledDeltaTime;
             UpdateSafeArea();
             ProcessContacts();
+            if (isPaused)
+            {
+                return;
+            }
+
             UpdateFeedback(delta);
             UpdateAnimation(delta);
             UpdateParticles(delta);
@@ -247,65 +268,68 @@ namespace Lbs.MiniGames.Games.NumberPull
             audio = new RuntimeAudio(gameObject);
 
             RectTransform root = canvas.GetComponent<RectTransform>();
-            Image background = CreateImage(root, "NeutralCanvas", CanvasColor, null);
-            Stretch(background.rectTransform, 0f);
-            background.raycastTarget = false;
-
-            CreateDecorativeDots(root);
+            CreateSpaceBackdrop(root);
 
             RectTransform safeRoot = CreateSafeAreaRoot(root, "SafeAreaRoot");
 
-            Text title = CreateText(safeRoot, "Title", 52, TextAnchor.MiddleCenter, Ink);
+            Text title = CreateText(safeRoot, "Title", 52, TextAnchor.MiddleCenter, TextLight);
             title.text = "NUMBER PULL";
             Anchor(title.rectTransform, new Vector2(0.31f, 0.905f), new Vector2(0.69f, 0.985f));
 
-            Text instruction = CreateText(safeRoot, "Instruction", 24, TextAnchor.MiddleCenter, new Color(Ink.r, Ink.g, Ink.b, 0.75f));
-            instruction.text = "Solve. Submit. Pull the marker five steps.";
+            Text instruction = CreateText(safeRoot, "Instruction", 24, TextAnchor.MiddleCenter, TextMuted);
+            instruction.text = "Solve. Submit. Shift the balance five steps.";
             Anchor(instruction.rectTransform, new Vector2(0.30f, 0.855f), new Vector2(0.70f, 0.91f));
 
             soundLabel = CreateUtilityControl(safeRoot, "SoundControl", "SOUND ON", new Vector2(0.025f, 0.91f), new Vector2(0.17f, 0.975f), TouchAction.ToggleSound);
             motionLabel = CreateUtilityControl(safeRoot, "MotionControl", "MOTION ON", new Vector2(0.83f, 0.91f), new Vector2(0.975f, 0.975f), TouchAction.ToggleMotion);
+            CreateHomeControl(safeRoot);
 
-            leftCard = BuildPlayerCard(safeRoot, MatchSide.Left, new Vector2(0.025f, 0.075f), new Vector2(0.375f, 0.84f));
-            rightCard = BuildPlayerCard(safeRoot, MatchSide.Right, new Vector2(0.625f, 0.075f), new Vector2(0.975f, 0.84f));
+            leftCard = BuildPlayerCard(safeRoot, MatchSide.Left, new Vector2(0.025f, 0.075f), new Vector2(NumberPullBoardLayout.LeftInputMaximum, 0.84f));
+            rightCard = BuildPlayerCard(safeRoot, MatchSide.Right, new Vector2(NumberPullBoardLayout.RightInputMinimum, 0.075f), new Vector2(0.975f, 0.84f));
 
             BuildCenterStage(safeRoot);
             BuildResultOverlay(root);
+            BuildDifficultySelector(root);
+            BuildPauseOverlay(root);
             UpdateSafeArea();
         }
 
         private RectTransform BuildPlayerCard(RectTransform root, MatchSide side, Vector2 min, Vector2 max)
         {
             bool isLeft = side == MatchSide.Left;
-            Image shadow = CreateImage(root, isLeft ? "LeftShadow" : "RightShadow", new Color(Ink.r, Ink.g, Ink.b, 0.10f), roundedSprite);
-            Anchor(shadow.rectTransform, min + new Vector2(0.005f, -0.008f), max + new Vector2(0.005f, -0.008f));
+            Image shadow = CreateImage(root, isLeft ? "LeftShadow" : "RightShadow", new Color(0f, 0f, 0f, 0.38f), roundedSprite);
+            Anchor(shadow.rectTransform, min + new Vector2(0.006f, -0.010f), max + new Vector2(0.006f, -0.010f));
             shadow.raycastTarget = false;
 
             Image card = CreateImage(root, isLeft ? "LeftCard" : "RightCard", Surface, roundedSprite);
             Anchor(card.rectTransform, min, max);
             card.raycastTarget = false;
 
+            Image innerGlow = CreateImage(card.rectTransform, "InnerGlow", new Color(isLeft ? Purple.r : Orange.r, isLeft ? Purple.g : Orange.g, isLeft ? Purple.b : Orange.b, 0.12f), roundedSprite);
+            Anchor(innerGlow.rectTransform, new Vector2(0.018f, 0.018f), new Vector2(0.982f, 0.982f));
+            innerGlow.raycastTarget = false;
+
             Image accent = CreateImage(card.rectTransform, "Accent", isLeft ? Purple : Orange, roundedSprite);
             Anchor(accent.rectTransform, new Vector2(0.035f, 0.91f), new Vector2(0.965f, 0.98f));
             accent.raycastTarget = false;
 
-            Text sideName = CreateText(card.rectTransform, "SideName", 28, TextAnchor.MiddleCenter, isLeft ? Color.white : Ink);
-            sideName.text = isLeft ? "PURPLE SIDE" : "ORANGE SIDE";
+            Text sideName = CreateText(card.rectTransform, "SideName", 28, TextAnchor.MiddleCenter, Ink);
+            sideName.text = isLeft ? "PURPLE CREW" : "ORANGE CREW";
             Anchor(sideName.rectTransform, new Vector2(0.07f, 0.90f), new Vector2(0.93f, 0.985f));
 
-            Text problem = CreateText(card.rectTransform, "Problem", 70, TextAnchor.MiddleCenter, Ink);
+            Text problem = CreateText(card.rectTransform, "Problem", 70, TextAnchor.MiddleCenter, TextLight);
             Anchor(problem.rectTransform, new Vector2(0.07f, 0.72f), new Vector2(0.93f, 0.89f));
 
-            Image answerSurface = CreateImage(card.rectTransform, "AnswerSurface", isLeft ? Tint(Purple, 0.91f) : Tint(Orange, 0.84f), roundedSprite);
+            Image answerSurface = CreateImage(card.rectTransform, "AnswerSurface", SurfaceDeep, roundedSprite);
             Anchor(answerSurface.rectTransform, new Vector2(0.18f, 0.61f), new Vector2(0.82f, 0.72f));
             answerSurface.raycastTarget = false;
 
-            Text answer = CreateText(answerSurface.rectTransform, "Answer", 48, TextAnchor.MiddleCenter, Ink);
+            Text answer = CreateText(answerSurface.rectTransform, "Answer", 48, TextAnchor.MiddleCenter, isLeft ? Tint(Purple, 0.58f) : RopeColor);
             answer.text = "?";
             Stretch(answer.rectTransform, 8f);
 
-            Text feedback = CreateText(card.rectTransform, "Feedback", 25, TextAnchor.MiddleCenter, Ink);
-            feedback.text = "READY";
+            Text feedback = CreateText(card.rectTransform, "Feedback", 25, TextAnchor.MiddleCenter, TextMuted);
+            feedback.text = "WAIT FOR THE SIGNAL";
             Anchor(feedback.rectTransform, new Vector2(0.08f, 0.545f), new Vector2(0.92f, 0.61f));
 
             if (isLeft)
@@ -327,45 +351,58 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void BuildKeypad(RectTransform card, MatchSide side)
         {
-            int[] values = { 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, 0, -2 };
-            string[] labels = { "1", "2", "3", "4", "5", "6", "7", "8", "9", "CLEAR", "0", "GO" };
-            for (int index = 0; index < values.Length; index++)
+            Color secondaryKeyFill = side == MatchSide.Left ? PurpleSecondaryKeyFill : OrangeSecondaryKeyFill;
+            Color secondaryLabelColor = side == MatchSide.Left ? TextLight : Ink;
+            int[] digits = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+            for (int index = 0; index < digits.Length; index++)
             {
                 int row = index / 3;
                 int column = index % 3;
                 float minX = 0.07f + column * 0.30f;
                 float maxX = minX + 0.26f;
-                float maxY = 0.52f - row * 0.125f;
-                float minY = maxY - 0.10f;
-                bool submit = values[index] == -2;
-                bool clear = values[index] == -1;
-                Color color = submit ? Orange : clear ? Tint(Purple, 0.88f) : CanvasColor;
-
-                Image button = CreateImage(card, labels[index] + "Key", color, roundedSprite);
-                Anchor(button.rectTransform, new Vector2(minX, minY), new Vector2(maxX, maxY));
-                button.raycastTarget = false;
-
-                Text label = CreateText(button.rectTransform, "Label", submit || clear ? 24 : 34, TextAnchor.MiddleCenter, Ink);
-                label.text = labels[index];
-                Stretch(label.rectTransform, 5f);
-
-                TouchAction action = submit ? TouchAction.Submit : clear ? TouchAction.Clear : TouchAction.Digit;
-                touchTargets.Add(new TouchTarget(button.rectTransform, side, action, Math.Max(0, values[index])));
+                float maxY = 0.525f - row * 0.10f;
+                float minY = maxY - 0.08f;
+                CreateKey(card, side, digits[index] + "Key", digits[index].ToString(), new Vector2(minX, minY), new Vector2(maxX, maxY), SurfaceRaised, TextLight, TouchAction.Digit, digits[index]);
             }
+
+            CreateKey(card, side, "SignKey", "±", new Vector2(0.07f, 0.145f), new Vector2(0.33f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.ToggleSign, 0);
+            CreateKey(card, side, "0Key", "0", new Vector2(0.37f, 0.145f), new Vector2(0.63f, 0.225f), SurfaceRaised, TextLight, TouchAction.Digit, 0);
+            CreateKey(card, side, "ClearKey", "BORRAR", new Vector2(0.67f, 0.145f), new Vector2(0.93f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.Clear, 0);
+            CreateKey(card, side, "SubmitKey", "LISTO", new Vector2(0.07f, 0.045f), new Vector2(0.93f, 0.125f), Orange, Ink, TouchAction.Submit, 0);
+        }
+
+        private void CreateKey(RectTransform card, MatchSide side, string name, string label, Vector2 min, Vector2 max, Color color, Color labelColor, TouchAction action, int value)
+        {
+            Image button = CreateImage(card, name, color, roundedSprite);
+            Anchor(button.rectTransform, min, max);
+            button.raycastTarget = false;
+
+            Text text = CreateText(button.rectTransform, "Label", action == TouchAction.Clear || action == TouchAction.Submit ? 24 : 34, TextAnchor.MiddleCenter, labelColor);
+            text.text = label;
+            Stretch(text.rectTransform, 5f);
+            touchTargets.Add(new TouchTarget(button.rectTransform, side, action, value));
         }
 
         private void BuildCenterStage(RectTransform root)
         {
-            Image stage = CreateImage(root, "CenterStage", Tint(Purple, 0.94f), roundedSprite);
+            Image stageShadow = CreateImage(root, "CenterStageShadow", new Color(0f, 0f, 0f, 0.42f), roundedSprite);
+            Anchor(stageShadow.rectTransform, new Vector2(NumberPullBoardLayout.CentralStageLeft + 0.005f, 0.067f), new Vector2(NumberPullBoardLayout.CentralStageRight + 0.005f, 0.832f));
+            stageShadow.raycastTarget = false;
+
+            Image stage = CreateImage(root, "CenterStage", SurfaceDeep, roundedSprite);
             Anchor(stage.rectTransform, new Vector2(NumberPullBoardLayout.CentralStageLeft, 0.075f), new Vector2(NumberPullBoardLayout.CentralStageRight, 0.84f));
             stage.raycastTarget = false;
 
-            timerText = CreateText(stage.rectTransform, "Timer", 50, TextAnchor.MiddleCenter, Ink);
+            Image stageAura = CreateImage(stage.rectTransform, "StageAura", new Color(Purple.r, Purple.g, Purple.b, 0.19f), circleSprite);
+            Anchor(stageAura.rectTransform, new Vector2(0.05f, 0.19f), new Vector2(0.95f, 0.81f));
+            stageAura.raycastTarget = false;
+
+            timerText = CreateText(stage.rectTransform, "Timer", 50, TextAnchor.MiddleCenter, TextLight);
             timerText.text = "1:30";
             Anchor(timerText.rectTransform, new Vector2(0.10f, 0.865f), new Vector2(0.90f, 0.97f));
 
-            Text goal = CreateText(stage.rectTransform, "Goal", 22, TextAnchor.MiddleCenter, Ink);
-            goal.text = "FIRST TO 5";
+            Text goal = CreateText(stage.rectTransform, "Goal", 22, TextAnchor.MiddleCenter, TextMuted);
+            goal.text = "BALANCE THE ROPE";
             Anchor(goal.rectTransform, new Vector2(0.10f, 0.81f), new Vector2(0.90f, 0.87f));
 
             GameObject animationLayerObject = new("AnimationCanvas", typeof(RectTransform), typeof(Canvas));
@@ -376,19 +413,29 @@ namespace Lbs.MiniGames.Games.NumberPull
             animationCanvas.overrideSorting = true;
             animationCanvas.sortingOrder = 2;
 
-            Image rope = CreateImage(animationLayer, "Rope", Ink, roundedSprite);
-            Anchor(rope.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.405f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.422f));
+            Image ropeGlow = CreateImage(animationLayer, "RopeGlow", new Color(Orange.r, Orange.g, Orange.b, 0.25f), roundedSprite);
+            Anchor(ropeGlow.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.399f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.428f));
+            ropeGlow.raycastTarget = false;
+
+            Image rope = CreateImage(animationLayer, "Rope", RopeColor, roundedSprite);
+            Anchor(rope.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.407f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.420f));
             rope.raycastTarget = false;
 
             for (int step = -5; step <= 5; step++)
             {
-                Image tick = CreateImage(animationLayer, "Step" + step, step == 0 ? Orange : new Color(Ink.r, Ink.g, Ink.b, 0.25f), circleSprite);
+                Image tick = CreateImage(animationLayer, "Step" + step, step == 0 ? Orange : new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.48f), circleSprite);
                 tick.rectTransform.anchorMin = new Vector2(0.5f, 0.4135f);
                 tick.rectTransform.anchorMax = new Vector2(0.5f, 0.4135f);
                 tick.rectTransform.sizeDelta = step == 0 ? new Vector2(24f, 24f) : new Vector2(13f, 13f);
                 tick.rectTransform.anchoredPosition = new Vector2(step * NumberPullBoardLayout.KnotStep, 0f);
                 tick.raycastTarget = false;
             }
+
+            Image knotGlow = CreateImage(animationLayer, "RopeMarkerGlow", new Color(Orange.r, Orange.g, Orange.b, 0.28f), circleSprite);
+            knotGlow.rectTransform.anchorMin = new Vector2(0.5f, 0.4135f);
+            knotGlow.rectTransform.anchorMax = new Vector2(0.5f, 0.4135f);
+            knotGlow.rectTransform.sizeDelta = new Vector2(NumberPullBoardLayout.KnotDiameter + 24f, NumberPullBoardLayout.KnotDiameter + 24f);
+            knotGlow.raycastTarget = false;
 
             Image knot = CreateImage(animationLayer, "RopeMarker", Orange, circleSprite);
             ropeKnot = knot.rectTransform;
@@ -398,7 +445,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             ropeKnot.anchoredPosition = Vector2.zero;
             knot.raycastTarget = false;
             Text marker = CreateText(ropeKnot, "MarkerIcon", 28, TextAnchor.MiddleCenter, Ink);
-            marker.text = "5";
+            marker.text = "↔";
             Stretch(marker.rectTransform, 4f);
 
             leftAvatar = CreateAvatar(
@@ -414,7 +461,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 new Vector2(NumberPullBoardLayout.RightCharacterAnchor, 0.46f),
                 true);
 
-            countdownText = CreateText(animationLayer, "Countdown", 112, TextAnchor.MiddleCenter, Ink);
+            countdownText = CreateText(animationLayer, "Countdown", 112, TextAnchor.MiddleCenter, TextLight);
             Anchor(countdownText.rectTransform, new Vector2(0.39f, 0.48f), new Vector2(0.61f, 0.69f));
 
             for (int index = 0; index < ParticleCount; index++)
@@ -439,30 +486,45 @@ namespace Lbs.MiniGames.Games.NumberPull
             avatar.sizeDelta = new Vector2(NumberPullBoardLayout.CharacterWidth, NumberPullBoardLayout.CharacterHeight);
             avatar.anchoredPosition = Vector2.zero;
 
+            Image aura = CreateImage(avatar, "Aura", new Color(color.r, color.g, color.b, 0.28f), circleSprite);
+            Anchor(aura.rectTransform, new Vector2(0.03f, 0.08f), new Vector2(0.97f, 0.88f));
+            aura.raycastTarget = false;
+
             Image body = CreateImage(avatar, "Body", color, roundedSprite);
-            Anchor(body.rectTransform, new Vector2(0.20f, 0.02f), new Vector2(0.80f, 0.62f));
+            Anchor(body.rectTransform, new Vector2(0.20f, 0.10f), new Vector2(0.80f, 0.57f));
             body.raycastTarget = false;
 
-            Image head = CreateImage(avatar, "Head", Tint(color, 0.64f), circleSprite);
-            Anchor(head.rectTransform, new Vector2(0.25f, 0.53f), new Vector2(0.75f, 0.95f));
+            Image head = CreateImage(avatar, "Helmet", SurfaceRaised, circleSprite);
+            Anchor(head.rectTransform, new Vector2(0.23f, 0.50f), new Vector2(0.77f, 0.94f));
             head.raycastTarget = false;
 
-            float eyeX = facesLeft ? 0.37f : 0.56f;
-            Image eye = CreateImage(head.rectTransform, "Eye", Ink, circleSprite);
-            Anchor(eye.rectTransform, new Vector2(eyeX, 0.50f), new Vector2(eyeX + 0.13f, 0.63f));
+            Image visor = CreateImage(head.rectTransform, "Visor", new Color(color.r, color.g, color.b, 0.82f), roundedSprite);
+            Anchor(visor.rectTransform, new Vector2(0.18f, 0.45f), new Vector2(0.82f, 0.68f));
+            visor.raycastTarget = false;
+
+            float eyeX = facesLeft ? 0.31f : 0.58f;
+            Image eye = CreateImage(visor.rectTransform, "Eye", TextLight, circleSprite);
+            Anchor(eye.rectTransform, new Vector2(eyeX, 0.31f), new Vector2(eyeX + 0.14f, 0.70f));
             eye.raycastTarget = false;
 
-            Image arm = CreateImage(avatar, "RopeArm", color, roundedSprite);
-            Anchor(arm.rectTransform, facesLeft ? new Vector2(-0.12f, 0.34f) : new Vector2(0.62f, 0.34f), facesLeft ? new Vector2(0.38f, 0.47f) : new Vector2(1.12f, 0.47f));
-            arm.rectTransform.localRotation = Quaternion.Euler(0f, 0f, facesLeft ? 13f : -13f);
+            Image arm = CreateImage(avatar, "RopeArm", Tint(color, 0.20f), roundedSprite);
+            Anchor(arm.rectTransform, facesLeft ? new Vector2(-0.16f, 0.31f) : new Vector2(0.62f, 0.31f), facesLeft ? new Vector2(0.38f, 0.45f) : new Vector2(1.16f, 0.45f));
+            arm.rectTransform.localRotation = Quaternion.Euler(0f, 0f, facesLeft ? 16f : -16f);
             arm.raycastTarget = false;
 
             Image badge = CreateImage(body.rectTransform, "Badge", Orange, circleSprite);
-            Anchor(badge.rectTransform, new Vector2(0.34f, 0.40f), new Vector2(0.66f, 0.67f));
+            Anchor(badge.rectTransform, new Vector2(0.34f, 0.35f), new Vector2(0.66f, 0.67f));
             badge.raycastTarget = false;
             Text plus = CreateText(badge.rectTransform, "Plus", 26, TextAnchor.MiddleCenter, Ink);
-            plus.text = "+";
+            plus.text = "✦";
             Stretch(plus.rectTransform, 2f);
+
+            Image leftBoot = CreateImage(avatar, "LeftBoot", SurfaceDeep, roundedSprite);
+            Anchor(leftBoot.rectTransform, new Vector2(0.14f, 0.01f), new Vector2(0.45f, 0.15f));
+            leftBoot.raycastTarget = false;
+            Image rightBoot = CreateImage(avatar, "RightBoot", SurfaceDeep, roundedSprite);
+            Anchor(rightBoot.rectTransform, new Vector2(0.55f, 0.01f), new Vector2(0.86f, 0.15f));
+            rightBoot.raycastTarget = false;
 
             return avatar;
         }
@@ -481,22 +543,34 @@ namespace Lbs.MiniGames.Games.NumberPull
             Anchor(card.rectTransform, new Vector2(0.27f, 0.18f), new Vector2(0.73f, 0.82f));
             card.raycastTarget = false;
 
-            resultTitle = CreateText(card.rectTransform, "ResultTitle", 64, TextAnchor.MiddleCenter, Ink);
+            Image resultGlow = CreateImage(card.rectTransform, "ResultGlow", new Color(Purple.r, Purple.g, Purple.b, 0.22f), circleSprite);
+            Anchor(resultGlow.rectTransform, new Vector2(0.20f, 0.30f), new Vector2(0.80f, 0.92f));
+            resultGlow.raycastTarget = false;
+
+            resultTitle = CreateText(card.rectTransform, "ResultTitle", 64, TextAnchor.MiddleCenter, TextLight);
             Anchor(resultTitle.rectTransform, new Vector2(0.08f, 0.74f), new Vector2(0.92f, 0.93f));
 
-            resultStats = CreateText(card.rectTransform, "ResultStats", 31, TextAnchor.MiddleCenter, Ink);
+            resultStats = CreateText(card.rectTransform, "ResultStats", 31, TextAnchor.MiddleCenter, TextMuted);
             Anchor(resultStats.rectTransform, new Vector2(0.08f, 0.38f), new Vector2(0.92f, 0.74f));
 
             Image rematch = CreateImage(card.rectTransform, "Rematch", Purple, roundedSprite);
-            Anchor(rematch.rectTransform, new Vector2(0.08f, 0.12f), new Vector2(0.47f, 0.31f));
+            Anchor(rematch.rectTransform, new Vector2(0.08f, 0.12f), new Vector2(0.35f, 0.31f));
             rematch.raycastTarget = false;
-            Text rematchText = CreateText(rematch.rectTransform, "Label", 30, TextAnchor.MiddleCenter, Color.white);
+            Text rematchText = CreateText(rematch.rectTransform, "Label", 24, TextAnchor.MiddleCenter, Color.white);
             rematchText.text = "REMATCH ↻";
             Stretch(rematchText.rectTransform, 8f);
             touchTargets.Add(new TouchTarget(rematch.rectTransform, null, TouchAction.Rematch, 0));
 
+            Image changeDifficulty = CreateImage(card.rectTransform, "ChangeDifficulty", SurfaceRaised, roundedSprite);
+            Anchor(changeDifficulty.rectTransform, new Vector2(0.39f, 0.12f), new Vector2(0.66f, 0.31f));
+            changeDifficulty.raycastTarget = false;
+            Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 22, TextAnchor.MiddleCenter, TextLight);
+            changeDifficultyText.text = "CHANGE\nLEVEL";
+            Stretch(changeDifficultyText.rectTransform, 6f);
+            touchTargets.Add(new TouchTarget(changeDifficulty.rectTransform, null, TouchAction.ChangeDifficulty, 0));
+
             Image hub = CreateImage(card.rectTransform, "BackToHub", Orange, roundedSprite);
-            Anchor(hub.rectTransform, new Vector2(0.53f, 0.12f), new Vector2(0.92f, 0.31f));
+            Anchor(hub.rectTransform, new Vector2(0.70f, 0.12f), new Vector2(0.92f, 0.31f));
             hub.raycastTarget = false;
             Text hubText = CreateText(hub.rectTransform, "Label", 30, TextAnchor.MiddleCenter, Ink);
             hubText.text = "HUB ⌂";
@@ -506,62 +580,241 @@ namespace Lbs.MiniGames.Games.NumberPull
             resultOverlay.SetActive(false);
         }
 
+        private void BuildDifficultySelector(RectTransform root)
+        {
+            Image dim = CreateImage(root, "DifficultySelector", new Color(Ink.r, Ink.g, Ink.b, 0.90f), null);
+            Stretch(dim.rectTransform, 0f);
+            Canvas selectorCanvas = dim.gameObject.AddComponent<Canvas>();
+            selectorCanvas.overrideSorting = true;
+            selectorCanvas.sortingOrder = 4;
+            difficultyOverlay = dim.gameObject;
+
+            RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "DifficultySafeArea");
+            Image panel = CreateImage(safeRoot, "DifficultyPanel", Surface, roundedSprite);
+            Anchor(panel.rectTransform, new Vector2(0.055f, 0.12f), new Vector2(0.945f, 0.88f));
+            panel.raycastTarget = false;
+
+            Text title = CreateText(panel.rectTransform, "DifficultyTitle", 58, TextAnchor.MiddleCenter, TextLight);
+            title.text = "CHOOSE A LEVEL";
+            Anchor(title.rectTransform, new Vector2(0.08f, 0.80f), new Vector2(0.92f, 0.94f));
+            Text instruction = CreateText(panel.rectTransform, "DifficultyInstruction", 27, TextAnchor.MiddleCenter, TextMuted);
+            instruction.text = "Both teams play by the same rules.";
+            Anchor(instruction.rectTransform, new Vector2(0.08f, 0.72f), new Vector2(0.92f, 0.82f));
+
+            CreateDifficultyCard(panel.rectTransform, "DifficultyLowerPrimary", "LEVEL 1", "Primary School · Grades 1–3", "Addition and subtraction up to 20\nNo negative numbers · 4 pulls · 1:45", new Vector2(0.055f, 0.13f), new Vector2(0.345f, 0.68f), Purple, NumberPullDifficultyTier.LowerPrimary);
+            CreateDifficultyCard(panel.rectTransform, "DifficultyUpperPrimary", "LEVEL 2", "Upper Primary & Secondary\nGrades 4–9", "Addition and subtraction up to 100\nTimes tables 2–10 and exact division · 5 pulls · 1:30", new Vector2(0.355f, 0.13f), new Vector2(0.645f, 0.68f), Orange, NumberPullDifficultyTier.UpperPrimaryAndSecondary);
+            CreateDifficultyCard(panel.rectTransform, "DifficultyPreparatory", "LEVEL 3", "High School · Grades 10–12", "Signed integers\nMultiplication and exact division up to 12 · 6 pulls · 1:15", new Vector2(0.655f, 0.13f), new Vector2(0.945f, 0.68f), Purple, NumberPullDifficultyTier.PreparatoryHighSchool);
+
+            difficultyOverlay.SetActive(false);
+        }
+
+        private void CreateDifficultyCard(RectTransform parent, string name, string level, string range, string rules, Vector2 min, Vector2 max, Color accent, NumberPullDifficultyTier tier)
+        {
+            Image card = CreateImage(parent, name, SurfaceRaised, roundedSprite);
+            Anchor(card.rectTransform, min, max);
+            card.raycastTarget = false;
+            Image badge = CreateImage(card.rectTransform, "Badge", accent, roundedSprite);
+            Anchor(badge.rectTransform, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.93f));
+            badge.raycastTarget = false;
+            Text levelText = CreateText(badge.rectTransform, "Level", 28, TextAnchor.MiddleCenter, accent == Orange ? Ink : Color.white);
+            levelText.text = level;
+            Stretch(levelText.rectTransform, 5f);
+            Text rangeText = CreateText(card.rectTransform, "AgeRange", 27, TextAnchor.MiddleCenter, TextLight);
+            rangeText.text = range;
+            Anchor(rangeText.rectTransform, new Vector2(0.07f, 0.48f), new Vector2(0.93f, 0.76f));
+            Text rulesText = CreateText(card.rectTransform, "MathRules", 22, TextAnchor.MiddleCenter, TextMuted);
+            rulesText.text = rules;
+            Anchor(rulesText.rectTransform, new Vector2(0.07f, 0.13f), new Vector2(0.93f, 0.47f));
+            touchTargets.Add(new TouchTarget(card.rectTransform, null, TouchAction.SelectDifficulty, (int)tier));
+        }
+
         private Text CreateUtilityControl(RectTransform root, string name, string text, Vector2 min, Vector2 max, TouchAction action)
         {
-            Image control = CreateImage(root, name, Surface, roundedSprite);
+            Image control = CreateImage(root, name, SurfaceDeep, roundedSprite);
             Anchor(control.rectTransform, min, max);
             control.raycastTarget = false;
-            Text label = CreateText(control.rectTransform, "Label", 20, TextAnchor.MiddleCenter, Ink);
+            Text label = CreateText(control.rectTransform, "Label", 20, TextAnchor.MiddleCenter, TextMuted);
             label.text = text;
             Stretch(label.rectTransform, 7f);
             touchTargets.Add(new TouchTarget(control.rectTransform, null, action, 0));
             return label;
         }
 
-        private void CreateDecorativeDots(RectTransform root)
+        private void CreateHomeControl(RectTransform root)
         {
-            for (int index = 0; index < 12; index++)
+            Image control = CreateImage(root, "HomeButton", Orange, roundedSprite);
+            Anchor(control.rectTransform, new Vector2(0.18f, 0.905f), new Vector2(0.255f, 0.975f));
+            control.raycastTarget = false;
+            Canvas homeCanvas = control.gameObject.AddComponent<Canvas>();
+            homeCanvas.overrideSorting = true;
+            homeCanvas.sortingOrder = 5;
+            Text label = CreateText(control.rectTransform, "HomeIcon", 40, TextAnchor.MiddleCenter, Ink);
+            label.text = "⌂";
+            Stretch(label.rectTransform, 4f);
+            touchTargets.Add(new TouchTarget(control.rectTransform, null, TouchAction.Home, 0));
+        }
+
+        private void BuildPauseOverlay(RectTransform root)
+        {
+            Image dim = CreateImage(root, "PauseOverlay", new Color(Ink.r, Ink.g, Ink.b, 0.88f), null);
+            Stretch(dim.rectTransform, 0f);
+            Canvas pauseCanvas = dim.gameObject.AddComponent<Canvas>();
+            pauseCanvas.overrideSorting = true;
+            pauseCanvas.sortingOrder = 6;
+            pauseOverlay = dim.gameObject;
+
+            RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "PauseSafeArea");
+            Image card = CreateImage(safeRoot, "PauseCard", Surface, roundedSprite);
+            Anchor(card.rectTransform, new Vector2(0.30f, 0.13f), new Vector2(0.70f, 0.87f));
+            card.raycastTarget = false;
+
+            Text title = CreateText(card.rectTransform, "PauseTitle", 62, TextAnchor.MiddleCenter, TextLight);
+            title.text = "PAUSED";
+            Anchor(title.rectTransform, new Vector2(0.10f, 0.78f), new Vector2(0.90f, 0.93f));
+            Text instruction = CreateText(card.rectTransform, "PauseInstruction", 25, TextAnchor.MiddleCenter, TextMuted);
+            instruction.text = "Game is paused.";
+            Anchor(instruction.rectTransform, new Vector2(0.10f, 0.69f), new Vector2(0.90f, 0.78f));
+
+            restartPauseAction = CreatePauseAction(card.rectTransform, "RestartMatch", "RESTART MATCH", Purple, TextLight, new Vector2(0.12f, 0.49f), new Vector2(0.88f, 0.62f), TouchAction.Restart);
+            changeDifficultyPauseAction = CreatePauseAction(card.rectTransform, "ChangeLevel", "CHANGE LEVEL", SurfaceRaised, TextLight, new Vector2(0.12f, 0.34f), new Vector2(0.88f, 0.47f), TouchAction.ChangeDifficulty);
+            CreatePauseAction(card.rectTransform, "ExitToHub", "EXIT TO HUB", Orange, Ink, new Vector2(0.12f, 0.19f), new Vector2(0.88f, 0.32f), TouchAction.Hub);
+            CreatePauseAction(card.rectTransform, "ContinueMatch", "CONTINUE", TextMuted, Ink, new Vector2(0.25f, 0.05f), new Vector2(0.75f, 0.15f), TouchAction.Continue);
+
+            pauseOverlay.SetActive(false);
+        }
+
+        private GameObject CreatePauseAction(RectTransform parent, string name, string text, Color color, Color textColor, Vector2 min, Vector2 max, TouchAction action)
+        {
+            Image control = CreateImage(parent, name, color, roundedSprite);
+            Anchor(control.rectTransform, min, max);
+            control.raycastTarget = false;
+            Text label = CreateText(control.rectTransform, "Label", 29, TextAnchor.MiddleCenter, textColor);
+            label.text = text;
+            Stretch(label.rectTransform, 8f);
+            touchTargets.Add(new TouchTarget(control.rectTransform, null, action, 0));
+            return control.gameObject;
+        }
+
+        private void CreateSpaceBackdrop(RectTransform root)
+        {
+            Image background = CreateImage(root, "NeutralCanvas", CanvasColor, null);
+            Stretch(background.rectTransform, 0f);
+            background.raycastTarget = false;
+
+            Image violetNebula = CreateImage(root, "VioletNebula", new Color(Purple.r, Purple.g, Purple.b, 0.18f), circleSprite);
+            Anchor(violetNebula.rectTransform, new Vector2(-0.16f, 0.28f), new Vector2(0.48f, 1.20f));
+            violetNebula.raycastTarget = false;
+
+            Image amberNebula = CreateImage(root, "AmberNebula", new Color(Orange.r, Orange.g, Orange.b, 0.13f), circleSprite);
+            Anchor(amberNebula.rectTransform, new Vector2(0.56f, -0.18f), new Vector2(1.18f, 0.62f));
+            amberNebula.raycastTarget = false;
+
+            Image horizon = CreateImage(root, "ArenaHorizon", new Color(Purple.r, Purple.g, Purple.b, 0.19f), roundedSprite);
+            Anchor(horizon.rectTransform, new Vector2(0.015f, 0.365f), new Vector2(0.985f, 0.385f));
+            horizon.raycastTarget = false;
+
+            for (int index = 0; index < 38; index++)
             {
-                Image dot = CreateImage(root, "BackgroundDot" + index, index % 2 == 0 ? new Color(Purple.r, Purple.g, Purple.b, 0.10f) : new Color(Orange.r, Orange.g, Orange.b, 0.14f), circleSprite);
-                float x = 0.03f + (index * 0.083f) % 0.94f;
-                float y = index % 3 == 0 ? 0.03f : 0.86f + (index % 2) * 0.04f;
+                Color color = index % 7 == 0 ? new Color(Orange.r, Orange.g, Orange.b, 0.72f) : new Color(TextLight.r, TextLight.g, TextLight.b, 0.56f);
+                Image dot = CreateImage(root, "Star" + index, color, circleSprite);
+                float x = Mathf.Repeat(index * 0.173f + 0.071f, 0.94f) + 0.03f;
+                float y = Mathf.Repeat(index * 0.271f + 0.113f, 0.82f) + 0.08f;
                 dot.rectTransform.anchorMin = new Vector2(x, y);
                 dot.rectTransform.anchorMax = new Vector2(x, y);
-                dot.rectTransform.sizeDelta = new Vector2(24f + index % 4 * 9f, 24f + index % 4 * 9f);
+                float size = 4f + index % 4 * 3f;
+                dot.rectTransform.sizeDelta = new Vector2(size, size);
                 dot.raycastTarget = false;
             }
         }
 
         private void StartMatch()
         {
+            if (!selectedDifficulty.HasValue)
+            {
+                return;
+            }
+
             CancelInvoke(nameof(HideCountdown));
             ResetTransientPresentation();
             int seed = deterministicSeed == 0 ? Environment.TickCount : deterministicSeed;
             seed += matchIndex * 101;
             matchIndex++;
-            match = new NumberPullMatch(new MathProblemGenerator(seed), new MathProblemGenerator(seed + 1));
+            NumberPullDifficulty difficulty = selectedDifficulty.Value;
+            match = new NumberPullMatch(
+                new MathProblemGenerator(seed, difficulty.Tier),
+                new MathProblemGenerator(seed + 1, difficulty.Tier),
+                difficulty.TargetPulls,
+                difficulty.DurationSeconds);
             leftEntry = 0;
             rightEntry = 0;
             leftHasEntry = false;
             rightHasEntry = false;
+            leftEntryIsNegative = false;
+            rightEntryIsNegative = false;
             pendingLeftAnswer = null;
             pendingRightAnswer = null;
             resultReported = false;
+            isPaused = false;
             matchStarted = false;
             countdownRemaining = CountdownDuration;
             lastDisplayedSecond = -1;
             pullAnimationRemaining = 0f;
             ropeKnot.anchoredPosition = Vector2.zero;
             resultOverlay.SetActive(false);
+            if (pauseOverlay != null)
+            {
+                pauseOverlay.SetActive(false);
+            }
+
             countdownText.gameObject.SetActive(true);
             leftFeedback.text = "READY";
             rightFeedback.text = "READY";
-            leftFeedback.color = Ink;
-            rightFeedback.color = Ink;
+            leftFeedback.color = TextMuted;
+            rightFeedback.color = TextMuted;
             RefreshProblems();
             RefreshEntries();
             UpdateTimer();
             ResetContactOwnership();
+        }
+
+        private void ShowDifficultySelector()
+        {
+            CancelInvoke(nameof(HideCountdown));
+            ResetTransientPresentation();
+            isPaused = false;
+            match = null;
+            matchStarted = false;
+            pendingLeftAnswer = null;
+            pendingRightAnswer = null;
+            leftEntry = 0;
+            rightEntry = 0;
+            leftHasEntry = false;
+            rightHasEntry = false;
+            leftEntryIsNegative = false;
+            rightEntryIsNegative = false;
+            ResetContactOwnership();
+            if (resultOverlay != null)
+            {
+                resultOverlay.SetActive(false);
+            }
+
+            if (pauseOverlay != null)
+            {
+                pauseOverlay.SetActive(false);
+            }
+
+            if (difficultyOverlay != null)
+            {
+                difficultyOverlay.SetActive(true);
+            }
+        }
+
+        private void SelectDifficulty(NumberPullDifficultyTier tier)
+        {
+            selectedDifficulty = NumberPullDifficulty.For(tier);
+            difficultyOverlay.SetActive(false);
+            StartMatch();
+            audio.Play(AudioCue.Tap, 0.3f);
         }
 
         private void UpdateCountdown(float delta)
@@ -661,9 +914,36 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private int FindTarget(Vector2 screenPosition)
         {
+            if (pauseOverlay != null && pauseOverlay.activeSelf)
+            {
+                return FindActivePauseMenuTarget(screenPosition);
+            }
+
+            if (difficultyOverlay != null && difficultyOverlay.activeSelf)
+            {
+                int homeTargetIndex = FindActiveTarget(screenPosition, TouchAction.Home);
+                if (homeTargetIndex >= 0)
+                {
+                    return homeTargetIndex;
+                }
+            }
+
             for (int index = touchTargets.Count - 1; index >= 0; index--)
             {
                 TouchTarget target = touchTargets[index];
+                if (difficultyOverlay != null && difficultyOverlay.activeSelf && target.Action != TouchAction.SelectDifficulty)
+                {
+                    if (target.Action != TouchAction.Home)
+                    {
+                        continue;
+                    }
+                }
+
+                if (resultOverlay != null && resultOverlay.activeSelf && target.Action != TouchAction.Rematch && target.Action != TouchAction.ChangeDifficulty && target.Action != TouchAction.Hub)
+                {
+                    continue;
+                }
+
                 if (!target.Rect.gameObject.activeInHierarchy)
                 {
                     continue;
@@ -688,8 +968,69 @@ namespace Lbs.MiniGames.Games.NumberPull
             return -1;
         }
 
+        private int FindActivePauseMenuTarget(Vector2 screenPosition)
+        {
+            for (int index = touchTargets.Count - 1; index >= 0; index--)
+            {
+                TouchTarget target = touchTargets[index];
+                if (!IsPauseMenuAction(target.Action)
+                    || !target.Rect.gameObject.activeInHierarchy
+                    || !RectTransformUtility.RectangleContainsScreenPoint(target.Rect, screenPosition, null))
+                {
+                    continue;
+                }
+
+                return index;
+            }
+
+            return -1;
+        }
+
+        private static bool IsPauseMenuAction(TouchAction action)
+        {
+            return action == TouchAction.Restart
+                || action == TouchAction.ChangeDifficulty
+                || action == TouchAction.Hub
+                || action == TouchAction.Continue;
+        }
+
+        private int FindActiveTarget(Vector2 screenPosition, TouchAction action)
+        {
+            for (int index = touchTargets.Count - 1; index >= 0; index--)
+            {
+                TouchTarget target = touchTargets[index];
+                if (target.Action == action
+                    && target.Rect.gameObject.activeInHierarchy
+                    && RectTransformUtility.RectangleContainsScreenPoint(target.Rect, screenPosition, null))
+                {
+                    return index;
+                }
+            }
+
+            return -1;
+        }
+
         private void HandleTarget(TouchTarget target)
         {
+            if (target.Action == TouchAction.Home)
+            {
+                OpenPauseMenu();
+                return;
+            }
+
+            if (target.Action == TouchAction.Continue)
+            {
+                ClosePauseMenu();
+                return;
+            }
+
+            if (target.Action == TouchAction.Restart)
+            {
+                StartMatch();
+                audio.Play(AudioCue.Tap, 0.3f);
+                return;
+            }
+
             if (target.Action == TouchAction.ToggleSound)
             {
                 SetMuted(!muted);
@@ -711,6 +1052,19 @@ namespace Lbs.MiniGames.Games.NumberPull
             {
                 StartMatch();
                 audio.Play(AudioCue.Tap, 0.3f);
+                return;
+            }
+
+            if (target.Action == TouchAction.ChangeDifficulty)
+            {
+                ShowDifficultySelector();
+                audio.Play(AudioCue.Tap, 0.3f);
+                return;
+            }
+
+            if (target.Action == TouchAction.SelectDifficulty)
+            {
+                SelectDifficulty((NumberPullDifficultyTier)target.Value);
                 return;
             }
 
@@ -736,6 +1090,10 @@ namespace Lbs.MiniGames.Games.NumberPull
                     ClearEntry(side);
                     audio.Play(AudioCue.Tap, 0.22f);
                     break;
+                case TouchAction.ToggleSign:
+                    ToggleEntrySign(side);
+                    audio.Play(AudioCue.Tap, 0.22f);
+                    break;
                 case TouchAction.Submit:
                     QueueSubmission(side);
                     break;
@@ -751,7 +1109,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                     leftEntry = digit;
                     leftHasEntry = true;
                 }
-                else if (leftEntry < 10)
+                else if (leftEntry < 100)
                 {
                     leftEntry = leftEntry * 10 + digit;
                 }
@@ -763,7 +1121,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                     rightEntry = digit;
                     rightHasEntry = true;
                 }
-                else if (rightEntry < 10)
+                else if (rightEntry < 100)
                 {
                     rightEntry = rightEntry * 10 + digit;
                 }
@@ -778,11 +1136,27 @@ namespace Lbs.MiniGames.Games.NumberPull
             {
                 leftEntry = 0;
                 leftHasEntry = false;
+                leftEntryIsNegative = false;
             }
             else
             {
                 rightEntry = 0;
                 rightHasEntry = false;
+                rightEntryIsNegative = false;
+            }
+
+            RefreshEntries();
+        }
+
+        private void ToggleEntrySign(MatchSide side)
+        {
+            if (side == MatchSide.Left)
+            {
+                leftEntryIsNegative = !leftEntryIsNegative;
+            }
+            else
+            {
+                rightEntryIsNegative = !rightEntryIsNegative;
             }
 
             RefreshEntries();
@@ -792,15 +1166,17 @@ namespace Lbs.MiniGames.Games.NumberPull
         {
             if (side == MatchSide.Left && leftHasEntry && !pendingLeftAnswer.HasValue)
             {
-                pendingLeftAnswer = leftEntry;
+                pendingLeftAnswer = leftEntryIsNegative ? -leftEntry : leftEntry;
                 leftHasEntry = false;
                 leftEntry = 0;
+                leftEntryIsNegative = false;
             }
             else if (side == MatchSide.Right && rightHasEntry && !pendingRightAnswer.HasValue)
             {
-                pendingRightAnswer = rightEntry;
+                pendingRightAnswer = rightEntryIsNegative ? -rightEntry : rightEntry;
                 rightHasEntry = false;
                 rightEntry = 0;
+                rightEntryIsNegative = false;
             }
 
             RefreshEntries();
@@ -875,7 +1251,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 if (leftFeedbackRemaining <= 0f)
                 {
                     leftFeedback.text = "SOLVE YOUR SIDE";
-                    leftFeedback.color = Ink;
+                    leftFeedback.color = TextMuted;
                 }
             }
 
@@ -885,7 +1261,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 if (rightFeedbackRemaining <= 0f)
                 {
                     rightFeedback.text = "SOLVE YOUR SIDE";
-                    rightFeedback.color = Ink;
+                    rightFeedback.color = TextMuted;
                 }
             }
 
@@ -1085,7 +1461,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             else
             {
                 resultTitle.text = "BALANCED DRAW";
-                resultTitle.color = Ink;
+                resultTitle.color = TextLight;
                 audio.Play(AudioCue.Draw, 0.46f);
                 SpawnParticles(0f, true);
             }
@@ -1114,7 +1490,10 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ReturnToHub()
         {
-            if (!resultReported)
+            ResetContactOwnership();
+            pendingLeftAnswer = null;
+            pendingRightAnswer = null;
+            if (!resultReported && match != null)
             {
                 PlayerStats left = match == null ? default : match.LeftStats;
                 PlayerStats right = match == null ? default : match.RightStats;
@@ -1137,8 +1516,18 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void RefreshEntries()
         {
-            leftAnswer.text = leftHasEntry ? leftEntry.ToString() : "?";
-            rightAnswer.text = rightHasEntry ? rightEntry.ToString() : "?";
+            leftAnswer.text = FormatEntry(leftEntry, leftHasEntry, leftEntryIsNegative);
+            rightAnswer.text = FormatEntry(rightEntry, rightHasEntry, rightEntryIsNegative);
+        }
+
+        private static string FormatEntry(int value, bool hasEntry, bool isNegative)
+        {
+            if (!hasEntry)
+            {
+                return isNegative ? "−" : "?";
+            }
+
+            return isNegative && value != 0 ? $"−{value}" : value.ToString();
         }
 
         private void UpdateTimer()
@@ -1151,7 +1540,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
             lastDisplayedSecond = seconds;
             timerText.text = $"{seconds / 60}:{seconds % 60:00}";
-            timerText.color = seconds <= 10 ? Error : Ink;
+            timerText.color = seconds <= 10 ? Error : TextLight;
         }
 
         private int FindContact(int fingerId)
@@ -1179,6 +1568,39 @@ namespace Lbs.MiniGames.Games.NumberPull
         private void ResetContactOwnership()
         {
             Array.Clear(contacts, 0, contacts.Length);
+        }
+
+        private void OpenPauseMenu()
+        {
+            if (pauseOverlay == null || pauseOverlay.activeSelf)
+            {
+                return;
+            }
+
+            ResetContactOwnership();
+            pendingLeftAnswer = null;
+            pendingRightAnswer = null;
+            bool isPreMatchDifficultySelection = difficultyOverlay != null && difficultyOverlay.activeSelf;
+            restartPauseAction.SetActive(!isPreMatchDifficultySelection);
+            changeDifficultyPauseAction.SetActive(!isPreMatchDifficultySelection);
+            isPaused = true;
+            pauseOverlay.SetActive(true);
+            audio.Play(AudioCue.Tap, 0.3f);
+        }
+
+        private void ClosePauseMenu()
+        {
+            if (pauseOverlay == null || !pauseOverlay.activeSelf)
+            {
+                return;
+            }
+
+            ResetContactOwnership();
+            pendingLeftAnswer = null;
+            pendingRightAnswer = null;
+            pauseOverlay.SetActive(false);
+            isPaused = false;
+            audio.Play(AudioCue.Tap, 0.3f);
         }
 
         private void CreateProceduralSprites()
@@ -1287,10 +1709,16 @@ namespace Lbs.MiniGames.Games.NumberPull
             Digit,
             Clear,
             Submit,
+            ToggleSign,
             ToggleSound,
             ToggleMotion,
             Rematch,
-            Hub
+            ChangeDifficulty,
+            SelectDifficulty,
+            Hub,
+            Home,
+            Restart,
+            Continue
         }
 
         private readonly struct TouchTarget

@@ -17,7 +17,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         private const string ScenePath = "Assets/App/Games/NumberPull/NumberPull.unity";
 
         [Test]
-        public void SceneBuildsPlayableInterfaceWithoutAnEventSystemInputRoute()
+        public void SceneBuildsDifficultySelectorBeforeMatchWithoutAnEventSystemInputRoute()
         {
             Scene scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive);
             try
@@ -38,6 +38,18 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
                 Assert.That(hierarchy.Any(item => item.name == "RightCard"), Is.True);
                 Assert.That(hierarchy.Any(item => item.name == "RopeMarker"), Is.True);
                 Assert.That(hierarchy.Any(item => item.name == "ResultOverlay"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "DifficultySelector"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "DifficultyLowerPrimary"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "DifficultyUpperPrimary"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "DifficultyPreparatory"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "VioletNebula"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "AmberNebula"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "ArenaHorizon"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "StageAura"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "Helmet"), Is.True);
+                Assert.That(hierarchy.Any(item => item.name == "Visor"), Is.True);
+                Assert.That(game.HasSelectedDifficulty, Is.False);
+                Assert.That(game.IsCompleted, Is.False);
                 Assert.That(scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<EventSystem>(true)), Is.Empty);
             }
             finally
