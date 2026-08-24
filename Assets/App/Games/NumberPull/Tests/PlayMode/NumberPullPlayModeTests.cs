@@ -62,10 +62,18 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
                 Assert.That(clip.samples, Is.GreaterThan(0));
             }
 
+            AssertImportedAudioCue(clips, 1, "Audio/number-pull-correct", 0.1f, 0.35f);
+            AssertImportedAudioCue(clips, 3, "Audio/number-pull-rope-pull", 0.15f, 0.5f);
+            AssertImportedAudioCue(clips, 4, "Audio/number-pull-win", 0.5f, 1.2f);
+
             Canvas animationCanvas = GameObject.Find("AnimationCanvas").GetComponent<Canvas>();
+            Canvas particleCanvas = GameObject.Find("ParticleCanvas").GetComponent<Canvas>();
             Canvas resultCanvas = FindLoadedTransform("ResultOverlay").GetComponent<Canvas>();
             Assert.That(resultCanvas.overrideSorting, Is.True);
             Assert.That(resultCanvas.sortingOrder, Is.GreaterThan(animationCanvas.sortingOrder));
+            Assert.That(particleCanvas.overrideSorting, Is.True);
+            Assert.That(particleCanvas.sortingOrder, Is.EqualTo(animationCanvas.sortingOrder));
+            Assert.That(particleCanvas.GetComponent<UnityEngine.UI.GraphicRaycaster>(), Is.Null);
 
             gameObject.SetActive(false);
             yield return null;
@@ -136,6 +144,39 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
+        public IEnumerator RuntimeAudioFallsBackToGeneratedCuesWhenResourcesAreUnavailable()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            object sceneRuntimeAudio = GetField(game, "audio");
+            Type runtimeAudioType = sceneRuntimeAudio.GetType();
+            ConstructorInfo constructor = runtimeAudioType.GetConstructor(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(GameObject), typeof(Func<string, AudioClip>) },
+                null);
+            Assert.That(constructor, Is.Not.Null);
+
+            GameObject fallbackOwner = new("NumberPullGeneratedAudioFallback");
+            object fallbackAudio = constructor.Invoke(new object[]
+            {
+                fallbackOwner,
+                new Func<string, AudioClip>(_ => null)
+            });
+            Array fallbackClips = (Array)runtimeAudioType
+                .GetField("clips", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(fallbackAudio);
+
+            Assert.That(((AudioClip)fallbackClips.GetValue(1)).name, Is.EqualTo("NP Correct"));
+            Assert.That(((AudioClip)fallbackClips.GetValue(3)).name, Is.EqualTo("NP Pull"));
+            Assert.That(((AudioClip)fallbackClips.GetValue(4)).name, Is.EqualTo("NP Warm Win Fanfare"));
+
+            runtimeAudioType.GetMethod("Dispose", BindingFlags.Instance | BindingFlags.Public).Invoke(fallbackAudio, null);
+            UnityEngine.Object.Destroy(fallbackOwner);
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator DisableAndReenableClearsTransientPresentationAndContactOwnership()
         {
             yield return LoadNumberPull();
@@ -148,6 +189,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             leftCard.GetComponent<RectTransform>().anchoredPosition = new Vector2(30f, 15f);
             Invoke(game, "TryBeginContact", 73, keyCenter);
             Assert.That(HasOwnedContact(game), Is.True);
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
 
             game.gameObject.SetActive(false);
             yield return null;
@@ -157,6 +199,9 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(ActiveConfettiCount(), Is.Zero);
             Assert.That(leftCard.GetComponent<RectTransform>().anchoredPosition, Is.EqualTo(Vector2.zero));
             Assert.That(HasOwnedContact(game), Is.False);
+            Assert.That(FindLoadedTransform("ResultOverlay").gameObject.activeSelf, Is.False);
+            Assert.That(FindLoadedTransform("PurpleResultCharacter").gameObject.activeSelf, Is.False);
+            Assert.That(FindLoadedTransform("OrangeResultCharacter").gameObject.activeSelf, Is.False);
         }
 
         [UnityTest]
@@ -187,6 +232,145 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(resultOverlay.activeSelf, Is.False);
             Assert.That((bool)game.GetType().GetProperty("IsCompleted").GetValue(game), Is.False);
             Assert.That(GameObject.Find("Answer").GetComponent<UnityEngine.UI.Text>().text, Is.EqualTo("?"));
+            Assert.That(ActiveConfettiCount(), Is.Zero);
+            Assert.That(FindLoadedTransform("PurpleResultCharacter").gameObject.activeSelf, Is.False);
+            Assert.That(FindLoadedTransform("OrangeResultCharacter").gameObject.activeSelf, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator ResultArtworkMapsBothWinnersAndDrawWithReadableNonInteractiveLayout()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            UnityEngine.UI.Image purple = FindLoadedTransform("PurpleResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            UnityEngine.UI.Image orange = FindLoadedTransform("OrangeResultCharacter").GetComponent<UnityEngine.UI.Image>();
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
+            Invoke(game, "CompleteResultEntrance");
+            Canvas.ForceUpdateCanvases();
+            Assert.That(purple.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/PurpleWinnerCelebration")));
+            Assert.That(orange.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/OrangeLoserResult")));
+            Assert.That(WorldRect(purple.rectTransform).width * WorldRect(purple.rectTransform).height,
+                Is.GreaterThan(WorldRect(orange.rectTransform).width * WorldRect(orange.rectTransform).height));
+            AssertResultArtworkAndCopyRemainSeparated(purple, orange);
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.RightWins, 5));
+            Invoke(game, "CompleteResultEntrance");
+            Canvas.ForceUpdateCanvases();
+            Assert.That(purple.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/PurpleLoserResult")));
+            Assert.That(orange.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/OrangeWinnerCelebration")));
+            Assert.That(WorldRect(orange.rectTransform).width * WorldRect(orange.rectTransform).height,
+                Is.GreaterThan(WorldRect(purple.rectTransform).width * WorldRect(purple.rectTransform).height));
+            AssertResultArtworkAndCopyRemainSeparated(purple, orange);
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
+            Invoke(game, "CompleteResultEntrance");
+            Canvas.ForceUpdateCanvases();
+            Assert.That(purple.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/PurpleCrewCharacter")));
+            Assert.That(orange.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/OrangeCrewCharacter")));
+            Assert.That(orange.rectTransform.localScale.x, Is.EqualTo(-1f));
+            AssertResultArtworkAndCopyRemainSeparated(purple, orange);
+        }
+
+        [UnityTest]
+        public IEnumerator MissingDedicatedResultArtworkFallsBackAndResetClearsOutcomeState()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            UnityEngine.UI.Image purple = FindLoadedTransform("PurpleResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            UnityEngine.UI.Image orange = FindLoadedTransform("OrangeResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            SetField(game, "leftWinnerResultSprite", null);
+
+            Invoke(game, "PresentResultCharacters", MatchOutcome.LeftWins);
+
+            Assert.That(purple.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/PurpleCrewCharacter")));
+            Assert.That(purple.gameObject.activeSelf, Is.True);
+            Assert.That(orange.gameObject.activeSelf, Is.True);
+
+            SetField(game, "leftNormalCharacterSprite", null);
+            Invoke(game, "PresentResultCharacters", MatchOutcome.LeftWins);
+            Assert.That(purple.gameObject.activeSelf, Is.False, "If dedicated and normal art are both missing, the slot must hide safely.");
+
+            Invoke(game, "ResetResultPresentation");
+            Assert.That(purple.sprite, Is.Null);
+            Assert.That(orange.sprite, Is.Null);
+            Assert.That(purple.gameObject.activeSelf, Is.False);
+            Assert.That(orange.gameObject.activeSelf, Is.False);
+            Assert.That(purple.rectTransform.localScale, Is.EqualTo(Vector3.one));
+            Assert.That(orange.rectTransform.localScale, Is.EqualTo(Vector3.one));
+            Assert.That(purple.rectTransform.sizeDelta, Is.EqualTo(Vector2.zero));
+            Assert.That(orange.rectTransform.sizeDelta, Is.EqualTo(Vector2.zero));
+        }
+
+        [UnityTest]
+        public IEnumerator CelebrationParticlesRenderAboveResultsAndResetToGameplayLayer()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            Canvas particles = GameObject.Find("ParticleCanvas").GetComponent<Canvas>();
+            Canvas results = GameObject.Find("ResultOverlay").GetComponent<Canvas>();
+            Canvas animation = GameObject.Find("AnimationCanvas").GetComponent<Canvas>();
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
+
+            Assert.That(ActiveConfettiCount(), Is.EqualTo(28));
+            Assert.That(particles.sortingOrder, Is.GreaterThan(results.sortingOrder));
+            Assert.That(particles.GetComponent<UnityEngine.UI.GraphicRaycaster>(), Is.Null);
+
+            Invoke(game, "UpdateParticles", 0.1f);
+            RectTransform firstParticle = GameObject.Find("Confetti0").GetComponent<RectTransform>();
+            Assert.That(firstParticle.localRotation, Is.Not.EqualTo(Quaternion.identity));
+            Invoke(game, "ResetResultPresentation");
+            Assert.That(ActiveConfettiCount(), Is.Zero);
+            Assert.That(particles.sortingOrder, Is.EqualTo(animation.sortingOrder));
+            Assert.That(firstParticle.anchoredPosition, Is.EqualTo(Vector2.zero));
+            Assert.That(firstParticle.localRotation, Is.EqualTo(Quaternion.identity));
+        }
+
+        [UnityTest]
+        public IEnumerator ResultCelebrationsFollowWinnerArtworkAndDrawStaysNeutral()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            RectTransform particleCanvas = GameObject.Find("ParticleCanvas").GetComponent<RectTransform>();
+            RectTransform firstParticle = GameObject.Find("Confetti0").GetComponent<RectTransform>();
+            UnityEngine.UI.Image purple = FindLoadedTransform("PurpleResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            UnityEngine.UI.Image orange = FindLoadedTransform("OrangeResultCharacter").GetComponent<UnityEngine.UI.Image>();
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
+            Canvas.ForceUpdateCanvases();
+            Assert.That(firstParticle.parent, Is.SameAs(particleCanvas));
+            AssertParticleOriginMatchesResultArtwork(firstParticle, purple.rectTransform);
+            Vector2 purpleOrigin = firstParticle.anchoredPosition;
+
+            particleCanvas.localScale = new Vector3(1.13f, 0.87f, 1f);
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.RightWins, 5));
+            Canvas.ForceUpdateCanvases();
+            AssertParticleOriginMatchesResultArtwork(firstParticle, orange.rectTransform);
+            Vector2 orangeOrigin = firstParticle.anchoredPosition;
+            Assert.That(Mathf.Abs(purpleOrigin.x - orangeOrigin.x), Is.GreaterThan(1f));
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
+            Assert.That(firstParticle.anchoredPosition, Is.EqualTo(new Vector2(0f, 50f)));
+
+            particleCanvas.localScale = Vector3.one;
+            Invoke(game, "ResetResultPresentation");
+            Assert.That(ActiveConfettiCount(), Is.Zero);
+            Assert.That(firstParticle.anchoredPosition, Is.EqualTo(Vector2.zero));
+        }
+
+        [UnityTest]
+        public IEnumerator ReducedMotionShowsFinalResultStateWithoutEntranceOrParticles()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            Invoke(game, "SetReducedMotion", true);
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.RightWins, 5));
+
+            CanvasGroup group = FindLoadedTransform("ResultCard").GetComponent<CanvasGroup>();
+            Assert.That(group.alpha, Is.EqualTo(1f));
+            Assert.That(group.transform.localScale, Is.EqualTo(Vector3.one));
             Assert.That(ActiveConfettiCount(), Is.Zero);
         }
 
@@ -643,6 +827,59 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             AssertSpriteFitsCharacterBounds(sprite, new Rect(0f, 0f, NumberPullBoardLayout.CharacterWidth, NumberPullBoardLayout.CharacterHeight));
         }
 
+        private static NumberPullResult CreateResult(MatchOutcome outcome, int balance)
+        {
+            return new NumberPullResult(outcome, balance, 42f, new PlayerStats(5, 6), new PlayerStats(4, 6));
+        }
+
+        private static void AssertImportedAudioCue(Array cachedClips, int cueIndex, string resourcePath, float minimumLength, float maximumLength)
+        {
+            AudioClip importedClip = Resources.Load<AudioClip>(resourcePath);
+            AudioClip cachedClip = (AudioClip)cachedClips.GetValue(cueIndex);
+            Assert.That(importedClip, Is.Not.Null, resourcePath + " must be included as a runtime resource.");
+            Assert.That(cachedClip, Is.SameAs(importedClip), resourcePath + " must be cached during RuntimeAudio construction.");
+            Assert.That(cachedClip.length, Is.InRange(minimumLength, maximumLength));
+            Assert.That(cachedClip.frequency, Is.EqualTo(44100));
+            Assert.That(cachedClip.channels, Is.EqualTo(1));
+            Assert.That(cachedClip.loadType, Is.Not.EqualTo(AudioClipLoadType.Streaming));
+        }
+
+        private static void AssertResultArtworkAndCopyRemainSeparated(
+            UnityEngine.UI.Image purple,
+            UnityEngine.UI.Image orange)
+        {
+            Assert.That(purple.preserveAspect, Is.True);
+            Assert.That(orange.preserveAspect, Is.True);
+            Assert.That(purple.raycastTarget, Is.False);
+            Assert.That(orange.raycastTarget, Is.False);
+
+            Rect purpleBounds = WorldRect(purple.rectTransform);
+            Rect orangeBounds = WorldRect(orange.rectTransform);
+            string[] readableElements =
+            {
+                "ResultTitle", "ResultStats", "Rematch", "ChangeDifficulty", "BackToHub"
+            };
+            for (int index = 0; index < readableElements.Length; index++)
+            {
+                Rect copyBounds = WorldRect(FindLoadedTransform(readableElements[index]));
+                Assert.That(purpleBounds.Overlaps(copyBounds), Is.False,
+                    "Purple result artwork must not obscure " + readableElements[index] + ".");
+                Assert.That(orangeBounds.Overlaps(copyBounds), Is.False,
+                    "Orange result artwork must not obscure " + readableElements[index] + ".");
+            }
+        }
+
+        private static void AssertParticleOriginMatchesResultArtwork(RectTransform particle, RectTransform artwork)
+        {
+            Rect artworkBounds = artwork.rect;
+            Vector2 upperTorsoPoint = new(
+                artworkBounds.center.x,
+                Mathf.Lerp(artworkBounds.yMin, artworkBounds.yMax, 0.62f));
+            Vector3 expectedWorldPosition = artwork.TransformPoint(upperTorsoPoint);
+            Vector3 actualWorldPosition = particle.TransformPoint(particle.rect.center);
+            Assert.That(Vector3.Distance(actualWorldPosition, expectedWorldPosition), Is.LessThan(0.5f));
+        }
+
         private static void AssertSpriteFitsCharacterBounds(Sprite sprite, Rect bounds)
         {
             float spriteAspect = sprite.rect.width / sprite.rect.height;
@@ -682,7 +919,11 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         {
             Vector3[] corners = new Vector3[4];
             rect.GetWorldCorners(corners);
-            return Rect.MinMaxRect(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
+            return Rect.MinMaxRect(
+                Mathf.Min(corners[0].x, corners[2].x),
+                Mathf.Min(corners[0].y, corners[2].y),
+                Mathf.Max(corners[0].x, corners[2].x),
+                Mathf.Max(corners[0].y, corners[2].y));
         }
 
         private static void Invoke(Component target, string method, params object[] arguments)

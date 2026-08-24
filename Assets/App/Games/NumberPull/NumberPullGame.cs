@@ -14,12 +14,19 @@ namespace Lbs.MiniGames.Games.NumberPull
         public const string StableGameId = "math.number-pull";
 
         private const float CountdownDuration = 3.6f;
+        private const float ResultEntranceDuration = 0.42f;
         private const int MaximumOwnedContacts = 32;
         private const int ParticleCount = 28;
+        private const int GameplayParticleSortingOrder = 2;
+        private const int ResultParticleSortingOrder = 4;
         private const string PurpleCharacterResourcePath = "Characters/PurpleCrewCharacter";
         private const string PurplePullingCharacterResourcePath = "Characters/PurpleCrewCharacterPulling";
         private const string OrangeCharacterResourcePath = "Characters/OrangeCrewCharacter";
         private const string OrangePullingCharacterResourcePath = "Characters/OrangeCrewCharacterPulling";
+        private const string PurpleWinnerResourcePath = "Characters/PurpleWinnerCelebration";
+        private const string PurpleLoserResourcePath = "Characters/PurpleLoserResult";
+        private const string OrangeWinnerResourcePath = "Characters/OrangeWinnerCelebration";
+        private const string OrangeLoserResourcePath = "Characters/OrangeLoserResult";
 
         private static readonly Color Purple = Hex(0x9448F4);
         private static readonly Color PurpleSecondaryKeyFill = Hex(0x63349D);
@@ -55,6 +62,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Sprite leftPullingCharacterSprite;
         private Sprite rightNormalCharacterSprite;
         private Sprite rightPullingCharacterSprite;
+        private Sprite leftWinnerResultSprite;
+        private Sprite leftLoserResultSprite;
+        private Sprite rightWinnerResultSprite;
+        private Sprite rightLoserResultSprite;
         private Texture2D roundedTexture;
         private Texture2D circleTexture;
         private RuntimeAudio audio;
@@ -77,6 +88,11 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Text countdownText;
         private Text resultTitle;
         private Text resultStats;
+        private Image leftResultImage;
+        private Image rightResultImage;
+        private RectTransform resultCard;
+        private CanvasGroup resultCanvasGroup;
+        private Canvas particleCanvas;
         private Text soundLabel;
         private Text motionLabel;
         private GameObject resultOverlay;
@@ -101,6 +117,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private float leftWrongRemaining;
         private float rightWrongRemaining;
         private float pullAnimationRemaining;
+        private float resultEntranceRemaining;
         private int pullDirection;
         private bool interfaceBuilt;
         private bool matchStarted;
@@ -136,6 +153,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
             float delta = Time.unscaledDeltaTime;
             UpdateSafeArea();
+            UpdateResultEntrance(delta);
             ProcessContacts();
             if (isPaused)
             {
@@ -177,6 +195,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             pendingLeftAnswer = null;
             pendingRightAnswer = null;
             ResetTransientPresentation();
+            ResetResultPresentation();
             if (audio != null)
             {
                 audio.Stop();
@@ -421,7 +440,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             Stretch(animationLayer, 0f);
             Canvas animationCanvas = animationLayerObject.GetComponent<Canvas>();
             animationCanvas.overrideSorting = true;
-            animationCanvas.sortingOrder = 2;
+            animationCanvas.sortingOrder = GameplayParticleSortingOrder;
 
             Image ropeGlow = CreateImage(animationLayer, "RopeGlow", new Color(Orange.r, Orange.g, Orange.b, 0.25f), roundedSprite);
             Anchor(ropeGlow.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.399f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.428f));
@@ -486,9 +505,17 @@ namespace Lbs.MiniGames.Games.NumberPull
             countdownText = CreateText(animationLayer, "Countdown", 112, TextAnchor.MiddleCenter, TextLight);
             Anchor(countdownText.rectTransform, new Vector2(0.39f, 0.48f), new Vector2(0.61f, 0.69f));
 
+            GameObject particleLayerObject = new("ParticleCanvas", typeof(RectTransform), typeof(Canvas));
+            particleLayerObject.transform.SetParent(root, false);
+            RectTransform particleLayer = particleLayerObject.GetComponent<RectTransform>();
+            Stretch(particleLayer, 0f);
+            particleCanvas = particleLayerObject.GetComponent<Canvas>();
+            particleCanvas.overrideSorting = true;
+            particleCanvas.sortingOrder = GameplayParticleSortingOrder;
+
             for (int index = 0; index < ParticleCount; index++)
             {
-                Image particle = CreateImage(animationLayer, "Confetti" + index, index % 2 == 0 ? Purple : Orange, index % 3 == 0 ? circleSprite : roundedSprite);
+                Image particle = CreateImage(particleLayer, "Confetti" + index, index % 2 == 0 ? Purple : Orange, index % 3 == 0 ? circleSprite : roundedSprite);
                 particle.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 particle.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 particle.rectTransform.sizeDelta = new Vector2(18f, 18f);
@@ -563,6 +590,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void BuildResultOverlay(RectTransform root)
         {
+            leftWinnerResultSprite = Resources.Load<Sprite>(PurpleWinnerResourcePath);
+            leftLoserResultSprite = Resources.Load<Sprite>(PurpleLoserResourcePath);
+            rightWinnerResultSprite = Resources.Load<Sprite>(OrangeWinnerResourcePath);
+            rightLoserResultSprite = Resources.Load<Sprite>(OrangeLoserResourcePath);
+
             Image dim = CreateImage(root, "ResultOverlay", new Color(Ink.r, Ink.g, Ink.b, 0.82f), null);
             Stretch(dim.rectTransform, 0f);
             Canvas resultCanvas = dim.gameObject.AddComponent<Canvas>();
@@ -572,21 +604,32 @@ namespace Lbs.MiniGames.Games.NumberPull
 
             RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "ResultSafeArea");
             Image card = CreateImage(safeRoot, "ResultCard", Surface, roundedSprite);
-            Anchor(card.rectTransform, new Vector2(0.27f, 0.18f), new Vector2(0.73f, 0.82f));
+            Anchor(card.rectTransform, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.92f));
             card.raycastTarget = false;
+            resultCard = card.rectTransform;
+            resultCanvasGroup = card.gameObject.AddComponent<CanvasGroup>();
+            resultCanvasGroup.interactable = false;
+            resultCanvasGroup.blocksRaycasts = false;
 
             Image resultGlow = CreateImage(card.rectTransform, "ResultGlow", new Color(Purple.r, Purple.g, Purple.b, 0.22f), circleSprite);
-            Anchor(resultGlow.rectTransform, new Vector2(0.20f, 0.30f), new Vector2(0.80f, 0.92f));
+            Anchor(resultGlow.rectTransform, new Vector2(0.28f, 0.28f), new Vector2(0.72f, 0.91f));
             resultGlow.raycastTarget = false;
 
-            resultTitle = CreateText(card.rectTransform, "ResultTitle", 64, TextAnchor.MiddleCenter, TextLight);
-            Anchor(resultTitle.rectTransform, new Vector2(0.08f, 0.74f), new Vector2(0.92f, 0.93f));
+            leftResultImage = CreateImage(card.rectTransform, "PurpleResultCharacter", Color.white, null);
+            leftResultImage.preserveAspect = true;
+            leftResultImage.raycastTarget = false;
+            rightResultImage = CreateImage(card.rectTransform, "OrangeResultCharacter", Color.white, null);
+            rightResultImage.preserveAspect = true;
+            rightResultImage.raycastTarget = false;
 
-            resultStats = CreateText(card.rectTransform, "ResultStats", 31, TextAnchor.MiddleCenter, TextMuted);
-            Anchor(resultStats.rectTransform, new Vector2(0.08f, 0.38f), new Vector2(0.92f, 0.74f));
+            resultTitle = CreateText(card.rectTransform, "ResultTitle", 64, TextAnchor.MiddleCenter, TextLight);
+            Anchor(resultTitle.rectTransform, new Vector2(0.18f, 0.82f), new Vector2(0.82f, 0.95f));
+
+            resultStats = CreateText(card.rectTransform, "ResultStats", 29, TextAnchor.MiddleCenter, TextMuted);
+            Anchor(resultStats.rectTransform, new Vector2(0.35f, 0.30f), new Vector2(0.65f, 0.80f));
 
             Image rematch = CreateImage(card.rectTransform, "Rematch", Purple, roundedSprite);
-            Anchor(rematch.rectTransform, new Vector2(0.08f, 0.12f), new Vector2(0.35f, 0.31f));
+            Anchor(rematch.rectTransform, new Vector2(0.04f, 0.05f), new Vector2(0.32f, 0.23f));
             rematch.raycastTarget = false;
             Text rematchText = CreateText(rematch.rectTransform, "Label", 24, TextAnchor.MiddleCenter, Color.white);
             rematchText.text = "REMATCH ↻";
@@ -594,7 +637,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             touchTargets.Add(new TouchTarget(rematch.rectTransform, null, TouchAction.Rematch, 0));
 
             Image changeDifficulty = CreateImage(card.rectTransform, "ChangeDifficulty", SurfaceRaised, roundedSprite);
-            Anchor(changeDifficulty.rectTransform, new Vector2(0.39f, 0.12f), new Vector2(0.66f, 0.31f));
+            Anchor(changeDifficulty.rectTransform, new Vector2(0.36f, 0.05f), new Vector2(0.64f, 0.23f));
             changeDifficulty.raycastTarget = false;
             Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 22, TextAnchor.MiddleCenter, TextLight);
             changeDifficultyText.text = "CHANGE\nLEVEL";
@@ -602,14 +645,14 @@ namespace Lbs.MiniGames.Games.NumberPull
             touchTargets.Add(new TouchTarget(changeDifficulty.rectTransform, null, TouchAction.ChangeDifficulty, 0));
 
             Image hub = CreateImage(card.rectTransform, "BackToHub", Orange, roundedSprite);
-            Anchor(hub.rectTransform, new Vector2(0.70f, 0.12f), new Vector2(0.92f, 0.31f));
+            Anchor(hub.rectTransform, new Vector2(0.68f, 0.05f), new Vector2(0.96f, 0.23f));
             hub.raycastTarget = false;
             Text hubText = CreateText(hub.rectTransform, "Label", 30, TextAnchor.MiddleCenter, Ink);
             hubText.text = "HUB ⌂";
             Stretch(hubText.rectTransform, 8f);
             touchTargets.Add(new TouchTarget(hub.rectTransform, null, TouchAction.Hub, 0));
 
-            resultOverlay.SetActive(false);
+            ResetResultPresentation();
         }
 
         private void BuildDifficultySelector(RectTransform root)
@@ -792,7 +835,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             lastDisplayedSecond = -1;
             pullAnimationRemaining = 0f;
             ropeKnot.anchoredPosition = Vector2.zero;
-            resultOverlay.SetActive(false);
+            ResetResultPresentation();
             if (pauseOverlay != null)
             {
                 pauseOverlay.SetActive(false);
@@ -827,7 +870,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             ResetContactOwnership();
             if (resultOverlay != null)
             {
-                resultOverlay.SetActive(false);
+                ResetResultPresentation();
             }
 
             if (pauseOverlay != null)
@@ -1367,23 +1410,64 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void SpawnParticles(float x, bool celebration)
         {
+            SpawnParticles(new Vector2(x, celebration ? 50f : 160f), celebration);
+        }
+
+        private void SpawnParticles(Vector2 origin, bool celebration)
+        {
             if (reducedMotion)
             {
                 return;
             }
 
             int activeCount = celebration ? ParticleCount : 8;
+            particleCanvas.sortingOrder = celebration ? ResultParticleSortingOrder : GameplayParticleSortingOrder;
             for (int index = 0; index < activeCount; index++)
             {
                 Image particle = particles[index];
                 particle.gameObject.SetActive(true);
-                particle.rectTransform.anchoredPosition = new Vector2(x, celebration ? 50f : 160f);
+                particle.rectTransform.anchoredPosition = origin;
                 float horizontal = (float)(effectsRandom.NextDouble() * 320.0 - 160.0);
                 float vertical = (float)(effectsRandom.NextDouble() * 250.0 + 180.0);
                 particleVelocity[index] = new Vector2(horizontal, vertical);
                 particleLife[index] = celebration ? 2.2f : 0.8f;
                 particle.color = index % 2 == 0 ? Purple : Orange;
             }
+        }
+
+        private void SpawnWinnerResultParticles(Image winnerImage, float fallbackX)
+        {
+            SpawnParticles(GetResultParticleOrigin(winnerImage, new Vector2(fallbackX, 50f)), true);
+        }
+
+        private Vector2 GetResultParticleOrigin(Image resultImage, Vector2 fallbackOrigin)
+        {
+            if (resultImage == null || !resultImage.isActiveAndEnabled || particleCanvas == null)
+            {
+                return fallbackOrigin;
+            }
+
+            RectTransform particleRect = particleCanvas.transform as RectTransform;
+            if (particleRect == null)
+            {
+                return fallbackOrigin;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            Rect imageBounds = resultImage.rectTransform.rect;
+            Vector2 upperTorsoPoint = new(
+                imageBounds.center.x,
+                Mathf.Lerp(imageBounds.yMin, imageBounds.yMax, 0.62f));
+            Vector3 worldPoint = resultImage.rectTransform.TransformPoint(upperTorsoPoint);
+            Camera uiCamera = particleCanvas.worldCamera;
+            Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(uiCamera, worldPoint);
+            return RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                particleRect,
+                screenPoint,
+                uiCamera,
+                out Vector2 localPoint)
+                ? localPoint
+                : fallbackOrigin;
         }
 
         private void UpdateParticles(float delta)
@@ -1427,6 +1511,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             if (reducedMotion)
             {
                 ResetTransientPresentation();
+                CompleteResultEntrance();
             }
         }
 
@@ -1461,12 +1546,19 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ClearParticles()
         {
+            if (particleCanvas != null)
+            {
+                particleCanvas.sortingOrder = GameplayParticleSortingOrder;
+            }
+
             for (int index = 0; index < particles.Length; index++)
             {
                 particleLife[index] = 0f;
                 particleVelocity[index] = Vector2.zero;
                 if (particles[index] != null)
                 {
+                    particles[index].rectTransform.anchoredPosition = Vector2.zero;
+                    particles[index].rectTransform.localRotation = Quaternion.identity;
                     particles[index].gameObject.SetActive(false);
                 }
             }
@@ -1514,20 +1606,23 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ShowResult(NumberPullResult result)
         {
+            ClearParticles();
             resultOverlay.SetActive(true);
+            PresentResultCharacters(result.Outcome);
+            StartResultEntrance();
             if (result.Outcome == MatchOutcome.LeftWins)
             {
                 resultTitle.text = "PURPLE WINS!";
                 resultTitle.color = Purple;
                 audio.Play(AudioCue.Win, 0.52f);
-                SpawnParticles(-220f, true);
+                SpawnWinnerResultParticles(leftResultImage, -220f);
             }
             else if (result.Outcome == MatchOutcome.RightWins)
             {
                 resultTitle.text = "ORANGE WINS!";
-                resultTitle.color = Hex(0xB86600);
+                resultTitle.color = Orange;
                 audio.Play(AudioCue.Win, 0.52f);
-                SpawnParticles(220f, true);
+                SpawnWinnerResultParticles(rightResultImage, 220f);
             }
             else
             {
@@ -1541,6 +1636,102 @@ namespace Lbs.MiniGames.Games.NumberPull
                 $"PURPLE  ✓ {result.LeftStats.Correct} / {result.LeftStats.Attempts}\n" +
                 $"ORANGE  ✓ {result.RightStats.Correct} / {result.RightStats.Attempts}\n\n" +
                 $"FINAL BALANCE  {FormatBalance(result.Balance)}";
+        }
+
+        private void PresentResultCharacters(MatchOutcome outcome)
+        {
+            if (outcome == MatchOutcome.LeftWins)
+            {
+                ConfigureResultImage(leftResultImage, leftWinnerResultSprite ?? leftNormalCharacterSprite, new Vector2(0.02f, 0.27f), new Vector2(0.34f, 0.81f), false);
+                ConfigureResultImage(rightResultImage, rightLoserResultSprite ?? rightNormalCharacterSprite, new Vector2(0.73f, 0.39f), new Vector2(0.95f, 0.69f), false);
+                return;
+            }
+
+            if (outcome == MatchOutcome.RightWins)
+            {
+                ConfigureResultImage(leftResultImage, leftLoserResultSprite ?? leftNormalCharacterSprite, new Vector2(0.05f, 0.39f), new Vector2(0.27f, 0.69f), false);
+                ConfigureResultImage(rightResultImage, rightWinnerResultSprite ?? rightNormalCharacterSprite, new Vector2(0.66f, 0.27f), new Vector2(0.98f, 0.81f), false);
+                return;
+            }
+
+            ConfigureResultImage(leftResultImage, leftNormalCharacterSprite, new Vector2(0.07f, 0.34f), new Vector2(0.31f, 0.76f), false);
+            ConfigureResultImage(rightResultImage, rightNormalCharacterSprite, new Vector2(0.69f, 0.34f), new Vector2(0.93f, 0.76f), true);
+        }
+
+        private static void ConfigureResultImage(Image image, Sprite sprite, Vector2 minimum, Vector2 maximum, bool flipHorizontally)
+        {
+            image.sprite = sprite;
+            Anchor(image.rectTransform, minimum, maximum);
+            image.rectTransform.localScale = new Vector3(flipHorizontally ? -1f : 1f, 1f, 1f);
+            image.gameObject.SetActive(sprite != null);
+        }
+
+        private void StartResultEntrance()
+        {
+            if (reducedMotion)
+            {
+                CompleteResultEntrance();
+                return;
+            }
+
+            resultEntranceRemaining = ResultEntranceDuration;
+            resultCanvasGroup.alpha = 0f;
+            resultCard.localScale = new Vector3(0.96f, 0.96f, 1f);
+        }
+
+        private void UpdateResultEntrance(float delta)
+        {
+            if (resultEntranceRemaining <= 0f || resultCanvasGroup == null)
+            {
+                return;
+            }
+
+            resultEntranceRemaining = Mathf.Max(0f, resultEntranceRemaining - delta);
+            float progress = 1f - resultEntranceRemaining / ResultEntranceDuration;
+            float eased = 1f - (1f - progress) * (1f - progress);
+            resultCanvasGroup.alpha = eased;
+            float scale = Mathf.Lerp(0.96f, 1f, eased);
+            resultCard.localScale = new Vector3(scale, scale, 1f);
+        }
+
+        private void CompleteResultEntrance()
+        {
+            resultEntranceRemaining = 0f;
+            if (resultCanvasGroup != null)
+            {
+                resultCanvasGroup.alpha = 1f;
+            }
+
+            if (resultCard != null)
+            {
+                resultCard.localScale = Vector3.one;
+            }
+        }
+
+        private void ResetResultPresentation()
+        {
+            CompleteResultEntrance();
+            ClearParticles();
+            ResetResultImage(leftResultImage);
+            ResetResultImage(rightResultImage);
+            if (resultOverlay != null)
+            {
+                resultOverlay.SetActive(false);
+            }
+        }
+
+        private static void ResetResultImage(Image image)
+        {
+            if (image == null)
+            {
+                return;
+            }
+
+            image.sprite = null;
+            Anchor(image.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+            image.rectTransform.localScale = Vector3.one;
+            image.rectTransform.localRotation = Quaternion.identity;
+            image.gameObject.SetActive(false);
         }
 
         private void ReportCompletedResult(NumberPullResult result)
@@ -1837,13 +2028,19 @@ namespace Lbs.MiniGames.Games.NumberPull
         private sealed class RuntimeAudio : IDisposable
         {
             private const int SampleRate = 22050;
+            private const string CorrectResourcePath = "Audio/number-pull-correct";
+            private const string PullResourcePath = "Audio/number-pull-rope-pull";
+            private const string WinResourcePath = "Audio/number-pull-win";
             private readonly AudioSource[] sources = new AudioSource[4];
             private readonly AudioClip[] clips = new AudioClip[6];
+            private readonly bool[] ownsClips = new bool[6];
             private readonly float[] lastPlayed = new float[6];
+            private readonly Func<string, AudioClip> resourceLoader;
             private int sourceIndex;
 
-            public RuntimeAudio(GameObject owner)
+            public RuntimeAudio(GameObject owner, Func<string, AudioClip> resourceLoader = null)
             {
+                this.resourceLoader = resourceLoader ?? Resources.Load<AudioClip>;
                 for (int index = 0; index < sources.Length; index++)
                 {
                     sources[index] = owner.AddComponent<AudioSource>();
@@ -1855,11 +2052,20 @@ namespace Lbs.MiniGames.Games.NumberPull
                 }
 
                 clips[(int)AudioCue.Tap] = CreateTone("NP Tap", 0.055f, 520f, 760f, 0.25f);
-                clips[(int)AudioCue.Correct] = CreateTone("NP Correct", 0.16f, 520f, 920f, 0.28f);
+                ownsClips[(int)AudioCue.Tap] = true;
+                clips[(int)AudioCue.Correct] = LoadCue(
+                    AudioCue.Correct,
+                    CorrectResourcePath,
+                    () => CreateTone("NP Correct", 0.16f, 520f, 920f, 0.28f));
                 clips[(int)AudioCue.Incorrect] = CreateTone("NP Incorrect", 0.14f, 210f, 135f, 0.24f);
-                clips[(int)AudioCue.Pull] = CreateTone("NP Pull", 0.20f, 120f, 230f, 0.30f);
-                clips[(int)AudioCue.Win] = CreateTone("NP Win", 0.52f, 360f, 980f, 0.27f);
+                ownsClips[(int)AudioCue.Incorrect] = true;
+                clips[(int)AudioCue.Pull] = LoadCue(
+                    AudioCue.Pull,
+                    PullResourcePath,
+                    () => CreateTone("NP Pull", 0.20f, 120f, 230f, 0.30f));
+                clips[(int)AudioCue.Win] = LoadCue(AudioCue.Win, WinResourcePath, CreateWinFanfare);
                 clips[(int)AudioCue.Draw] = CreateTone("NP Draw", 0.38f, 420f, 420f, 0.24f);
+                ownsClips[(int)AudioCue.Draw] = true;
             }
 
             private bool muted;
@@ -1910,11 +2116,23 @@ namespace Lbs.MiniGames.Games.NumberPull
                 Stop();
                 for (int index = 0; index < clips.Length; index++)
                 {
-                    if (clips[index] != null)
+                    if (ownsClips[index] && clips[index] != null)
                     {
                         UnityEngine.Object.Destroy(clips[index]);
                     }
                 }
+            }
+
+            private AudioClip LoadCue(AudioCue cue, string resourcePath, Func<AudioClip> fallback)
+            {
+                AudioClip importedClip = resourceLoader(resourcePath);
+                if (importedClip != null)
+                {
+                    return importedClip;
+                }
+
+                ownsClips[(int)cue] = true;
+                return fallback();
             }
 
             private static AudioClip CreateTone(string name, float duration, float startFrequency, float endFrequency, float amplitude)
@@ -1935,6 +2153,41 @@ namespace Lbs.MiniGames.Games.NumberPull
                 AudioClip clip = AudioClip.Create(name, sampleCount, 1, SampleRate, false);
                 clip.SetData(samples, 0);
                 return clip;
+            }
+
+            private static AudioClip CreateWinFanfare()
+            {
+                const float duration = 0.78f;
+                int sampleCount = Mathf.CeilToInt(duration * SampleRate);
+                float[] samples = new float[sampleCount];
+                for (int index = 0; index < sampleCount; index++)
+                {
+                    float time = index / (float)SampleRate;
+                    samples[index] =
+                        FanfareVoice(time, 0f, 0.58f, 523.25f, 0.20f) +
+                        FanfareVoice(time, 0.14f, 0.54f, 659.25f, 0.17f) +
+                        FanfareVoice(time, 0.28f, 0.50f, 783.99f, 0.15f) +
+                        FanfareVoice(time, 0.40f, 0.38f, 1046.50f, 0.08f);
+                }
+
+                AudioClip clip = AudioClip.Create("NP Warm Win Fanfare", sampleCount, 1, SampleRate, false);
+                clip.SetData(samples, 0);
+                return clip;
+            }
+
+            private static float FanfareVoice(float time, float start, float duration, float frequency, float amplitude)
+            {
+                float localTime = time - start;
+                if (localTime < 0f || localTime >= duration)
+                {
+                    return 0f;
+                }
+
+                float attack = Mathf.Clamp01(localTime / 0.035f);
+                float release = Mathf.Clamp01((duration - localTime) / 0.18f);
+                float phase = localTime * frequency * Mathf.PI * 2f;
+                float warmTone = Mathf.Sin(phase) + Mathf.Sin(phase * 2f) * 0.16f;
+                return warmTone * amplitude * attack * release;
             }
         }
     }
