@@ -437,6 +437,101 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             AssertKeypadVisualRoles(GameObject.Find("RightCard").transform, false);
         }
 
+        [UnityTest]
+        public IEnumerator CrewVisualsUseFeatureLocalSpritesWithoutBlockingInput()
+        {
+            yield return LoadNumberPull();
+
+            AssertCrewVisual("PurplePuller", "Characters/PurpleCrewCharacter", 1f);
+            AssertCrewVisual("OrangePuller", "Characters/OrangeCrewCharacter", -1f);
+            AssertCharacterResource("Characters/PurpleCrewCharacterPulling");
+            AssertCharacterResource("Characters/OrangeCrewCharacterPulling");
+        }
+
+        [UnityTest]
+        public IEnumerator SuccessfulPullSelectsOnlyTheActiveCrewPoseAndResetsDeterministically()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            UnityEngine.UI.Image leftVisual = GetCharacterVisual("PurplePuller");
+            UnityEngine.UI.Image rightVisual = GetCharacterVisual("OrangePuller");
+            Sprite leftNormal = Resources.Load<Sprite>("Characters/PurpleCrewCharacter");
+            Sprite leftPulling = Resources.Load<Sprite>("Characters/PurpleCrewCharacterPulling");
+            Sprite rightNormal = Resources.Load<Sprite>("Characters/OrangeCrewCharacter");
+            Sprite rightPulling = Resources.Load<Sprite>("Characters/OrangeCrewCharacterPulling");
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Correct, SubmissionFeedback.None, true));
+            Assert.That(leftVisual.sprite, Is.SameAs(leftPulling));
+            Assert.That(rightVisual.sprite, Is.SameAs(rightNormal), "The opposing crew must remain in its normal pose.");
+
+            Invoke(game, "UpdateAnimation", 1f);
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal), "The pulling pose must end with the animation window.");
+            Assert.That(rightVisual.sprite, Is.SameAs(rightNormal));
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.None, SubmissionFeedback.Correct, true));
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal), "The opposing crew must remain in its normal pose.");
+            Assert.That(rightVisual.sprite, Is.SameAs(rightPulling));
+
+            Invoke(game, "ResetTransientPresentation");
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal));
+            Assert.That(rightVisual.sprite, Is.SameAs(rightNormal), "Reset must restore the normal pose.");
+        }
+
+        [UnityTest]
+        public IEnumerator NeutralizedOrUnchangedSubmissionNeverSelectsAPullingPose()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            UnityEngine.UI.Image leftVisual = GetCharacterVisual("PurplePuller");
+            UnityEngine.UI.Image rightVisual = GetCharacterVisual("OrangePuller");
+            Sprite leftNormal = Resources.Load<Sprite>("Characters/PurpleCrewCharacter");
+            Sprite rightNormal = Resources.Load<Sprite>("Characters/OrangeCrewCharacter");
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Correct, SubmissionFeedback.None, true));
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Neutralized, SubmissionFeedback.Neutralized, false));
+
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal));
+            Assert.That(rightVisual.sprite, Is.SameAs(rightNormal));
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Correct, SubmissionFeedback.None, false));
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal));
+            Assert.That(rightVisual.sprite, Is.SameAs(rightNormal));
+        }
+
+        [UnityTest]
+        public IEnumerator MissingCrewSpriteUsesNonInteractiveProceduralFallback()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            RectTransform animationLayer = GameObject.Find("AnimationCanvas").GetComponent<RectTransform>();
+            MethodInfo createAvatar = game.GetType().GetMethod("CreateAvatar", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(createAvatar, Is.Not.Null);
+
+            RectTransform fallback = (RectTransform)createAvatar.Invoke(game, new object[]
+            {
+                animationLayer,
+                "FallbackPuller",
+                Color.magenta,
+                new Vector2(0.5f, 0.5f),
+                false,
+                null
+            });
+
+            Assert.That(FindChild(fallback, "CharacterVisual"), Is.Null);
+            Assert.That(FindChild(fallback, "Body"), Is.Not.Null);
+            Assert.That(FindChild(fallback, "Helmet"), Is.Not.Null);
+            AssertImagesDoNotBlockInput(fallback);
+
+            UnityEngine.UI.Image leftVisual = GetCharacterVisual("PurplePuller");
+            Sprite leftNormal = Resources.Load<Sprite>("Characters/PurpleCrewCharacter");
+            SetField(game, "leftPullingCharacterSprite", null);
+            Invoke(game, "SetPullingPose", (MatchSide?)MatchSide.Left);
+            Assert.That(leftVisual.sprite, Is.SameAs(leftNormal), "A missing pulling sprite must fall back to the normal sprite.");
+
+            UnityEngine.Object.Destroy(fallback.gameObject);
+            yield return null;
+        }
+
         private static IEnumerator LoadNumberPull()
         {
             yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
@@ -479,7 +574,10 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             RectTransform submit = FindChild(card, "SubmitKey").GetComponent<RectTransform>();
             RectTransform sign = FindChild(card, "SignKey").GetComponent<RectTransform>();
             RectTransform seven = FindChild(card, "7Key").GetComponent<RectTransform>();
-            Assert.That(TopEdge(submit), Is.LessThan(BottomEdge(sign)), "LISTO must occupy a dedicated row below the sign controls.");
+            RectTransform clear = FindChild(card, "ClearKey").GetComponent<RectTransform>();
+            Assert.That(FindChild(clear, "Label").GetComponent<UnityEngine.UI.Text>().text, Is.EqualTo("CLEAR"));
+            Assert.That(FindChild(submit, "Label").GetComponent<UnityEngine.UI.Text>().text, Is.EqualTo("SUBMIT"));
+            Assert.That(TopEdge(submit), Is.LessThan(BottomEdge(sign)), "SUBMIT must occupy a dedicated row below the sign controls.");
             Assert.That(TopEdge(sign), Is.LessThan(BottomEdge(seven)), "Sign controls must occupy a dedicated row below the digit grid.");
 
             for (int first = 0; first < keys.Length; first++)
@@ -509,6 +607,64 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             {
                 Assert.That(FindChild(card, "1KeyShadow"), Is.Null, "Purple digit keys must not use a heavier shadow layer than Orange keys.");
                 Assert.That(FindChild(card, "1KeyBorder"), Is.Null, "Purple digit keys must not use a flashier border layer than Orange keys.");
+            }
+        }
+
+        private static void AssertCrewVisual(string avatarName, string resourcePath, float expectedScaleX)
+        {
+            GameObject avatarObject = GameObject.Find(avatarName);
+            Assert.That(avatarObject, Is.Not.Null);
+            RectTransform avatar = avatarObject.GetComponent<RectTransform>();
+            Transform visualTransform = FindChild(avatar, "CharacterVisual");
+            Assert.That(visualTransform, Is.Not.Null);
+            UnityEngine.UI.Image visual = visualTransform.GetComponent<UnityEngine.UI.Image>();
+            Sprite expectedSprite = Resources.Load<Sprite>(resourcePath);
+
+            Assert.That(expectedSprite, Is.Not.Null);
+            Assert.That(visual.sprite, Is.SameAs(expectedSprite));
+            Assert.That(visual.preserveAspect, Is.True);
+            Assert.That(avatar.sizeDelta, Is.EqualTo(new Vector2(NumberPullBoardLayout.CharacterWidth, NumberPullBoardLayout.CharacterHeight)));
+            Assert.That(avatar.anchorMin.y, Is.EqualTo(NumberPullBoardLayout.CharacterVerticalAnchor));
+            Assert.That(avatar.anchorMax.y, Is.EqualTo(NumberPullBoardLayout.CharacterVerticalAnchor));
+            Assert.That(visual.rectTransform.anchorMin, Is.EqualTo(Vector2.zero));
+            Assert.That(visual.rectTransform.anchorMax, Is.EqualTo(Vector2.one));
+            Assert.That(visual.rectTransform.localScale.x, Is.EqualTo(expectedScaleX));
+            Assert.That(FindChild(avatar, "Body"), Is.Null, "The imported character should replace the procedural body when available.");
+            AssertSpriteFitsCharacterBounds(visual.sprite, avatar.rect);
+            AssertImagesDoNotBlockInput(avatar);
+        }
+
+        private static void AssertCharacterResource(string resourcePath)
+        {
+            Sprite sprite = Resources.Load<Sprite>(resourcePath);
+            Assert.That(sprite, Is.Not.Null);
+            Assert.That(sprite.texture.width, Is.GreaterThan(0));
+            Assert.That(sprite.texture.height, Is.GreaterThan(0));
+            AssertSpriteFitsCharacterBounds(sprite, new Rect(0f, 0f, NumberPullBoardLayout.CharacterWidth, NumberPullBoardLayout.CharacterHeight));
+        }
+
+        private static void AssertSpriteFitsCharacterBounds(Sprite sprite, Rect bounds)
+        {
+            float spriteAspect = sprite.rect.width / sprite.rect.height;
+            float fittedWidth = Mathf.Min(bounds.width, bounds.height * spriteAspect);
+            float fittedHeight = fittedWidth / spriteAspect;
+            Assert.That(fittedWidth, Is.GreaterThan(0f).And.LessThanOrEqualTo(NumberPullBoardLayout.CharacterWidth));
+            Assert.That(fittedHeight, Is.GreaterThan(0f).And.LessThanOrEqualTo(NumberPullBoardLayout.CharacterHeight));
+        }
+
+        private static UnityEngine.UI.Image GetCharacterVisual(string avatarName)
+        {
+            RectTransform avatar = GameObject.Find(avatarName).GetComponent<RectTransform>();
+            return FindChild(avatar, "CharacterVisual").GetComponent<UnityEngine.UI.Image>();
+        }
+
+        private static void AssertImagesDoNotBlockInput(Transform root)
+        {
+            UnityEngine.UI.Image[] images = root.GetComponentsInChildren<UnityEngine.UI.Image>(true);
+            Assert.That(images, Is.Not.Empty);
+            foreach (UnityEngine.UI.Image image in images)
+            {
+                Assert.That(image.raycastTarget, Is.False, image.name + " must remain decorative.");
             }
         }
 

@@ -46,8 +46,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
                 Assert.That(hierarchy.Any(item => item.name == "AmberNebula"), Is.True);
                 Assert.That(hierarchy.Any(item => item.name == "ArenaHorizon"), Is.True);
                 Assert.That(hierarchy.Any(item => item.name == "StageAura"), Is.True);
-                Assert.That(hierarchy.Any(item => item.name == "Helmet"), Is.True);
-                Assert.That(hierarchy.Any(item => item.name == "Visor"), Is.True);
+                Assert.That(hierarchy.Count(item => item.name == "CharacterVisual"), Is.EqualTo(2));
                 Assert.That(game.HasSelectedDifficulty, Is.False);
                 Assert.That(game.IsCompleted, Is.False);
                 Assert.That(scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<EventSystem>(true)), Is.Empty);

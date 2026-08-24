@@ -16,6 +16,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const float CountdownDuration = 3.6f;
         private const int MaximumOwnedContacts = 32;
         private const int ParticleCount = 28;
+        private const string PurpleCharacterResourcePath = "Characters/PurpleCrewCharacter";
+        private const string PurplePullingCharacterResourcePath = "Characters/PurpleCrewCharacterPulling";
+        private const string OrangeCharacterResourcePath = "Characters/OrangeCrewCharacter";
+        private const string OrangePullingCharacterResourcePath = "Characters/OrangeCrewCharacterPulling";
 
         private static readonly Color Purple = Hex(0x9448F4);
         private static readonly Color PurpleSecondaryKeyFill = Hex(0x63349D);
@@ -47,6 +51,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Font font;
         private Sprite roundedSprite;
         private Sprite circleSprite;
+        private Sprite leftNormalCharacterSprite;
+        private Sprite leftPullingCharacterSprite;
+        private Sprite rightNormalCharacterSprite;
+        private Sprite rightPullingCharacterSprite;
         private Texture2D roundedTexture;
         private Texture2D circleTexture;
         private RuntimeAudio audio;
@@ -56,6 +64,8 @@ namespace Lbs.MiniGames.Games.NumberPull
         private RectTransform rightCard;
         private RectTransform leftAvatar;
         private RectTransform rightAvatar;
+        private Image leftCharacterImage;
+        private Image rightCharacterImage;
         private RectTransform ropeKnot;
         private Text leftProblem;
         private Text rightProblem;
@@ -367,8 +377,8 @@ namespace Lbs.MiniGames.Games.NumberPull
 
             CreateKey(card, side, "SignKey", "±", new Vector2(0.07f, 0.145f), new Vector2(0.33f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.ToggleSign, 0);
             CreateKey(card, side, "0Key", "0", new Vector2(0.37f, 0.145f), new Vector2(0.63f, 0.225f), SurfaceRaised, TextLight, TouchAction.Digit, 0);
-            CreateKey(card, side, "ClearKey", "BORRAR", new Vector2(0.67f, 0.145f), new Vector2(0.93f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.Clear, 0);
-            CreateKey(card, side, "SubmitKey", "LISTO", new Vector2(0.07f, 0.045f), new Vector2(0.93f, 0.125f), Orange, Ink, TouchAction.Submit, 0);
+            CreateKey(card, side, "ClearKey", "CLEAR", new Vector2(0.67f, 0.145f), new Vector2(0.93f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.Clear, 0);
+            CreateKey(card, side, "SubmitKey", "SUBMIT", new Vector2(0.07f, 0.045f), new Vector2(0.93f, 0.125f), Orange, Ink, TouchAction.Submit, 0);
         }
 
         private void CreateKey(RectTransform card, MatchSide side, string name, string label, Vector2 min, Vector2 max, Color color, Color labelColor, TouchAction action, int value)
@@ -418,29 +428,32 @@ namespace Lbs.MiniGames.Games.NumberPull
             ropeGlow.raycastTarget = false;
 
             Image rope = CreateImage(animationLayer, "Rope", RopeColor, roundedSprite);
-            Anchor(rope.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.407f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.420f));
+            Anchor(
+                rope.rectTransform,
+                new Vector2(NumberPullBoardLayout.RopeLeftAnchor, NumberPullBoardLayout.RopeBottomAnchor),
+                new Vector2(NumberPullBoardLayout.RopeRightAnchor, NumberPullBoardLayout.RopeTopAnchor));
             rope.raycastTarget = false;
 
             for (int step = -5; step <= 5; step++)
             {
                 Image tick = CreateImage(animationLayer, "Step" + step, step == 0 ? Orange : new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.48f), circleSprite);
-                tick.rectTransform.anchorMin = new Vector2(0.5f, 0.4135f);
-                tick.rectTransform.anchorMax = new Vector2(0.5f, 0.4135f);
+                tick.rectTransform.anchorMin = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
+                tick.rectTransform.anchorMax = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
                 tick.rectTransform.sizeDelta = step == 0 ? new Vector2(24f, 24f) : new Vector2(13f, 13f);
                 tick.rectTransform.anchoredPosition = new Vector2(step * NumberPullBoardLayout.KnotStep, 0f);
                 tick.raycastTarget = false;
             }
 
             Image knotGlow = CreateImage(animationLayer, "RopeMarkerGlow", new Color(Orange.r, Orange.g, Orange.b, 0.28f), circleSprite);
-            knotGlow.rectTransform.anchorMin = new Vector2(0.5f, 0.4135f);
-            knotGlow.rectTransform.anchorMax = new Vector2(0.5f, 0.4135f);
+            knotGlow.rectTransform.anchorMin = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
+            knotGlow.rectTransform.anchorMax = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
             knotGlow.rectTransform.sizeDelta = new Vector2(NumberPullBoardLayout.KnotDiameter + 24f, NumberPullBoardLayout.KnotDiameter + 24f);
             knotGlow.raycastTarget = false;
 
             Image knot = CreateImage(animationLayer, "RopeMarker", Orange, circleSprite);
             ropeKnot = knot.rectTransform;
-            ropeKnot.anchorMin = new Vector2(0.5f, 0.4135f);
-            ropeKnot.anchorMax = new Vector2(0.5f, 0.4135f);
+            ropeKnot.anchorMin = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
+            ropeKnot.anchorMax = new Vector2(0.5f, NumberPullBoardLayout.RopeCenterAnchor);
             ropeKnot.sizeDelta = new Vector2(NumberPullBoardLayout.KnotDiameter, NumberPullBoardLayout.KnotDiameter);
             ropeKnot.anchoredPosition = Vector2.zero;
             knot.raycastTarget = false;
@@ -448,18 +461,27 @@ namespace Lbs.MiniGames.Games.NumberPull
             marker.text = "↔";
             Stretch(marker.rectTransform, 4f);
 
+            leftNormalCharacterSprite = Resources.Load<Sprite>(PurpleCharacterResourcePath);
+            leftPullingCharacterSprite = Resources.Load<Sprite>(PurplePullingCharacterResourcePath);
+            rightNormalCharacterSprite = Resources.Load<Sprite>(OrangeCharacterResourcePath);
+            rightPullingCharacterSprite = Resources.Load<Sprite>(OrangePullingCharacterResourcePath);
+
             leftAvatar = CreateAvatar(
                 animationLayer,
                 "PurplePuller",
                 Purple,
-                new Vector2(NumberPullBoardLayout.LeftCharacterAnchor, 0.46f),
-                false);
+                new Vector2(NumberPullBoardLayout.LeftCharacterAnchor, NumberPullBoardLayout.CharacterVerticalAnchor),
+                false,
+                leftNormalCharacterSprite);
             rightAvatar = CreateAvatar(
                 animationLayer,
                 "OrangePuller",
                 Orange,
-                new Vector2(NumberPullBoardLayout.RightCharacterAnchor, 0.46f),
-                true);
+                new Vector2(NumberPullBoardLayout.RightCharacterAnchor, NumberPullBoardLayout.CharacterVerticalAnchor),
+                true,
+                rightNormalCharacterSprite);
+            leftCharacterImage = leftAvatar.Find("CharacterVisual")?.GetComponent<Image>();
+            rightCharacterImage = rightAvatar.Find("CharacterVisual")?.GetComponent<Image>();
 
             countdownText = CreateText(animationLayer, "Countdown", 112, TextAnchor.MiddleCenter, TextLight);
             Anchor(countdownText.rectTransform, new Vector2(0.39f, 0.48f), new Vector2(0.61f, 0.69f));
@@ -476,7 +498,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
         }
 
-        private RectTransform CreateAvatar(RectTransform parent, string name, Color color, Vector2 anchor, bool facesLeft)
+        private RectTransform CreateAvatar(RectTransform parent, string name, Color color, Vector2 anchor, bool facesLeft, Sprite characterSprite)
         {
             GameObject avatarObject = new(name, typeof(RectTransform));
             avatarObject.transform.SetParent(parent, false);
@@ -489,6 +511,16 @@ namespace Lbs.MiniGames.Games.NumberPull
             Image aura = CreateImage(avatar, "Aura", new Color(color.r, color.g, color.b, 0.28f), circleSprite);
             Anchor(aura.rectTransform, new Vector2(0.03f, 0.08f), new Vector2(0.97f, 0.88f));
             aura.raycastTarget = false;
+
+            if (characterSprite != null)
+            {
+                Image character = CreateImage(avatar, "CharacterVisual", Color.white, characterSprite);
+                Stretch(character.rectTransform, 0f);
+                character.preserveAspect = true;
+                character.raycastTarget = false;
+                character.rectTransform.localScale = new Vector3(facesLeft ? -1f : 1f, 1f, 1f);
+                return avatar;
+            }
 
             Image body = CreateImage(avatar, "Body", color, roundedSprite);
             Anchor(body.rectTransform, new Vector2(0.20f, 0.10f), new Vector2(0.80f, 0.57f));
@@ -1187,13 +1219,47 @@ namespace Lbs.MiniGames.Games.NumberPull
             PresentSideFeedback(MatchSide.Left, submission.Left);
             PresentSideFeedback(MatchSide.Right, submission.Right);
             RefreshProblems();
+            SetPullingPose(null);
 
             if (submission.BalanceChanged)
             {
                 pullDirection = match.Balance < Mathf.RoundToInt(ropeKnot.anchoredPosition.x / NumberPullBoardLayout.KnotStep) ? -1 : 1;
                 pullAnimationRemaining = reducedMotion ? 0.18f : 0.65f;
+                SetPullingPose(ResolvePullingSide(submission));
                 ropeKnot.anchoredPosition = new Vector2(match.Balance * NumberPullBoardLayout.KnotStep, 0f);
                 audio.Play(AudioCue.Pull, 0.46f);
+            }
+        }
+
+        private static MatchSide? ResolvePullingSide(SubmissionResult submission)
+        {
+            if (submission.Left == SubmissionFeedback.Correct && submission.Right != SubmissionFeedback.Correct)
+            {
+                return MatchSide.Left;
+            }
+
+            if (submission.Right == SubmissionFeedback.Correct && submission.Left != SubmissionFeedback.Correct)
+            {
+                return MatchSide.Right;
+            }
+
+            return null;
+        }
+
+        private void SetPullingPose(MatchSide? pullingSide)
+        {
+            if (leftCharacterImage != null)
+            {
+                leftCharacterImage.sprite = pullingSide == MatchSide.Left
+                    ? leftPullingCharacterSprite ?? leftNormalCharacterSprite
+                    : leftNormalCharacterSprite;
+            }
+
+            if (rightCharacterImage != null)
+            {
+                rightCharacterImage.sprite = pullingSide == MatchSide.Right
+                    ? rightPullingCharacterSprite ?? rightNormalCharacterSprite
+                    : rightNormalCharacterSprite;
             }
         }
 
@@ -1283,6 +1349,10 @@ namespace Lbs.MiniGames.Games.NumberPull
                 float amount = (reducedMotion ? 5f : NumberPullBoardLayout.MaximumHorizontalMotion) * wave * pullDirection;
                 leftPull = amount;
                 rightPull = amount;
+                if (pullAnimationRemaining <= 0f)
+                {
+                    SetPullingPose(null);
+                }
             }
 
             leftAvatar.anchoredPosition = new Vector2(leftPull, idle);
@@ -1363,6 +1433,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private void ResetTransientPresentation()
         {
             pullAnimationRemaining = 0f;
+            SetPullingPose(null);
             leftWrongRemaining = 0f;
             rightWrongRemaining = 0f;
             ClearParticles();

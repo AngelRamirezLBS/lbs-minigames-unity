@@ -48,6 +48,10 @@ namespace Lbs.MiniGames.Games.NumberPull.Domain
         public const float RopeRightAnchor = 0.620f;
         public const float LeftCharacterAnchor = 0.405f;
         public const float RightCharacterAnchor = 0.595f;
+        public const float RopeBottomAnchor = 0.407f;
+        public const float RopeTopAnchor = 0.420f;
+        public const float RopeCenterAnchor = (RopeBottomAnchor + RopeTopAnchor) * 0.5f;
+        public const float CharacterVerticalAnchor = RopeCenterAnchor;
         public const float CharacterWidth = 118f;
         public const float CharacterHeight = 143f;
         public const float MaximumHorizontalMotion = 12f;

@@ -142,6 +142,15 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(NumberPullBoardLayout.RopeRightAnchor, Is.GreaterThan(NumberPullBoardLayout.RightCharacterAnchor));
         }
 
+        [Test]
+        public void CharacterVerticalAnchorAlignsWithRopeCenter()
+        {
+            const float handAlignmentTolerance = 0.01f;
+            float ropeCenter = (NumberPullBoardLayout.RopeBottomAnchor + NumberPullBoardLayout.RopeTopAnchor) * 0.5f;
+
+            Assert.That(NumberPullBoardLayout.CharacterVerticalAnchor, Is.EqualTo(ropeCenter).Within(handAlignmentTolerance));
+        }
+
         [TestCase(1920, 1080, 1920f)]
         [TestCase(2000, 922, 2000f)]
         [TestCase(1440, 1080, 1360f)]
