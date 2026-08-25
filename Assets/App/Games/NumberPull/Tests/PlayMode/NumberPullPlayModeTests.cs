@@ -858,6 +858,38 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
+        public IEnumerator CorrectSubmissionMakesTheLeftStreakFireDashRenderable()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+
+            Sprite fireResource = Resources.Load<Sprite>("UI/streak-fire-dash");
+            Assert.That(fireResource, Is.Not.Null, "UI/streak-fire-dash must load as a uGUI Sprite at runtime.");
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Correct, SubmissionFeedback.None, true));
+            Canvas.ForceUpdateCanvases();
+
+            UnityEngine.UI.Image icon = (UnityEngine.UI.Image)GetField(game, "leftStreakIcon");
+            Assert.That(icon, Is.Not.Null);
+            Assert.That(icon.gameObject.activeInHierarchy, Is.True);
+            Assert.That(icon.enabled, Is.True);
+            Assert.That(icon.sprite, Is.Not.Null);
+            Assert.That(icon.sprite, Is.SameAs(fireResource));
+            Assert.That(icon.color.r, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(icon.color.g, Is.EqualTo(0.7176471f).Within(0.001f));
+            Assert.That(icon.color.b, Is.EqualTo(0.2509804f).Within(0.001f));
+            Assert.That(icon.color.a, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(icon.rectTransform.rect.width, Is.InRange(28f, 34f));
+            Assert.That(icon.rectTransform.rect.height, Is.GreaterThanOrEqualTo(icon.rectTransform.rect.width));
+            Assert.That(icon.preserveAspect, Is.True);
+            Assert.That(icon.transform.parent.name, Is.EqualTo("StreakBadge"));
+            Assert.That(icon.transform.GetSiblingIndex(), Is.LessThan(FindChild(icon.transform.parent, "Streak").GetSiblingIndex()));
+            Assert.That(icon.GetComponentsInParent<UnityEngine.UI.Mask>(true), Is.Empty);
+            Assert.That(icon.canvas, Is.Not.Null);
+            Assert.That(icon.canvas.sortingOrder, Is.EqualTo(0));
+        }
+
+        [UnityTest]
         public IEnumerator MissingCrewSpriteUsesNonInteractiveProceduralFallback()
         {
             yield return LoadNumberPull();
@@ -889,6 +921,179 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
 
             UnityEngine.Object.Destroy(fallback.gameObject);
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator FullBleedOrganicRectangularLayoutUsesVisualIdentityPalette()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+
+            RectTransform leftCard = GameObject.Find("LeftCard").GetComponent<RectTransform>();
+            RectTransform rightCard = GameObject.Find("RightCard").GetComponent<RectTransform>();
+            RectTransform centerStage = GameObject.Find("CenterStage").GetComponent<RectTransform>();
+
+            Assert.That(leftCard.anchorMin.x, Is.EqualTo(0.005f).Within(0.003f), "Left panel must start at ~0.005 for full-bleed.");
+            Assert.That(leftCard.anchorMax.x, Is.EqualTo(0.325f).Within(0.003f), "Left panel must end at ~0.325.");
+            Assert.That(centerStage.anchorMin.x, Is.EqualTo(0.335f).Within(0.003f), "Center stage must start at ~0.335.");
+            Assert.That(centerStage.anchorMax.x, Is.EqualTo(0.665f).Within(0.003f), "Center stage must end at ~0.665.");
+            Assert.That(rightCard.anchorMin.x, Is.EqualTo(0.675f).Within(0.003f), "Right panel must start at ~0.675.");
+            Assert.That(rightCard.anchorMax.x, Is.EqualTo(0.995f).Within(0.003f), "Right panel must end at ~0.995.");
+            float leftGap = centerStage.anchorMin.x - leftCard.anchorMax.x;
+            float rightGap = rightCard.anchorMin.x - centerStage.anchorMax.x;
+            Assert.That(leftGap, Is.InRange(0.005f, 0.015f), "Gutters must be minimal 0.005-0.015.");
+            Assert.That(rightGap, Is.InRange(0.005f, 0.015f), "Gutters must be minimal 0.005-0.015.");
+
+            float centerHeight = centerStage.anchorMax.y - centerStage.anchorMin.y;
+            Assert.That(centerHeight, Is.InRange(0.50f, 0.93f), "Center stage height must be ~55% up to full-bleed 0.92.");
+
+            RectTransform rope = GameObject.Find("Rope").GetComponent<RectTransform>();
+            Assert.That(rope.anchorMin.x, Is.EqualTo(0.345f).Within(0.003f), "Rope left must be inside center with margin.");
+            Assert.That(rope.anchorMax.x, Is.EqualTo(0.655f).Within(0.003f), "Rope right must be inside center with margin.");
+            Assert.That(rope.anchorMin.y, Is.GreaterThan(centerStage.anchorMin.y), "Rope must be inside center stage, not below.");
+            Assert.That(rope.anchorMax.y, Is.LessThan(centerStage.anchorMax.y), "Rope must be inside center stage, not above.");
+            float ropeCenterY = (rope.anchorMin.y + rope.anchorMax.y) * 0.5f;
+            float stageCenterY = (centerStage.anchorMin.y + centerStage.anchorMax.y) * 0.5f;
+            Assert.That(ropeCenterY, Is.EqualTo(0.568f).Within(0.015f), "Rope center must be near 0.568 (0.558-0.578).");
+            Assert.That(ropeCenterY, Is.EqualTo(stageCenterY).Within(0.08f), "Rope center must be within stage vertical middle ±0.08 for full-bleed.");
+            Assert.That(rope.anchorMin.y, Is.EqualTo(0.558f).Within(0.012f), "Rope bottom must be ~0.558.");
+            Assert.That(rope.anchorMax.y, Is.EqualTo(0.578f).Within(0.012f), "Rope top must be ~0.578.");
+
+            Transform leftCardT = leftCard.transform;
+            UnityEngine.UI.Image leftAnswerSurface = FindChild(leftCardT, "AnswerSurface").GetComponent<UnityEngine.UI.Image>();
+            Assert.That(leftAnswerSurface.rectTransform.anchorMin.x, Is.LessThanOrEqualTo(0.05f), "Problem/answer must span full panel width.");
+            Assert.That(leftAnswerSurface.rectTransform.anchorMax.x, Is.GreaterThanOrEqualTo(0.95f), "Answer must span full width.");
+
+            RectTransform key1 = FindChild(leftCardT, "1Key").GetComponent<RectTransform>();
+            RectTransform key2 = FindChild(leftCardT, "2Key").GetComponent<RectTransform>();
+            float gap01 = key2.anchorMin.x - key1.anchorMax.x;
+            Assert.That(gap01, Is.InRange(0.015f, 0.03f), "Key gap must be 6-8px (~0.015-0.03 normalized).");
+            UnityEngine.UI.Image keyImage = key1.GetComponent<UnityEngine.UI.Image>();
+            Assert.That(keyImage.sprite, Is.Not.Null);
+            Assert.That(keyImage.sprite.name, Is.EqualTo("NumberPullKey"), "Keys must use rectangular key sprite with radius 6-8px.");
+            Assert.That(keyImage.type, Is.EqualTo(UnityEngine.UI.Image.Type.Sliced), "Keys must be Sliced rectangular.");
+            Assert.That(keyImage.color, Is.EqualTo(Color.white), "Digit keys white.");
+            UnityEngine.UI.Image go = FindChild(leftCardT, "SubmitKey").GetComponent<UnityEngine.UI.Image>();
+            UnityEngine.UI.Image clr = FindChild(leftCardT, "ClearKey").GetComponent<UnityEngine.UI.Image>();
+            Assert.That(go.color, Is.EqualTo(new Color(0x16 / 255f, 0x7A / 255f, 0x4A / 255f, 1f)), "GO Success #167A4A.");
+            Assert.That(clr.color, Is.EqualTo(new Color(0xB3 / 255f, 0x26 / 255f, 0x1E / 255f, 1f)), "CLR Error #B3261E.");
+
+            Canvas canvas = GameObject.Find("NeutralCanvas").GetComponent<UnityEngine.UI.Image>().canvas;
+            Component scaler = canvas.GetComponent("CanvasScaler");
+            Assert.That(scaler, Is.Not.Null, "CanvasScaler must exist.");
+            var scalerType = scaler.GetType();
+            var refRes = (Vector2)scalerType.GetProperty("referenceResolution").GetValue(scaler);
+            var match = (float)scalerType.GetProperty("matchWidthOrHeight").GetValue(scaler);
+            Assert.That(refRes, Is.EqualTo(new Vector2(1920f, 1080f)));
+            Assert.That(match, Is.EqualTo(0.5f).Within(0.001f));
+        }
+
+        [UnityTest]
+        public IEnumerator WrongAnswerBlocksKeypadForTwoSeconds()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            var gameType = game.GetType();
+
+            // Ensure gameplay started (countdown finished)
+            Invoke(game, "UpdateCountdown", 5f);
+            Canvas.ForceUpdateCanvases();
+            Assert.That((bool)gameType.GetField("matchStarted", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game), Is.True);
+
+            // Trigger wrong answer on left
+            Invoke(game, "PresentSideFeedback", MatchSide.Left, SubmissionFeedback.Incorrect);
+            float leftRemaining = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            float rightRemaining = (float)gameType.GetField("rightLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(leftRemaining, Is.EqualTo(2.0f).Within(0.001f), "Left wrong must block for exactly 2s.");
+            Assert.That(rightRemaining, Is.EqualTo(0f).Within(0.001f), "Right must remain unblocked on left error.");
+            Assert.That((bool)gameType.GetMethod("IsSideBlocked", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(game, new object[] { MatchSide.Left }), Is.True);
+            Assert.That((bool)gameType.GetMethod("IsSideBlocked", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(game, new object[] { MatchSide.Right }), Is.False);
+
+            GameObject leftOverlay = FindLoadedTransform("LockoutOverlay") != null ? FindLoadedTransform("LockoutOverlay").gameObject : GameObject.Find("LockoutOverlay");
+            // Left card overlay should be active; right overlay not active
+            Transform leftCard = GameObject.Find("LeftCard").transform;
+            Transform rightCard = GameObject.Find("RightCard").transform;
+            Transform leftLock = FindChild(leftCard, "LockoutOverlay");
+            Transform rightLock = FindChild(rightCard, "LockoutOverlay");
+            Assert.That(leftLock.gameObject.activeSelf, Is.True, "Desaturated dim overlay must show on blocked side.");
+            Assert.That(rightLock.gameObject.activeSelf, Is.False, "Other side must not show overlay.");
+            string labelText = FindChild(leftLock, "LockoutLabel").GetComponent<UnityEngine.UI.Text>().text;
+            Assert.That(labelText, Does.Contain("Bloqueado"), "Countdown label must show Bloqueado.");
+            Assert.That(labelText, Does.Contain("2.0"), "Initial countdown must be ~2.0s.");
+            string answerText = GameObject.Find("LeftCard").transform.Find("AnswerSurface/Answer").GetComponent<UnityEngine.UI.Text>().text;
+            Assert.That(answerText, Does.Contain("Bloqueado"), "Answer field must show blocked countdown.");
+
+            // Input must be rejected during block
+            object beforeEntry = gameType.GetField("leftHasEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            int before = (int)gameType.GetField("leftEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Invoke(game, "AppendDigit", MatchSide.Left, 5);
+            Invoke(game, "QueueSubmission", MatchSide.Left);
+            int after = (int)gameType.GetField("leftEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            bool hasEntryAfter = (bool)gameType.GetField("leftHasEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(after, Is.EqualTo(before), "Digit input must be rejected while blocked.");
+            Assert.That(hasEntryAfter, Is.EqualTo((bool)beforeEntry), "Entry flag must not change while blocked.");
+            // Right side must still accept input
+            Invoke(game, "AppendDigit", MatchSide.Right, 7);
+            int rightEntry = (int)gameType.GetField("rightEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(rightEntry, Is.EqualTo(7), "Other side must still accept input.");
+
+            // Advance 1.2s, still blocked, countdown decreases, pause freezes timer
+            Invoke(game, "UpdateLockouts", 0.6f);
+            leftRemaining = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(leftRemaining, Is.EqualTo(1.4f).Within(0.01f), "Countdown must consume real deltaTime.");
+            string midLabel = FindChild(leftLock, "LockoutLabel").GetComponent<UnityEngine.UI.Text>().text;
+            Assert.That(midLabel, Does.Contain("1.4"), "Label must update to 1.4s.");
+
+            // Verify pause freezes lockout
+            Invoke(game, "OpenPauseMenu");
+            float pausedRemaining = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            // Call Update while paused (should early return, lockout not decrement)
+            Invoke(game, "Update");
+            float afterPauseTick = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(afterPauseTick, Is.EqualTo(pausedRemaining).Within(0.001f), "Pause must freeze lockout timer.");
+            // Match timer also frozen while paused (already covered) but verify lockout still blocked
+            Invoke(game, "ClosePauseMenu");
+
+            // Multiple wrongs must not stack beyond 2s overlap - try to trigger another wrong while still blocked (should not extend)
+            Invoke(game, "PresentSideFeedback", MatchSide.Left, SubmissionFeedback.Incorrect);
+            float afterSecondWrong = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(afterSecondWrong, Is.EqualTo(1.4f).Within(0.01f), "Second wrong during block must not extend beyond initial window.");
+
+            // Finish remaining time -> re-enables
+            Invoke(game, "UpdateLockouts", 1.4f);
+            leftRemaining = (float)gameType.GetField("leftLockoutRemaining", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(leftRemaining, Is.EqualTo(0f).Within(0.001f), "Must re-enable after 2s.");
+            Assert.That(leftLock.gameObject.activeSelf, Is.False, "Overlay must hide after expiration.");
+            Assert.That((bool)gameType.GetMethod("IsSideBlocked", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(game, new object[] { MatchSide.Left }), Is.False);
+            // Now input accepted again
+            Invoke(game, "AppendDigit", MatchSide.Left, 3);
+            int leftEntryAfter = (int)gameType.GetField("leftEntry", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            Assert.That(leftEntryAfter, Is.EqualTo(3), "Input must resume after 2s.");
+
+            // Edge: if result/match completes during block, clear block
+            Invoke(game, "PresentSideFeedback", MatchSide.Right, SubmissionFeedback.Incorrect);
+            Assert.That((bool)gameType.GetMethod("IsSideBlocked", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(game, new object[] { MatchSide.Right }), Is.True);
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
+            Assert.That((bool)gameType.GetMethod("IsSideBlocked", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(game, new object[] { MatchSide.Right }), Is.False, "Result must clear block.");
+            Assert.That(rightLock.gameObject.activeSelf, Is.False, "Overlay cleared on result.");
+
+            // Ensure match timer continued during block: tick while blocked should advance elapsed
+            // Start fresh match to test timer continuity
+            Invoke(game, "StartMatch");
+            Invoke(game, "UpdateCountdown", 5f);
+            object match = gameType.GetField("match", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            float elapsedBefore = (float)match.GetType().GetProperty("ElapsedSeconds").GetValue(match);
+            Invoke(game, "PresentSideFeedback", MatchSide.Left, SubmissionFeedback.Incorrect);
+            match = gameType.GetField("match", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(game);
+            float elapsedDuringBlockStart = (float)match.GetType().GetProperty("ElapsedSeconds").GetValue(match);
+            // Simulate gameplay tick while blocked
+            match.GetType().GetMethod("Tick").Invoke(match, new object[] { 0.5f });
+            Invoke(game, "UpdateLockouts", 0.5f);
+            float elapsedAfter = (float)match.GetType().GetProperty("ElapsedSeconds").GetValue(match);
+            Assert.That(elapsedAfter, Is.GreaterThan(elapsedBefore), "Match timer must continue during block.");
+            // Rope should not have advanced due to wrong (no balance change) - rope position stays 0
+            RectTransform knot = GameObject.Find("RopeMarker").GetComponent<RectTransform>();
+            Assert.That(knot.anchoredPosition.x, Is.EqualTo(0f).Within(0.001f), "Rope must not advance during wrong block.");
         }
 
         private static IEnumerator LoadNumberPull()
@@ -956,11 +1161,17 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             UnityEngine.UI.Image clear = FindChild(card, "ClearKey").GetComponent<UnityEngine.UI.Image>();
             UnityEngine.UI.Image submit = FindChild(card, "SubmitKey").GetComponent<UnityEngine.UI.Image>();
 
-            Assert.That(sign.color, Is.EqualTo(clear.color), "The secondary controls must share a visual role.");
-            Assert.That(sign.color, Is.Not.EqualTo(digit.color), "Secondary controls must be distinct from digit controls.");
+            Color expectedClear = new Color(0xB3 / 255f, 0x26 / 255f, 0x1E / 255f, 1f);
+            Color expectedGo = new Color(0x16 / 255f, 0x7A / 255f, 0x4A / 255f, 1f);
+            Assert.That(clear.color, Is.EqualTo(expectedClear), "CLR must use visual-identity Error #B3261E.");
+            Assert.That(submit.color, Is.EqualTo(expectedGo), "GO must use visual-identity Success #167A4A.");
+            Assert.That(digit.color, Is.EqualTo(Color.white), "Digit keys must be white for contrast on organic panels.");
+            Assert.That(sign.color, Is.Not.EqualTo(digit.color), "Sign control must be distinct from digit keys (neutral canvas).");
             Assert.That(submit.color, Is.Not.EqualTo(digit.color), "The submit control must retain its primary-action treatment.");
-            Assert.That(FindChild(card, "SubmitKey").GetComponentInChildren<UnityEngine.UI.Text>().color,
-                Is.EqualTo(new Color(0x24 / 255f, 0x1A / 255f, 0x35 / 255f, 1f)));
+            Assert.That(clear.color, Is.Not.EqualTo(digit.color), "CLR must be distinct from digit keys.");
+            Assert.That(FindChild(card, "SubmitKey").GetComponentInChildren<UnityEngine.UI.Text>().color, Is.EqualTo(Color.white), "GO text on Success must be white.");
+            Assert.That(FindChild(card, "ClearKey").GetComponentInChildren<UnityEngine.UI.Text>().color, Is.EqualTo(Color.white), "CLR text on Error must be white.");
+            Assert.That(FindChild(card, "1Key").GetComponentInChildren<UnityEngine.UI.Text>().color, Is.EqualTo(new Color(0x24 / 255f, 0x1A / 255f, 0x35 / 255f, 1f)), "Digit labels must be Ink #241A35.");
 
             if (isPurpleCrew)
             {

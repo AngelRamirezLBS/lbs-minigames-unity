@@ -19,7 +19,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const int ParticleCount = 28;
         private const int ResultBurstParticleCount = 18;
         private const int GameplayParticleSortingOrder = 2;
-        private const int ResultParticleSortingOrder = 4;
+        private const int PauseSortingOrder = 3;
+        private const int ResultSortingOrder = 5;
+        private const int ResultParticleSortingOrder = 6;
+        private const int DifficultySortingOrder = 7;
         private const string AudioMutedPreferenceKey = "math.number-pull.audio-muted";
         private const string PurpleCharacterResourcePath = "Characters/PurpleCrewCharacter";
         private const string PurplePullingCharacterResourcePath = "Characters/PurpleCrewCharacterPulling";
@@ -30,21 +33,28 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const string OrangeWinnerResourcePath = "Characters/OrangeWinnerCelebration";
         private const string OrangeLoserResourcePath = "Characters/OrangeLoserResult";
         private const string ResultConfettiStarResourcePath = "Particles/kenney-star-01";
+        private const string StreakFireDashResourcePath = "UI/streak-fire-dash";
+        private const string LegacyFireResourcePath = "UI/fire";
 
         private static readonly Color Purple = Hex(0x9448F4);
-        private static readonly Color PurpleSecondaryKeyFill = Hex(0x63349D);
         private static readonly Color Orange = Hex(0xFFB740);
-        private static readonly Color OrangeSecondaryKeyFill = Hex(0xD48616);
         private static readonly Color Ink = Hex(0x241A35);
-        private static readonly Color CanvasColor = Hex(0x0D0920);
-        private static readonly Color Surface = Hex(0x241A3D);
-        private static readonly Color SurfaceRaised = Hex(0x30224E);
-        private static readonly Color SurfaceDeep = Hex(0x17102B);
-        private static readonly Color TextLight = Hex(0xF0EBFF);
-        private static readonly Color TextMuted = Hex(0xC9BDDD);
+        private static readonly Color CanvasColor = Hex(0xF7F5FA);
+        private static readonly Color Surface = Hex(0xFFFFFF);
+        private static readonly Color SurfaceRaised = Hex(0xFFFFFF);
+        private static readonly Color SurfaceDeep = Hex(0xF7F5FA);
+        private static readonly Color TextLight = Hex(0xFFFFFF);
+        private static readonly Color TextMuted = Hex(0x6B5A85);
         private static readonly Color RopeColor = Hex(0xFFD588);
         private static readonly Color Success = Hex(0x167A4A);
         private static readonly Color Error = Hex(0xB3261E);
+        private static readonly Color PurpleSecondaryKeyFill = Hex(0xF7F5FA);
+        private static readonly Color OrangeSecondaryKeyFill = Hex(0xF7F5FA);
+        private static readonly Color BackdropDark = Hex(0x241A35);
+        private static readonly Color BackdropDeep = Hex(0x2E1F4A);
+        private static readonly Color TintedSurface = Hex(0xF0EBF5);
+        private static readonly Color CenterStageTint = Hex(0xF0EBF5);
+        private static readonly Color TextOnDarkMuted = Hex(0xD0C2EB);
 
         [SerializeField] private int deterministicSeed;
 
@@ -60,7 +70,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private NumberPullMatch match;
         private Font font;
         private Sprite roundedSprite;
+        private Sprite panelSprite;
+        private Sprite keySprite;
         private Sprite circleSprite;
+        private Sprite fireSprite;
         private Sprite leftNormalCharacterSprite;
         private Sprite leftPullingCharacterSprite;
         private Sprite rightNormalCharacterSprite;
@@ -71,6 +84,8 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Sprite rightLoserResultSprite;
         private Sprite resultConfettiStarSprite;
         private Texture2D roundedTexture;
+        private Texture2D panelTexture;
+        private Texture2D keyTexture;
         private Texture2D circleTexture;
         private RuntimeAudio audio;
         private System.Random effectsRandom;
@@ -88,10 +103,26 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Text rightAnswer;
         private Text leftFeedback;
         private Text rightFeedback;
+        private Text leftCorrectCountText;
+        private Text rightCorrectCountText;
+        private Image leftCorrectCountBadge;
+        private Image rightCorrectCountBadge;
+        private Text leftStreakText;
+        private Text rightStreakText;
+        private Image leftStreakBadge;
+        private Image rightStreakBadge;
+        private Image leftStreakIcon;
+        private Image rightStreakIcon;
+        private int leftStreak;
+        private int rightStreak;
         private Text timerText;
         private Text countdownText;
         private Text resultTitle;
         private Text resultStats;
+        private Image leftLockoutOverlay;
+        private Image rightLockoutOverlay;
+        private Text leftLockoutLabel;
+        private Text rightLockoutLabel;
         private Image leftResultImage;
         private Image rightResultImage;
         private Image leftResultHalo;
@@ -101,9 +132,11 @@ namespace Lbs.MiniGames.Games.NumberPull
         private CanvasGroup leftResultCanvasGroup;
         private CanvasGroup rightResultCanvasGroup;
         private Canvas particleCanvas;
-        private Text soundLabel;
-        private Image soundControl;
-        private Text motionLabel;
+        private Text pauseSoundLabel;
+        private Image pauseSoundControl;
+        private Text pauseMotionLabel;
+        private Image pauseMotionControl;
+        private RectTransform pauseButtonRect;
         private GameObject resultOverlay;
         private GameObject difficultyOverlay;
         private GameObject pauseOverlay;
@@ -128,6 +161,9 @@ namespace Lbs.MiniGames.Games.NumberPull
         private float rightWrongRemaining;
         private float pullAnimationRemaining;
         private float resultEntranceRemaining;
+        private float leftLockoutRemaining;
+        private float rightLockoutRemaining;
+        private const float WrongAnswerLockoutDuration = 2.0f;
         private Image winnerResultImage;
         private Vector2 winnerResultStartOffset;
         private int pullDirection;
@@ -172,6 +208,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 return;
             }
 
+            UpdateLockouts(delta);
             UpdateFeedback(delta);
             UpdateAnimation(delta);
             UpdateParticles(delta);
@@ -219,6 +256,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             if (interfaceBuilt)
             {
                 UpdateSafeArea();
+                SyncPauseButtonVisibility();
             }
 
             if (interfaceBuilt && matchStarted && countdownText != null)
@@ -260,6 +298,16 @@ namespace Lbs.MiniGames.Games.NumberPull
                 Destroy(roundedSprite);
             }
 
+            if (panelSprite != null)
+            {
+                Destroy(panelSprite);
+            }
+
+            if (keySprite != null)
+            {
+                Destroy(keySprite);
+            }
+
             if (circleSprite != null)
             {
                 Destroy(circleSprite);
@@ -270,10 +318,21 @@ namespace Lbs.MiniGames.Games.NumberPull
                 Destroy(roundedTexture);
             }
 
+            if (panelTexture != null)
+            {
+                Destroy(panelTexture);
+            }
+
+            if (keyTexture != null)
+            {
+                Destroy(keyTexture);
+            }
+
             if (circleTexture != null)
             {
                 Destroy(circleTexture);
             }
+
         }
 
         private void BuildInterface()
@@ -317,131 +376,207 @@ namespace Lbs.MiniGames.Games.NumberPull
             Text title = CreateText(safeRoot, "Title", 52, TextAnchor.MiddleCenter, TextLight);
             title.text = "NUMBER PULL";
             Anchor(title.rectTransform, new Vector2(0.31f, 0.905f), new Vector2(0.69f, 0.985f));
+            // High-contrast outline/shadow for white title on dark backdrop
+            Shadow titleShadow = title.gameObject.AddComponent<Shadow>();
+            titleShadow.effectColor = new Color(Ink.r, Ink.g, Ink.b, 0.92f);
+            titleShadow.effectDistance = new Vector2(3f, -3f);
+            Outline titleOutline = title.gameObject.AddComponent<Outline>();
+            titleOutline.effectColor = new Color(Ink.r, Ink.g, Ink.b, 0.75f);
+            titleOutline.effectDistance = new Vector2(2f, -2f);
 
-            Text instruction = CreateText(safeRoot, "Instruction", 24, TextAnchor.MiddleCenter, TextMuted);
+            Text instruction = CreateText(safeRoot, "Instruction", 24, TextAnchor.MiddleCenter, TextOnDarkMuted);
             instruction.text = "Solve. Submit. Shift the balance five steps.";
             Anchor(instruction.rectTransform, new Vector2(0.30f, 0.855f), new Vector2(0.70f, 0.91f));
 
-            soundLabel = CreateUtilityControl(safeRoot, "SoundControl", "SOUND ON ♪", new Vector2(0.025f, 0.91f), new Vector2(0.17f, 0.975f), TouchAction.ToggleSound, out soundControl);
-            motionLabel = CreateUtilityControl(safeRoot, "MotionControl", "MOTION ON", new Vector2(0.83f, 0.91f), new Vector2(0.975f, 0.975f), TouchAction.ToggleMotion);
             ApplyMuted(PlayerPrefs.GetInt(AudioMutedPreferenceKey, 0) == 1, false);
+            SetReducedMotion(PlayerPrefs.GetInt("math.number-pull.motion-reduced", 0) == 1);
 
-            leftCard = BuildPlayerCard(safeRoot, MatchSide.Left, new Vector2(0.025f, 0.075f), new Vector2(NumberPullBoardLayout.LeftInputMaximum, 0.84f));
-            rightCard = BuildPlayerCard(safeRoot, MatchSide.Right, new Vector2(NumberPullBoardLayout.RightInputMinimum, 0.075f), new Vector2(0.975f, 0.84f));
+            leftCard = BuildPlayerCard(safeRoot, MatchSide.Left, new Vector2(0.005f, 0.04f), new Vector2(NumberPullBoardLayout.LeftInputMaximum, 0.96f));
+            // Right panel full-bleed to screen edge (1.0) with minimal gutter; was 0.995f
+            rightCard = BuildPlayerCard(safeRoot, MatchSide.Right, new Vector2(NumberPullBoardLayout.RightInputMinimum, 0.04f), new Vector2(1.0f, 0.96f));
 
             BuildCenterStage(safeRoot);
+            BuildPauseButton(safeRoot);
             BuildResultOverlay(root);
             BuildDifficultySelector(root);
             BuildPauseOverlay(root);
+            // Sync pause menu toggles after creation (ApplyMuted/SetReducedMotion were called before those controls existed)
+            ApplyMuted(muted, false);
+            SetReducedMotion(reducedMotion);
+            SyncPauseButtonVisibility();
             UpdateSafeArea();
         }
 
         private RectTransform BuildPlayerCard(RectTransform root, MatchSide side, Vector2 min, Vector2 max)
         {
             bool isLeft = side == MatchSide.Left;
-            Image shadow = CreateImage(root, isLeft ? "LeftShadow" : "RightShadow", new Color(0f, 0f, 0f, 0.38f), roundedSprite);
-            Anchor(shadow.rectTransform, min + new Vector2(0.006f, -0.010f), max + new Vector2(0.006f, -0.010f));
-            shadow.raycastTarget = false;
-
-            Image card = CreateImage(root, isLeft ? "LeftCard" : "RightCard", Surface, roundedSprite);
+            Sprite cardSprite = panelSprite != null ? panelSprite : roundedSprite;
+            Color cardColor = isLeft ? Purple : Orange;
+            Image card = CreateImage(root, isLeft ? "LeftCard" : "RightCard", cardColor, cardSprite);
             Anchor(card.rectTransform, min, max);
             card.raycastTarget = false;
 
-            Image innerGlow = CreateImage(card.rectTransform, "InnerGlow", new Color(isLeft ? Purple.r : Orange.r, isLeft ? Purple.g : Orange.g, isLeft ? Purple.b : Orange.b, 0.12f), roundedSprite);
-            Anchor(innerGlow.rectTransform, new Vector2(0.018f, 0.018f), new Vector2(0.982f, 0.982f));
-            innerGlow.raycastTarget = false;
+            // Header 3-col: streak/fire badge top-left, team name centered, correct count top-right (organic pills).
+            Sprite headerBadgeSprite = keySprite != null ? keySprite : roundedSprite;
+            Sprite fireBadgeSprite = fireSprite != null ? fireSprite : circleSprite;
 
-            Image accent = CreateImage(card.rectTransform, "Accent", isLeft ? Purple : Orange, roundedSprite);
-            Anchor(accent.rectTransform, new Vector2(0.035f, 0.91f), new Vector2(0.965f, 0.98f));
-            accent.raycastTarget = false;
+            // Fire/streak badge top-left (raster Sprite tinted via Image.color per streak — no emoji).
+            Image streakBadge = CreateImage(card.rectTransform, "StreakBadge", new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.18f), headerBadgeSprite);
+            Anchor(streakBadge.rectTransform, new Vector2(0.04f, 0.915f), new Vector2(0.27f, 0.978f));
+            streakBadge.raycastTarget = false;
+            Image fireIcon = CreateImage(streakBadge.rectTransform, "FireIcon", new Color(Orange.r, Orange.g, Orange.b, 0.95f), fireBadgeSprite);
+            Anchor(fireIcon.rectTransform, new Vector2(0.08f, 0.18f), new Vector2(0.33f, 0.82f));
+            fireIcon.preserveAspect = true;
+            fireIcon.raycastTarget = false;
+            Text streakText = CreateText(streakBadge.rectTransform, "Streak", 17, TextAnchor.MiddleCenter, new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.75f));
+            streakText.text = "x0";
+            Anchor(streakText.rectTransform, new Vector2(0.40f, 0.04f), new Vector2(0.94f, 0.96f));
 
-            Text sideName = CreateText(card.rectTransform, "SideName", 28, TextAnchor.MiddleCenter, Ink);
+            // Team name centered across header.
+            Text sideName = CreateText(card.rectTransform, "SideName", 24, TextAnchor.MiddleCenter, isLeft ? Color.white : Ink);
             sideName.text = isLeft ? "PURPLE CREW" : "ORANGE CREW";
-            Anchor(sideName.rectTransform, new Vector2(0.07f, 0.90f), new Vector2(0.93f, 0.985f));
+            Anchor(sideName.rectTransform, new Vector2(0.28f, 0.910f), new Vector2(0.72f, 0.983f));
 
-            Text problem = CreateText(card.rectTransform, "Problem", 70, TextAnchor.MiddleCenter, TextLight);
-            Anchor(problem.rectTransform, new Vector2(0.07f, 0.72f), new Vector2(0.93f, 0.89f));
+            // Correct count badge top-right.
+            Image correctBadge = CreateImage(card.rectTransform, "CorrectCountBadge", Surface, headerBadgeSprite);
+            Anchor(correctBadge.rectTransform, new Vector2(0.735f, 0.915f), new Vector2(0.96f, 0.978f));
+            correctBadge.raycastTarget = false;
+            Text correctText = CreateText(correctBadge.rectTransform, "CorrectCount", 18, TextAnchor.MiddleCenter, Ink);
+            correctText.text = "✓ 0";
+            Stretch(correctText.rectTransform, 4f);
 
-            Image answerSurface = CreateImage(card.rectTransform, "AnswerSurface", SurfaceDeep, roundedSprite);
-            Anchor(answerSurface.rectTransform, new Vector2(0.18f, 0.61f), new Vector2(0.82f, 0.72f));
+            if (isLeft)
+            {
+                leftStreakBadge = streakBadge;
+                leftStreakText = streakText;
+                leftStreakIcon = fireIcon;
+                leftCorrectCountBadge = correctBadge;
+                leftCorrectCountText = correctText;
+            }
+            else
+            {
+                rightStreakBadge = streakBadge;
+                rightStreakIcon = fireIcon;
+                rightStreakText = streakText;
+                rightCorrectCountBadge = correctBadge;
+                rightCorrectCountText = correctText;
+            }
+
+            Text problem = CreateText(card.rectTransform, "Problem", 68, TextAnchor.MiddleCenter, isLeft ? Color.white : Ink);
+            Anchor(problem.rectTransform, new Vector2(0.04f, 0.72f), new Vector2(0.96f, 0.89f));
+
+            Sprite answerSprite = keySprite != null ? keySprite : roundedSprite;
+            Image answerSurface = CreateImage(card.rectTransform, "AnswerSurface", TintedSurface, answerSprite);
+            Anchor(answerSurface.rectTransform, new Vector2(0.04f, 0.605f), new Vector2(0.96f, 0.715f));
             answerSurface.raycastTarget = false;
 
-            Text answer = CreateText(answerSurface.rectTransform, "Answer", 48, TextAnchor.MiddleCenter, isLeft ? Tint(Purple, 0.58f) : RopeColor);
+            Text answer = CreateText(answerSurface.rectTransform, "Answer", 46, TextAnchor.MiddleCenter, Ink);
             answer.text = "?";
-            Stretch(answer.rectTransform, 8f);
+            Stretch(answer.rectTransform, 6f);
 
-            Text feedback = CreateText(card.rectTransform, "Feedback", 25, TextAnchor.MiddleCenter, TextMuted);
+            Text feedback = CreateText(card.rectTransform, "Feedback", 24, TextAnchor.MiddleCenter, isLeft ? Color.white : Ink);
             feedback.text = "WAIT FOR THE SIGNAL";
-            Anchor(feedback.rectTransform, new Vector2(0.08f, 0.545f), new Vector2(0.92f, 0.61f));
+            Anchor(feedback.rectTransform, new Vector2(0.04f, 0.545f), new Vector2(0.96f, 0.605f));
+
+            Sprite overlaySprite = panelSprite != null ? panelSprite : roundedSprite;
+            Image lockoutOverlay = CreateImage(card.rectTransform, "LockoutOverlay", new Color(0f, 0f, 0f, 0.42f), overlaySprite);
+            Anchor(lockoutOverlay.rectTransform, new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.715f));
+            lockoutOverlay.raycastTarget = true;
+            lockoutOverlay.gameObject.SetActive(false);
+            Text lockoutLabel = CreateText(lockoutOverlay.rectTransform, "LockoutLabel", 22, TextAnchor.MiddleCenter, Color.white);
+            Anchor(lockoutLabel.rectTransform, new Vector2(0.05f, 0.42f), new Vector2(0.95f, 0.62f));
+            lockoutLabel.text = "";
 
             if (isLeft)
             {
                 leftProblem = problem;
                 leftAnswer = answer;
                 leftFeedback = feedback;
+                leftLockoutOverlay = lockoutOverlay;
+                leftLockoutLabel = lockoutLabel;
             }
             else
             {
                 rightProblem = problem;
                 rightAnswer = answer;
                 rightFeedback = feedback;
+                rightLockoutOverlay = lockoutOverlay;
+                rightLockoutLabel = lockoutLabel;
             }
 
             BuildKeypad(card.rectTransform, side);
+            lockoutOverlay.transform.SetAsLastSibling();
             return card.rectTransform;
         }
 
         private void BuildKeypad(RectTransform card, MatchSide side)
         {
-            Color secondaryKeyFill = side == MatchSide.Left ? PurpleSecondaryKeyFill : OrangeSecondaryKeyFill;
-            Color secondaryLabelColor = side == MatchSide.Left ? TextLight : Ink;
+            Sprite keyRectSprite = keySprite != null ? keySprite : roundedSprite;
+            Color digitFill = Color.white;
+            Color signFill = Hex(0xF7F5FA);
+            Color clearFill = Error;
+            Color goFill = Success;
+            Color digitLabelColor = Ink;
+            Color signLabelColor = Ink;
+            Color clearLabelColor = Color.white;
+            Color goLabelColor = Color.white;
+            const float pad = 0.04f;
+            const float gap = 0.02f;
+            float keyW = (1f - 2f * pad - 2f * gap) / 3f;
+            const float keyH = 0.082f;
+            const float topY = 0.525f;
             int[] digits = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
             for (int index = 0; index < digits.Length; index++)
             {
                 int row = index / 3;
                 int column = index % 3;
-                float minX = 0.07f + column * 0.30f;
-                float maxX = minX + 0.26f;
-                float maxY = 0.525f - row * 0.10f;
-                float minY = maxY - 0.08f;
-                CreateKey(card, side, digits[index] + "Key", digits[index].ToString(), new Vector2(minX, minY), new Vector2(maxX, maxY), SurfaceRaised, TextLight, TouchAction.Digit, digits[index]);
+                float minX = pad + column * (keyW + gap);
+                float maxX = minX + keyW;
+                float maxY = topY - row * (keyH + gap);
+                float minY = maxY - keyH;
+                CreateKey(card, side, digits[index] + "Key", digits[index].ToString(), new Vector2(minX, minY), new Vector2(maxX, maxY), digitFill, digitLabelColor, TouchAction.Digit, digits[index], keyRectSprite);
             }
 
-            CreateKey(card, side, "SignKey", "±", new Vector2(0.07f, 0.145f), new Vector2(0.33f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.ToggleSign, 0);
-            CreateKey(card, side, "0Key", "0", new Vector2(0.37f, 0.145f), new Vector2(0.63f, 0.225f), SurfaceRaised, TextLight, TouchAction.Digit, 0);
-            CreateKey(card, side, "ClearKey", "CLEAR", new Vector2(0.67f, 0.145f), new Vector2(0.93f, 0.225f), secondaryKeyFill, secondaryLabelColor, TouchAction.Clear, 0);
-            CreateKey(card, side, "SubmitKey", "SUBMIT", new Vector2(0.07f, 0.045f), new Vector2(0.93f, 0.125f), Orange, Ink, TouchAction.Submit, 0);
+            float utilityMaxY = topY - 3f * (keyH + gap);
+            float utilityMinY = utilityMaxY - keyH;
+            CreateKey(card, side, "SignKey", "±", new Vector2(pad, utilityMinY), new Vector2(pad + keyW, utilityMaxY), signFill, signLabelColor, TouchAction.ToggleSign, 0, keyRectSprite);
+            CreateKey(card, side, "0Key", "0", new Vector2(pad + keyW + gap, utilityMinY), new Vector2(pad + 2f * keyW + gap, utilityMaxY), digitFill, digitLabelColor, TouchAction.Digit, 0, keyRectSprite);
+            CreateKey(card, side, "ClearKey", "CLEAR", new Vector2(pad + 2f * keyW + 2f * gap, utilityMinY), new Vector2(1f - pad, utilityMaxY), clearFill, clearLabelColor, TouchAction.Clear, 0, keyRectSprite);
+            float goMaxY = utilityMinY - gap;
+            float goMinY = goMaxY - keyH;
+            goMinY = Mathf.Max(0.04f, goMinY);
+            CreateKey(card, side, "SubmitKey", "SUBMIT", new Vector2(pad, goMinY), new Vector2(1f - pad, goMaxY), goFill, goLabelColor, TouchAction.Submit, 0, keyRectSprite);
         }
 
         private void CreateKey(RectTransform card, MatchSide side, string name, string label, Vector2 min, Vector2 max, Color color, Color labelColor, TouchAction action, int value)
         {
-            Image button = CreateImage(card, name, color, roundedSprite);
+            CreateKey(card, side, name, label, min, max, color, labelColor, action, value, roundedSprite);
+        }
+
+        private void CreateKey(RectTransform card, MatchSide side, string name, string label, Vector2 min, Vector2 max, Color color, Color labelColor, TouchAction action, int value, Sprite sprite)
+        {
+            Sprite keySpriteToUse = sprite != null ? sprite : roundedSprite;
+            Image button = CreateImage(card, name, color, keySpriteToUse);
             Anchor(button.rectTransform, min, max);
             button.raycastTarget = false;
 
-            Text text = CreateText(button.rectTransform, "Label", action == TouchAction.Clear || action == TouchAction.Submit ? 24 : 34, TextAnchor.MiddleCenter, labelColor);
+            Text text = CreateText(button.rectTransform, "Label", action == TouchAction.Clear || action == TouchAction.Submit ? 22 : 30, TextAnchor.MiddleCenter, labelColor);
             text.text = label;
-            Stretch(text.rectTransform, 5f);
+            Stretch(text.rectTransform, 4f);
             touchTargets.Add(new TouchTarget(button.rectTransform, side, action, value));
         }
 
         private void BuildCenterStage(RectTransform root)
         {
-            Image stageShadow = CreateImage(root, "CenterStageShadow", new Color(0f, 0f, 0f, 0.42f), roundedSprite);
-            Anchor(stageShadow.rectTransform, new Vector2(NumberPullBoardLayout.CentralStageLeft + 0.005f, 0.067f), new Vector2(NumberPullBoardLayout.CentralStageRight + 0.005f, 0.832f));
-            stageShadow.raycastTarget = false;
-
-            Image stage = CreateImage(root, "CenterStage", SurfaceDeep, roundedSprite);
-            Anchor(stage.rectTransform, new Vector2(NumberPullBoardLayout.CentralStageLeft, 0.075f), new Vector2(NumberPullBoardLayout.CentralStageRight, 0.84f));
+            Sprite centerSprite = panelSprite != null ? panelSprite : roundedSprite;
+            Image stage = CreateImage(root, "CenterStage", CenterStageTint, centerSprite);
+            // Restore prior vertical anchors (~0.295-0.84), keep full-bleed horizontal (0.335-0.665)
+            Anchor(stage.rectTransform, new Vector2(NumberPullBoardLayout.CentralStageLeft, 0.295f), new Vector2(NumberPullBoardLayout.CentralStageRight, 0.84f));
             stage.raycastTarget = false;
 
-            Image stageAura = CreateImage(stage.rectTransform, "StageAura", new Color(Purple.r, Purple.g, Purple.b, 0.19f), circleSprite);
-            Anchor(stageAura.rectTransform, new Vector2(0.05f, 0.19f), new Vector2(0.95f, 0.81f));
-            stageAura.raycastTarget = false;
-
-            timerText = CreateText(stage.rectTransform, "Timer", 50, TextAnchor.MiddleCenter, TextLight);
+            timerText = CreateText(stage.rectTransform, "Timer", 50, TextAnchor.MiddleCenter, Ink);
             timerText.text = "1:30";
-            Anchor(timerText.rectTransform, new Vector2(0.10f, 0.865f), new Vector2(0.90f, 0.97f));
+            Anchor(timerText.rectTransform, new Vector2(0.10f, 0.86f), new Vector2(0.90f, 0.97f));
 
             Text goal = CreateText(stage.rectTransform, "Goal", 22, TextAnchor.MiddleCenter, TextMuted);
             goal.text = "BALANCE THE ROPE";
@@ -455,11 +590,12 @@ namespace Lbs.MiniGames.Games.NumberPull
             animationCanvas.overrideSorting = true;
             animationCanvas.sortingOrder = GameplayParticleSortingOrder;
 
-            Image ropeGlow = CreateImage(animationLayer, "RopeGlow", new Color(Orange.r, Orange.g, Orange.b, 0.25f), roundedSprite);
-            Anchor(ropeGlow.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, 0.399f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, 0.428f));
+            Image ropeGlow = CreateImage(animationLayer, "RopeGlow", new Color(Orange.r, Orange.g, Orange.b, 0.18f), panelSprite != null ? panelSprite : roundedSprite);
+            Anchor(ropeGlow.rectTransform, new Vector2(NumberPullBoardLayout.RopeLeftAnchor, NumberPullBoardLayout.RopeBottomAnchor - 0.008f), new Vector2(NumberPullBoardLayout.RopeRightAnchor, NumberPullBoardLayout.RopeTopAnchor + 0.008f));
             ropeGlow.raycastTarget = false;
 
-            Image rope = CreateImage(animationLayer, "Rope", RopeColor, roundedSprite);
+            Sprite ropeSprite = panelSprite != null ? panelSprite : roundedSprite;
+            Image rope = CreateImage(animationLayer, "Rope", RopeColor, ropeSprite);
             Anchor(
                 rope.rectTransform,
                 new Vector2(NumberPullBoardLayout.RopeLeftAnchor, NumberPullBoardLayout.RopeBottomAnchor),
@@ -515,8 +651,23 @@ namespace Lbs.MiniGames.Games.NumberPull
             leftCharacterImage = leftAvatar.Find("CharacterVisual")?.GetComponent<Image>();
             rightCharacterImage = rightAvatar.Find("CharacterVisual")?.GetComponent<Image>();
 
-            countdownText = CreateText(animationLayer, "Countdown", 112, TextAnchor.MiddleCenter, TextLight);
+            countdownText = CreateText(animationLayer, "Countdown", 84, TextAnchor.MiddleCenter, TextLight);
             Anchor(countdownText.rectTransform, new Vector2(0.39f, 0.48f), new Vector2(0.61f, 0.69f));
+            countdownText.fontSize = 84;
+            countdownText.resizeTextMaxSize = 84;
+            countdownText.resizeTextMinSize = 48;
+            countdownText.supportRichText = true;
+            // High-contrast outline/shadow for white on dark/light stage overlap (CenterStageTint #F0EBF5 vs BackdropDark).
+            Shadow countdownShadow = countdownText.gameObject.AddComponent<Shadow>();
+            countdownShadow.effectColor = new Color(Ink.r, Ink.g, Ink.b, 0.92f);
+            countdownShadow.effectDistance = new Vector2(4f, -4f);
+            Outline countdownOutline = countdownText.gameObject.AddComponent<Outline>();
+            countdownOutline.effectColor = new Color(Ink.r, Ink.g, Ink.b, 0.75f);
+            countdownOutline.effectDistance = new Vector2(2f, -2f);
+            CanvasGroup countdownGroup = countdownText.gameObject.AddComponent<CanvasGroup>();
+            countdownGroup.alpha = 1f;
+            countdownGroup.interactable = false;
+            countdownGroup.blocksRaycasts = false;
 
             GameObject particleLayerObject = new("ParticleCanvas", typeof(RectTransform), typeof(Canvas));
             particleLayerObject.transform.SetParent(root, false);
@@ -537,6 +688,41 @@ namespace Lbs.MiniGames.Games.NumberPull
                 particle.raycastTarget = false;
                 particles[index] = particle;
             }
+        }
+
+        private void BuildPauseButton(RectTransform root)
+        {
+            Sprite pauseSprite = keySprite != null ? keySprite : panelSprite != null ? panelSprite : roundedSprite;
+            GameObject buttonObject = new("PauseButton", typeof(RectTransform), typeof(Canvas));
+            buttonObject.transform.SetParent(root, false);
+            RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+            Anchor(buttonRect, new Vector2(0.42f, 0.08f), new Vector2(0.58f, 0.16f));
+            Canvas buttonCanvas = buttonObject.GetComponent<Canvas>();
+            buttonCanvas.overrideSorting = true;
+            buttonCanvas.sortingOrder = PauseSortingOrder;
+
+            Image shadow = CreateImage(buttonRect, "Shadow", new Color(0f, 0f, 0f, 0.22f), pauseSprite);
+            shadow.rectTransform.anchorMin = Vector2.zero;
+            shadow.rectTransform.anchorMax = Vector2.one;
+            shadow.rectTransform.offsetMin = new Vector2(3f, -3f);
+            shadow.rectTransform.offsetMax = new Vector2(3f, -3f);
+            shadow.raycastTarget = false;
+            shadow.transform.SetAsFirstSibling();
+
+            Image button = CreateImage(buttonRect, "Background", TintedSurface, pauseSprite);
+            button.raycastTarget = true;
+            Stretch(button.rectTransform, 0f);
+            Image border = CreateImage(button.rectTransform, "Border", new Color(Ink.r, Ink.g, Ink.b, 0.10f), pauseSprite);
+            Stretch(border.rectTransform, 2f);
+            border.raycastTarget = false;
+            border.transform.SetAsFirstSibling();
+
+            pauseButtonRect = buttonRect;
+
+            Text label = CreateText(buttonRect, "Label", 22, TextAnchor.MiddleCenter, Ink);
+            label.text = "PAUSE  ||";
+            Stretch(label.rectTransform, 6f);
+            touchTargets.Add(new TouchTarget(buttonRect, null, TouchAction.Pause, 0));
         }
 
         private RectTransform CreateAvatar(RectTransform parent, string name, Color color, Vector2 anchor, bool facesLeft, Sprite characterSprite)
@@ -613,7 +799,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             Stretch(dim.rectTransform, 0f);
             Canvas resultCanvas = dim.gameObject.AddComponent<Canvas>();
             resultCanvas.overrideSorting = true;
-            resultCanvas.sortingOrder = 3;
+            resultCanvas.sortingOrder = ResultSortingOrder;
             resultOverlay = dim.gameObject;
 
             RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "ResultSafeArea");
@@ -650,7 +836,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             rightResultCanvasGroup.interactable = false;
             rightResultCanvasGroup.blocksRaycasts = false;
 
-            resultTitle = CreateText(card.rectTransform, "ResultTitle", 56, TextAnchor.MiddleCenter, TextLight);
+            resultTitle = CreateText(card.rectTransform, "ResultTitle", 56, TextAnchor.MiddleCenter, Ink);
             Anchor(resultTitle.rectTransform, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.93f));
 
             resultStats = CreateText(card.rectTransform, "ResultStats", 26, TextAnchor.MiddleCenter, TextMuted);
@@ -664,13 +850,26 @@ namespace Lbs.MiniGames.Games.NumberPull
             Stretch(rematchText.rectTransform, 8f);
             touchTargets.Add(new TouchTarget(rematch.rectTransform, null, TouchAction.Rematch, 0));
 
-            Image changeDifficulty = CreateImage(card.rectTransform, "ChangeDifficulty", SurfaceRaised, roundedSprite);
-            Anchor(changeDifficulty.rectTransform, new Vector2(0.37f, 0.06f), new Vector2(0.63f, 0.25f));
-            changeDifficulty.raycastTarget = false;
-            Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 18, TextAnchor.MiddleCenter, TextLight);
-            changeDifficultyText.text = "CHANGE\nLEVEL";
-            Stretch(changeDifficultyText.rectTransform, 6f);
-            touchTargets.Add(new TouchTarget(changeDifficulty.rectTransform, null, TouchAction.ChangeDifficulty, 0));
+            // Result card CHANGE LEVEL — was SurfaceRaised (white on white) invisible. Use TintedSurface with organic button styling for affordance.
+            {
+                Sprite resultChangeLevelSprite = keySprite != null ? keySprite : (panelSprite != null ? panelSprite : roundedSprite);
+                Image changeDifficultyShadow = CreateImage(card.rectTransform, "ChangeDifficultyShadow", new Color(0f, 0f, 0f, 0.16f), resultChangeLevelSprite);
+                Anchor(changeDifficultyShadow.rectTransform, new Vector2(0.37f, 0.06f), new Vector2(0.63f, 0.25f));
+                changeDifficultyShadow.rectTransform.offsetMin += new Vector2(3f, -3f);
+                changeDifficultyShadow.rectTransform.offsetMax += new Vector2(3f, -3f);
+                changeDifficultyShadow.raycastTarget = false;
+                Image changeDifficulty = CreateImage(card.rectTransform, "ChangeDifficulty", TintedSurface, resultChangeLevelSprite);
+                Anchor(changeDifficulty.rectTransform, new Vector2(0.37f, 0.06f), new Vector2(0.63f, 0.25f));
+                changeDifficulty.raycastTarget = false;
+                Image changeDifficultyBorder = CreateImage(changeDifficulty.rectTransform, "Border", new Color(Ink.r, Ink.g, Ink.b, 0.09f), resultChangeLevelSprite);
+                Stretch(changeDifficultyBorder.rectTransform, 1.5f);
+                changeDifficultyBorder.raycastTarget = false;
+                changeDifficultyBorder.transform.SetAsFirstSibling();
+                Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 18, TextAnchor.MiddleCenter, Ink);
+                changeDifficultyText.text = "CHANGE\nLEVEL";
+                Stretch(changeDifficultyText.rectTransform, 6f);
+                touchTargets.Add(new TouchTarget(changeDifficulty.rectTransform, null, TouchAction.ChangeDifficulty, 0));
+            }
 
             Image hub = CreateImage(card.rectTransform, "BackToHub", Orange, roundedSprite);
             Anchor(hub.rectTransform, new Vector2(0.65f, 0.06f), new Vector2(0.94f, 0.25f));
@@ -685,19 +884,28 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void BuildDifficultySelector(RectTransform root)
         {
-            Image dim = CreateImage(root, "DifficultySelector", new Color(Ink.r, Ink.g, Ink.b, 0.90f), null);
+            Image dim = CreateImage(root, "DifficultySelector", new Color(0f, 0f, 0f, 0.55f), null);
             Stretch(dim.rectTransform, 0f);
             Canvas selectorCanvas = dim.gameObject.AddComponent<Canvas>();
             selectorCanvas.overrideSorting = true;
-            selectorCanvas.sortingOrder = 4;
+            selectorCanvas.sortingOrder = DifficultySortingOrder;
             difficultyOverlay = dim.gameObject;
 
             RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "DifficultySafeArea");
-            Image panel = CreateImage(safeRoot, "DifficultyPanel", Surface, roundedSprite);
+            Image panelShadow = CreateImage(safeRoot, "DifficultyPanelShadow", new Color(0f, 0f, 0f, 0.22f), roundedSprite);
+            Anchor(panelShadow.rectTransform, new Vector2(0.058f, 0.115f), new Vector2(0.948f, 0.875f));
+            panelShadow.raycastTarget = false;
+
+            Image panel = CreateImage(safeRoot, "DifficultyPanel", CanvasColor, roundedSprite);
             Anchor(panel.rectTransform, new Vector2(0.055f, 0.12f), new Vector2(0.945f, 0.88f));
             panel.raycastTarget = false;
 
-            Text title = CreateText(panel.rectTransform, "DifficultyTitle", 58, TextAnchor.MiddleCenter, TextLight);
+            Image panelBorder = CreateImage(panel.rectTransform, "DifficultyPanelBorder", new Color(Ink.r, Ink.g, Ink.b, 0.08f), roundedSprite);
+            Stretch(panelBorder.rectTransform, 2f);
+            panelBorder.raycastTarget = false;
+            panelBorder.transform.SetAsFirstSibling();
+
+            Text title = CreateText(panel.rectTransform, "DifficultyTitle", 58, TextAnchor.MiddleCenter, Ink);
             title.text = "CHOOSE A LEVEL";
             Anchor(title.rectTransform, new Vector2(0.08f, 0.80f), new Vector2(0.92f, 0.94f));
             Text instruction = CreateText(panel.rectTransform, "DifficultyInstruction", 27, TextAnchor.MiddleCenter, TextMuted);
@@ -708,21 +916,42 @@ namespace Lbs.MiniGames.Games.NumberPull
             CreateDifficultyCard(panel.rectTransform, "DifficultyUpperPrimary", "LEVEL 2", "Upper Primary & Secondary\nGrades 4–9", "Addition and subtraction up to 100\nTimes tables 2–10 and exact division · 5 pulls · 1:30", new Vector2(0.355f, 0.13f), new Vector2(0.645f, 0.68f), Orange, NumberPullDifficultyTier.UpperPrimaryAndSecondary);
             CreateDifficultyCard(panel.rectTransform, "DifficultyPreparatory", "LEVEL 3", "High School · Grades 10–12", "Signed integers\nMultiplication and exact division up to 12 · 6 pulls · 1:15", new Vector2(0.655f, 0.13f), new Vector2(0.945f, 0.68f), Purple, NumberPullDifficultyTier.PreparatoryHighSchool);
 
+            // Hub return: visible, reachable, Ink-on-orange contrast, not behind overlay, with TouchAction.Hub alongside the 3 level cards.
+            Sprite hubBadgeSprite = keySprite != null ? keySprite : roundedSprite;
+            Image hub = CreateImage(panel.rectTransform, "DifficultyHubButton", Orange, hubBadgeSprite);
+            Anchor(hub.rectTransform, new Vector2(0.34f, 0.03f), new Vector2(0.66f, 0.11f));
+            hub.raycastTarget = false;
+            Image hubBorder = CreateImage(hub.rectTransform, "Border", new Color(Ink.r, Ink.g, Ink.b, 0.08f), hubBadgeSprite);
+            Stretch(hubBorder.rectTransform, 1f);
+            hubBorder.raycastTarget = false;
+            hubBorder.transform.SetAsFirstSibling();
+            Text hubText = CreateText(hub.rectTransform, "Label", 26, TextAnchor.MiddleCenter, Ink);
+            hubText.text = "← HUB";
+            Stretch(hubText.rectTransform, 6f);
+            touchTargets.Add(new TouchTarget(hub.rectTransform, null, TouchAction.Hub, 0));
+
             difficultyOverlay.SetActive(false);
         }
 
         private void CreateDifficultyCard(RectTransform parent, string name, string level, string range, string rules, Vector2 min, Vector2 max, Color accent, NumberPullDifficultyTier tier)
         {
+            Image shadow = CreateImage(parent, name + "Shadow", new Color(0f, 0f, 0f, 0.14f), roundedSprite);
+            Anchor(shadow.rectTransform, new Vector2(min.x + 0.003f, min.y - 0.004f), new Vector2(max.x + 0.003f, max.y - 0.004f));
+            shadow.raycastTarget = false;
             Image card = CreateImage(parent, name, SurfaceRaised, roundedSprite);
             Anchor(card.rectTransform, min, max);
             card.raycastTarget = false;
+            Image cardBorder = CreateImage(card.rectTransform, "Border", new Color(Ink.r, Ink.g, Ink.b, 0.06f), roundedSprite);
+            Stretch(cardBorder.rectTransform, 1f);
+            cardBorder.raycastTarget = false;
+            cardBorder.transform.SetAsFirstSibling();
             Image badge = CreateImage(card.rectTransform, "Badge", accent, roundedSprite);
             Anchor(badge.rectTransform, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.93f));
             badge.raycastTarget = false;
             Text levelText = CreateText(badge.rectTransform, "Level", 28, TextAnchor.MiddleCenter, accent == Orange ? Ink : Color.white);
             levelText.text = level;
             Stretch(levelText.rectTransform, 5f);
-            Text rangeText = CreateText(card.rectTransform, "AgeRange", 27, TextAnchor.MiddleCenter, TextLight);
+            Text rangeText = CreateText(card.rectTransform, "AgeRange", 27, TextAnchor.MiddleCenter, Ink);
             rangeText.text = range;
             Anchor(rangeText.rectTransform, new Vector2(0.07f, 0.48f), new Vector2(0.93f, 0.76f));
             Text rulesText = CreateText(card.rectTransform, "MathRules", 22, TextAnchor.MiddleCenter, TextMuted);
@@ -755,25 +984,49 @@ namespace Lbs.MiniGames.Games.NumberPull
             Stretch(dim.rectTransform, 0f);
             Canvas pauseCanvas = dim.gameObject.AddComponent<Canvas>();
             pauseCanvas.overrideSorting = true;
-            pauseCanvas.sortingOrder = 6;
+            pauseCanvas.sortingOrder = PauseSortingOrder;
             pauseOverlay = dim.gameObject;
 
             RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "PauseSafeArea");
             Image card = CreateImage(safeRoot, "PauseCard", Surface, roundedSprite);
-            Anchor(card.rectTransform, new Vector2(0.30f, 0.13f), new Vector2(0.70f, 0.87f));
+            Anchor(card.rectTransform, new Vector2(0.30f, 0.08f), new Vector2(0.70f, 0.88f));
             card.raycastTarget = false;
 
-            Text title = CreateText(card.rectTransform, "PauseTitle", 62, TextAnchor.MiddleCenter, TextLight);
+            Text title = CreateText(card.rectTransform, "PauseTitle", 62, TextAnchor.MiddleCenter, Ink);
             title.text = "PAUSED";
-            Anchor(title.rectTransform, new Vector2(0.10f, 0.78f), new Vector2(0.90f, 0.93f));
+            Anchor(title.rectTransform, new Vector2(0.10f, 0.80f), new Vector2(0.90f, 0.92f));
             Text instruction = CreateText(card.rectTransform, "PauseInstruction", 25, TextAnchor.MiddleCenter, TextMuted);
             instruction.text = "Game is paused.";
-            Anchor(instruction.rectTransform, new Vector2(0.10f, 0.69f), new Vector2(0.90f, 0.78f));
+            Anchor(instruction.rectTransform, new Vector2(0.10f, 0.73f), new Vector2(0.90f, 0.80f));
 
-            restartPauseAction = CreatePauseAction(card.rectTransform, "RestartMatch", "RESTART MATCH", Purple, TextLight, new Vector2(0.12f, 0.49f), new Vector2(0.88f, 0.62f), TouchAction.Restart);
-            changeDifficultyPauseAction = CreatePauseAction(card.rectTransform, "ChangeLevel", "CHANGE LEVEL", SurfaceRaised, TextLight, new Vector2(0.12f, 0.34f), new Vector2(0.88f, 0.47f), TouchAction.ChangeDifficulty);
-            CreatePauseAction(card.rectTransform, "ExitToHub", "EXIT TO HUB", Orange, Ink, new Vector2(0.12f, 0.19f), new Vector2(0.88f, 0.32f), TouchAction.Hub);
-            CreatePauseAction(card.rectTransform, "ContinueMatch", "CONTINUE", TextMuted, Ink, new Vector2(0.25f, 0.05f), new Vector2(0.75f, 0.15f), TouchAction.Continue);
+            CreatePauseAction(card.rectTransform, "PauseSoundToggle", "SOUND ON ♪", SurfaceDeep, Ink, new Vector2(0.10f, 0.60f), new Vector2(0.90f, 0.69f), TouchAction.ToggleSound, out pauseSoundControl, out pauseSoundLabel);
+            CreatePauseAction(card.rectTransform, "PauseMotionToggle", "MOTION ON ~", SurfaceDeep, Ink, new Vector2(0.10f, 0.49f), new Vector2(0.90f, 0.58f), TouchAction.ToggleMotion, out pauseMotionControl, out pauseMotionLabel);
+            restartPauseAction = CreatePauseAction(card.rectTransform, "RestartMatch", "RESTART MATCH", Purple, Color.white, new Vector2(0.10f, 0.37f), new Vector2(0.90f, 0.46f), TouchAction.Restart);
+            // CHANGE LEVEL — restyled: was SurfaceRaised (white on white card) invisible. Now TintedSurface #F0EBF5 with Ink text,
+            // organic button look: keySprite Sliced 7px (or panelSprite 14px) + subtle shadow + border for visible button affordance.
+            {
+                Sprite changeLevelSprite = keySprite != null ? keySprite : (panelSprite != null ? panelSprite : roundedSprite);
+                // Shadow behind to lift button off white card
+                Image changeLevelShadow = CreateImage(card.rectTransform, "ChangeLevelShadow", new Color(0f, 0f, 0f, 0.18f), changeLevelSprite);
+                Anchor(changeLevelShadow.rectTransform, new Vector2(0.10f, 0.26f), new Vector2(0.90f, 0.35f));
+                changeLevelShadow.rectTransform.offsetMin += new Vector2(3f, -3f);
+                changeLevelShadow.rectTransform.offsetMax += new Vector2(3f, -3f);
+                changeLevelShadow.raycastTarget = false;
+                Image changeLevelControl = CreateImage(card.rectTransform, "ChangeLevel", TintedSurface, changeLevelSprite);
+                Anchor(changeLevelControl.rectTransform, new Vector2(0.10f, 0.26f), new Vector2(0.90f, 0.35f));
+                changeLevelControl.raycastTarget = false;
+                Image changeLevelBorder = CreateImage(changeLevelControl.rectTransform, "Border", new Color(Ink.r, Ink.g, Ink.b, 0.10f), changeLevelSprite);
+                Stretch(changeLevelBorder.rectTransform, 1.5f);
+                changeLevelBorder.raycastTarget = false;
+                changeLevelBorder.transform.SetAsFirstSibling();
+                Text changeLevelLabel = CreateText(changeLevelControl.rectTransform, "Label", 29, TextAnchor.MiddleCenter, Ink);
+                changeLevelLabel.text = "CHANGE LEVEL";
+                Stretch(changeLevelLabel.rectTransform, 8f);
+                touchTargets.Add(new TouchTarget(changeLevelControl.rectTransform, null, TouchAction.ChangeDifficulty, 0));
+                changeDifficultyPauseAction = changeLevelControl.gameObject;
+            }
+            CreatePauseAction(card.rectTransform, "ExitToHub", "EXIT TO HUB", Orange, Ink, new Vector2(0.10f, 0.15f), new Vector2(0.90f, 0.24f), TouchAction.Hub);
+            CreatePauseAction(card.rectTransform, "ContinueMatch", "CONTINUE", Ink, Color.white, new Vector2(0.18f, 0.03f), new Vector2(0.82f, 0.12f), TouchAction.Continue);
 
             pauseOverlay.SetActive(false);
         }
@@ -790,13 +1043,31 @@ namespace Lbs.MiniGames.Games.NumberPull
             return control.gameObject;
         }
 
+        private GameObject CreatePauseAction(RectTransform parent, string name, string text, Color color, Color textColor, Vector2 min, Vector2 max, TouchAction action, out Image controlImage, out Text labelText)
+        {
+            Image control = CreateImage(parent, name, color, roundedSprite);
+            Anchor(control.rectTransform, min, max);
+            control.raycastTarget = false;
+            Text label = CreateText(control.rectTransform, "Label", 24, TextAnchor.MiddleCenter, textColor);
+            label.text = text;
+            Stretch(label.rectTransform, 8f);
+            touchTargets.Add(new TouchTarget(control.rectTransform, null, action, 0));
+            controlImage = control;
+            labelText = label;
+            return control.gameObject;
+        }
+
         private void CreateSpaceBackdrop(RectTransform root)
         {
-            Image background = CreateImage(root, "NeutralCanvas", CanvasColor, null);
+            Image background = CreateImage(root, "NeutralCanvas", BackdropDark, null);
             Stretch(background.rectTransform, 0f);
             background.raycastTarget = false;
 
-            Image violetNebula = CreateImage(root, "VioletNebula", new Color(Purple.r, Purple.g, Purple.b, 0.18f), circleSprite);
+            Image gradient = CreateImage(root, "BackdropGradient", new Color(BackdropDeep.r, BackdropDeep.g, BackdropDeep.b, 0.55f), panelSprite != null ? panelSprite : roundedSprite);
+            Anchor(gradient.rectTransform, new Vector2(0f, 0.32f), new Vector2(1f, 1f));
+            gradient.raycastTarget = false;
+
+            Image violetNebula = CreateImage(root, "VioletNebula", new Color(Purple.r, Purple.g, Purple.b, 0.16f), circleSprite);
             Anchor(violetNebula.rectTransform, new Vector2(-0.16f, 0.28f), new Vector2(0.48f, 1.20f));
             violetNebula.raycastTarget = false;
 
@@ -804,13 +1075,13 @@ namespace Lbs.MiniGames.Games.NumberPull
             Anchor(amberNebula.rectTransform, new Vector2(0.56f, -0.18f), new Vector2(1.18f, 0.62f));
             amberNebula.raycastTarget = false;
 
-            Image horizon = CreateImage(root, "ArenaHorizon", new Color(Purple.r, Purple.g, Purple.b, 0.19f), roundedSprite);
-            Anchor(horizon.rectTransform, new Vector2(0.015f, 0.365f), new Vector2(0.985f, 0.385f));
+            Image horizon = CreateImage(root, "ArenaHorizon", new Color(Purple.r, Purple.g, Purple.b, 0.18f), panelSprite != null ? panelSprite : roundedSprite);
+            Anchor(horizon.rectTransform, new Vector2(0.015f, 0.30f), new Vector2(0.985f, 0.315f));
             horizon.raycastTarget = false;
 
             for (int index = 0; index < 38; index++)
             {
-                Color color = index % 7 == 0 ? new Color(Orange.r, Orange.g, Orange.b, 0.72f) : new Color(TextLight.r, TextLight.g, TextLight.b, 0.56f);
+                Color color = index % 7 == 0 ? new Color(Orange.r, Orange.g, Orange.b, 0.22f) : new Color(1f, 1f, 1f, 0.14f);
                 Image dot = CreateImage(root, "Star" + index, color, circleSprite);
                 float x = Mathf.Repeat(index * 0.173f + 0.071f, 0.94f) + 0.03f;
                 float y = Mathf.Repeat(index * 0.271f + 0.113f, 0.82f) + 0.08f;
@@ -832,6 +1103,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             CancelInvoke(nameof(HideCountdown));
             audio.StopMusic();
             ResetTransientPresentation();
+            ClearLockouts();
             int seed = deterministicSeed == 0 ? Environment.TickCount : deterministicSeed;
             seed += matchIndex * 101;
             matchIndex++;
@@ -864,14 +1136,24 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
 
             countdownText.gameObject.SetActive(true);
-            leftFeedback.text = "READY";
-            rightFeedback.text = "READY";
-            leftFeedback.color = TextMuted;
-            rightFeedback.color = TextMuted;
+            if (countdownText.TryGetComponent<CanvasGroup>(out CanvasGroup readyCg))
+            {
+                readyCg.alpha = 1f;
+            }
+            countdownText.color = TextLight;
+            // Ready must be high-contrast: white on purple, Ink on orange (white on purple passes, green on purple fails).
+            leftFeedback.text = "✓ READY";
+            rightFeedback.text = "✓ READY";
+            leftFeedback.color = Color.white;
+            rightFeedback.color = Ink;
+            leftStreak = 0;
+            rightStreak = 0;
             RefreshProblems();
             RefreshEntries();
+            RefreshStatDisplays();
             UpdateTimer();
             ResetContactOwnership();
+            SyncPauseButtonVisibility();
         }
 
         private void ShowDifficultySelector()
@@ -879,6 +1161,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             CancelInvoke(nameof(HideCountdown));
             audio.StopMusic();
             ResetTransientPresentation();
+            ClearLockouts();
             isPaused = false;
             match = null;
             matchStarted = false;
@@ -905,6 +1188,15 @@ namespace Lbs.MiniGames.Games.NumberPull
             {
                 difficultyOverlay.SetActive(true);
             }
+
+            leftStreak = 0;
+            rightStreak = 0;
+            if (leftCorrectCountText != null || rightCorrectCountText != null)
+            {
+                RefreshStatDisplays();
+            }
+
+            SyncPauseButtonVisibility();
         }
 
         private void SelectDifficulty(NumberPullDifficultyTier tier)
@@ -942,6 +1234,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             countdownText.text = "PULL!";
             audio.Play(AudioCue.Pull, 0.45f);
             audio.StartMusic();
+            SyncPauseButtonVisibility();
             Invoke(nameof(HideCountdown), 0.55f);
         }
 
@@ -1021,7 +1314,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             for (int index = touchTargets.Count - 1; index >= 0; index--)
             {
                 TouchTarget target = touchTargets[index];
-                if (difficultyOverlay != null && difficultyOverlay.activeSelf && target.Action != TouchAction.SelectDifficulty)
+                if (difficultyOverlay != null && difficultyOverlay.activeSelf && target.Action != TouchAction.SelectDifficulty && target.Action != TouchAction.Hub)
                 {
                     continue;
                 }
@@ -1078,11 +1371,19 @@ namespace Lbs.MiniGames.Games.NumberPull
             return action == TouchAction.Restart
                 || action == TouchAction.ChangeDifficulty
                 || action == TouchAction.Hub
-                || action == TouchAction.Continue;
+                || action == TouchAction.Continue
+                || action == TouchAction.ToggleSound
+                || action == TouchAction.ToggleMotion;
         }
 
         private void HandleTarget(TouchTarget target)
         {
+            if (target.Action == TouchAction.Pause)
+            {
+                OpenPauseMenu();
+                return;
+            }
+
             if (target.Action == TouchAction.Continue)
             {
                 ClosePauseMenu();
@@ -1099,12 +1400,14 @@ namespace Lbs.MiniGames.Games.NumberPull
             if (target.Action == TouchAction.ToggleSound)
             {
                 SetMuted(!muted);
+                audio.Play(AudioCue.Tap, 0.22f);
                 return;
             }
 
             if (target.Action == TouchAction.ToggleMotion)
             {
                 SetReducedMotion(!reducedMotion);
+                audio.Play(AudioCue.Tap, 0.22f);
                 return;
             }
 
@@ -1140,6 +1443,11 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
 
             MatchSide side = target.Side.Value;
+            if (IsSideBlocked(side))
+            {
+                return;
+            }
+
             switch (target.Action)
             {
                 case TouchAction.Digit:
@@ -1162,6 +1470,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void AppendDigit(MatchSide side, int digit)
         {
+            if (IsSideBlocked(side))
+            {
+                return;
+            }
+
             if (side == MatchSide.Left)
             {
                 if (!leftHasEntry)
@@ -1192,6 +1505,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ClearEntry(MatchSide side)
         {
+            if (IsSideBlocked(side))
+            {
+                return;
+            }
+
             if (side == MatchSide.Left)
             {
                 leftEntry = 0;
@@ -1210,6 +1528,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ToggleEntrySign(MatchSide side)
         {
+            if (IsSideBlocked(side))
+            {
+                return;
+            }
+
             if (side == MatchSide.Left)
             {
                 leftEntryIsNegative = !leftEntryIsNegative;
@@ -1224,6 +1547,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void QueueSubmission(MatchSide side)
         {
+            if (IsSideBlocked(side))
+            {
+                return;
+            }
+
             if (side == MatchSide.Left && leftHasEntry && !pendingLeftAnswer.HasValue)
             {
                 pendingLeftAnswer = leftEntryIsNegative ? -leftEntry : leftEntry;
@@ -1244,9 +1572,11 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void PresentSubmission(SubmissionResult submission)
         {
+            UpdateStreaks(submission);
             PresentSideFeedback(MatchSide.Left, submission.Left);
             PresentSideFeedback(MatchSide.Right, submission.Right);
             RefreshProblems();
+            RefreshStatDisplays();
             SetPullingPose(null);
 
             if (submission.BalanceChanged)
@@ -1299,23 +1629,25 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
 
             Text label = side == MatchSide.Left ? leftFeedback : rightFeedback;
+            bool isLeft = side == MatchSide.Left;
+            // Use white on purple / Ink on orange for WCAG-like contrast; Success/Error green/red on purple fails.
             if (feedback == SubmissionFeedback.Correct)
             {
                 label.text = "✓ CORRECT — PULL!";
-                label.color = Success;
+                label.color = isLeft ? Color.white : Ink;
                 audio.Play(AudioCue.Correct, 0.34f);
                 SpawnParticles(side == MatchSide.Left ? -360f : 360f, false);
             }
             else if (feedback == SubmissionFeedback.Neutralized)
             {
                 label.text = "◇ EVEN PULL";
-                label.color = Purple;
+                label.color = isLeft ? Color.white : Ink;
                 audio.Play(AudioCue.Correct, 0.26f);
             }
             else
             {
                 label.text = "× TRY AGAIN";
-                label.color = Error;
+                label.color = isLeft ? Color.white : Ink;
                 audio.Play(AudioCue.Incorrect, 0.28f);
                 if (side == MatchSide.Left)
                 {
@@ -1325,6 +1657,8 @@ namespace Lbs.MiniGames.Games.NumberPull
                 {
                     rightWrongRemaining = reducedMotion ? 0f : 0.35f;
                 }
+
+                SetLockout(side, WrongAnswerLockoutDuration);
             }
 
             if (side == MatchSide.Left)
@@ -1345,7 +1679,11 @@ namespace Lbs.MiniGames.Games.NumberPull
                 if (leftFeedbackRemaining <= 0f)
                 {
                     leftFeedback.text = "SOLVE YOUR SIDE";
-                    leftFeedback.color = TextMuted;
+                    leftFeedback.color = isLeftPanelPurple ? Color.white : Ink;
+                    if (leftLockoutRemaining <= 0f)
+                    {
+                        leftFeedback.color = isLeftPanelPurple ? Color.white : Ink;
+                    }
                 }
             }
 
@@ -1355,12 +1693,156 @@ namespace Lbs.MiniGames.Games.NumberPull
                 if (rightFeedbackRemaining <= 0f)
                 {
                     rightFeedback.text = "SOLVE YOUR SIDE";
-                    rightFeedback.color = TextMuted;
+                    rightFeedback.color = isRightPanelOrange ? Ink : TextMuted;
+                    if (rightLockoutRemaining <= 0f)
+                    {
+                        rightFeedback.color = isRightPanelOrange ? Ink : TextMuted;
+                    }
                 }
             }
 
             leftWrongRemaining = Mathf.Max(0f, leftWrongRemaining - delta);
             rightWrongRemaining = Mathf.Max(0f, rightWrongRemaining - delta);
+        }
+
+        private bool isLeftPanelPurple => true;
+        private bool isRightPanelOrange => true;
+
+        private void UpdateLockouts(float delta)
+        {
+            if (leftLockoutRemaining > 0f)
+            {
+                leftLockoutRemaining = Mathf.Max(0f, leftLockoutRemaining - delta);
+                if (leftLockoutLabel != null)
+                {
+                    leftLockoutLabel.text = $"Bloqueado {leftLockoutRemaining:0.0}s";
+                }
+
+                if (leftAnswer != null)
+                {
+                    leftAnswer.text = leftLockoutRemaining > 0f ? $"Bloqueado {leftLockoutRemaining:0.0}s" : FormatEntry(leftEntry, leftHasEntry, leftEntryIsNegative);
+                }
+
+                if (leftLockoutOverlay != null)
+                {
+                    leftLockoutOverlay.gameObject.SetActive(leftLockoutRemaining > 0f);
+                    if (leftLockoutRemaining > 0f && leftLockoutLabel != null)
+                    {
+                        leftLockoutLabel.text = $"Bloqueado {leftLockoutRemaining:0.0}s";
+                    }
+                }
+
+                if (leftLockoutRemaining <= 0f)
+                {
+                    RefreshEntries();
+                    if (leftFeedbackRemaining <= 0f)
+                    {
+                        leftFeedback.text = "SOLVE YOUR SIDE";
+                        leftFeedback.color = Color.white;
+                    }
+                }
+            }
+
+            if (rightLockoutRemaining > 0f)
+            {
+                rightLockoutRemaining = Mathf.Max(0f, rightLockoutRemaining - delta);
+                if (rightLockoutLabel != null)
+                {
+                    rightLockoutLabel.text = $"Bloqueado {rightLockoutRemaining:0.0}s";
+                }
+
+                if (rightAnswer != null)
+                {
+                    rightAnswer.text = rightLockoutRemaining > 0f ? $"Bloqueado {rightLockoutRemaining:0.0}s" : FormatEntry(rightEntry, rightHasEntry, rightEntryIsNegative);
+                }
+
+                if (rightLockoutOverlay != null)
+                {
+                    rightLockoutOverlay.gameObject.SetActive(rightLockoutRemaining > 0f);
+                }
+
+                if (rightLockoutRemaining <= 0f)
+                {
+                    RefreshEntries();
+                    if (rightFeedbackRemaining <= 0f)
+                    {
+                        rightFeedback.text = "SOLVE YOUR SIDE";
+                        rightFeedback.color = Ink;
+                    }
+                }
+            }
+        }
+
+        private bool IsSideBlocked(MatchSide side)
+        {
+            return side == MatchSide.Left ? leftLockoutRemaining > 0f : rightLockoutRemaining > 0f;
+        }
+
+        private void SetLockout(MatchSide side, float duration)
+        {
+            if (side == MatchSide.Left)
+            {
+                if (leftLockoutRemaining > 0f)
+                {
+                    return;
+                }
+
+                leftLockoutRemaining = duration;
+                if (leftLockoutOverlay != null)
+                {
+                    leftLockoutOverlay.gameObject.SetActive(true);
+                }
+
+                if (leftLockoutLabel != null)
+                {
+                    leftLockoutLabel.text = $"Bloqueado {leftLockoutRemaining:0.0}s";
+                }
+
+                if (leftAnswer != null)
+                {
+                    leftAnswer.text = $"Bloqueado {leftLockoutRemaining:0.0}s";
+                }
+            }
+            else
+            {
+                if (rightLockoutRemaining > 0f)
+                {
+                    return;
+                }
+
+                rightLockoutRemaining = duration;
+                if (rightLockoutOverlay != null)
+                {
+                    rightLockoutOverlay.gameObject.SetActive(true);
+                }
+
+                if (rightLockoutLabel != null)
+                {
+                    rightLockoutLabel.text = $"Bloqueado {rightLockoutRemaining:0.0}s";
+                }
+
+                if (rightAnswer != null)
+                {
+                    rightAnswer.text = $"Bloqueado {rightLockoutRemaining:0.0}s";
+                }
+            }
+        }
+
+        private void ClearLockouts()
+        {
+            leftLockoutRemaining = 0f;
+            rightLockoutRemaining = 0f;
+            if (leftLockoutOverlay != null)
+            {
+                leftLockoutOverlay.gameObject.SetActive(false);
+            }
+
+            if (rightLockoutOverlay != null)
+            {
+                rightLockoutOverlay.gameObject.SetActive(false);
+            }
+
+            RefreshEntries();
         }
 
         private void UpdateAnimation(float delta)
@@ -1526,10 +2008,15 @@ namespace Lbs.MiniGames.Games.NumberPull
                 PlayerPrefs.Save();
             }
 
-            soundLabel.text = muted ? "SOUND OFF ×" : "SOUND ON ♪";
-            if (soundControl != null)
+            if (pauseSoundLabel != null)
             {
-                soundControl.color = muted ? Error : SurfaceDeep;
+                pauseSoundLabel.text = muted ? "SOUND OFF ×" : "SOUND ON ♪";
+                pauseSoundLabel.color = muted ? TextLight : Ink;
+            }
+
+            if (pauseSoundControl != null)
+            {
+                pauseSoundControl.color = muted ? Error : SurfaceDeep;
             }
 
             if (!muted && IsActiveGameplay())
@@ -1552,11 +2039,43 @@ namespace Lbs.MiniGames.Games.NumberPull
         private void SetReducedMotion(bool value)
         {
             reducedMotion = value;
-            motionLabel.text = reducedMotion ? "MOTION LOW −" : "MOTION ON ~";
+            PlayerPrefs.SetInt("math.number-pull.motion-reduced", reducedMotion ? 1 : 0);
+            PlayerPrefs.Save();
+            if (pauseMotionLabel != null)
+            {
+                pauseMotionLabel.text = reducedMotion ? "MOTION OFF −" : "MOTION ON ~";
+                pauseMotionLabel.color = reducedMotion ? TextLight : Ink;
+            }
+
+            if (pauseMotionControl != null)
+            {
+                pauseMotionControl.color = reducedMotion ? Ink : SurfaceDeep;
+            }
+
             if (reducedMotion)
             {
                 ResetTransientPresentation();
                 CompleteResultEntrance();
+            }
+        }
+
+        private void SyncPauseButtonVisibility()
+        {
+            if (pauseButtonRect == null)
+            {
+                return;
+            }
+
+            bool shouldShow = IsActiveGameplay();
+            if (pauseButtonRect.gameObject.activeSelf != shouldShow)
+            {
+                pauseButtonRect.gameObject.SetActive(shouldShow);
+            }
+
+            Canvas canvas = pauseButtonRect.GetComponent<Canvas>();
+            if (canvas != null && canvas.sortingOrder != PauseSortingOrder)
+            {
+                canvas.sortingOrder = PauseSortingOrder;
             }
         }
 
@@ -1566,6 +2085,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             SetPullingPose(null);
             leftWrongRemaining = 0f;
             rightWrongRemaining = 0f;
+            ClearLockouts();
             ClearParticles();
 
             if (leftAvatar != null)
@@ -1652,6 +2172,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private void ShowResult(NumberPullResult result)
         {
             audio.StopMusic();
+            ClearLockouts();
             ClearParticles();
             resultOverlay.SetActive(true);
             PresentResultCharacters(result.Outcome);
@@ -1673,7 +2194,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             else
             {
                 resultTitle.text = "BALANCED DRAW";
-                resultTitle.color = TextLight;
+                resultTitle.color = Ink;
                 audio.Play(AudioCue.Draw, 0.46f);
                 SpawnParticles(0f, true);
             }
@@ -1682,6 +2203,10 @@ namespace Lbs.MiniGames.Games.NumberPull
                 $"PURPLE  ✓ {result.LeftStats.Correct} / {result.LeftStats.Attempts}\n" +
                 $"ORANGE  ✓ {result.RightStats.Correct} / {result.RightStats.Attempts}\n\n" +
                 $"FINAL BALANCE  {FormatBalance(result.Balance)}";
+
+            // Keep header badges in sync with final correct counts and streaks on result.
+            RefreshStatDisplays();
+            SyncPauseButtonVisibility();
         }
 
         private void PresentResultCharacters(MatchOutcome outcome)
@@ -1829,6 +2354,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             {
                 resultOverlay.SetActive(false);
             }
+
+            SyncPauseButtonVisibility();
         }
 
         private static void ResetResultImage(Image image)
@@ -1898,8 +2425,122 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void RefreshEntries()
         {
-            leftAnswer.text = FormatEntry(leftEntry, leftHasEntry, leftEntryIsNegative);
-            rightAnswer.text = FormatEntry(rightEntry, rightHasEntry, rightEntryIsNegative);
+            if (leftLockoutRemaining <= 0f && leftAnswer != null)
+            {
+                leftAnswer.text = FormatEntry(leftEntry, leftHasEntry, leftEntryIsNegative);
+            }
+            else if (leftLockoutRemaining > 0f && leftAnswer != null)
+            {
+                leftAnswer.text = $"Bloqueado {leftLockoutRemaining:0.0}s";
+            }
+
+            if (rightLockoutRemaining <= 0f && rightAnswer != null)
+            {
+                rightAnswer.text = FormatEntry(rightEntry, rightHasEntry, rightEntryIsNegative);
+            }
+            else if (rightLockoutRemaining > 0f && rightAnswer != null)
+            {
+                rightAnswer.text = $"Bloqueado {rightLockoutRemaining:0.0}s";
+            }
+        }
+
+        private void UpdateStreaks(SubmissionResult submission)
+        {
+            // Per-side streak: increment on correct/neutralized, reset on incorrect, ignore None.
+            if (submission.Left == SubmissionFeedback.Correct || submission.Left == SubmissionFeedback.Neutralized)
+            {
+                leftStreak++;
+            }
+            else if (submission.Left == SubmissionFeedback.Incorrect)
+            {
+                leftStreak = 0;
+            }
+
+            if (submission.Right == SubmissionFeedback.Correct || submission.Right == SubmissionFeedback.Neutralized)
+            {
+                rightStreak++;
+            }
+            else if (submission.Right == SubmissionFeedback.Incorrect)
+            {
+                rightStreak = 0;
+            }
+        }
+
+        private void RefreshStatDisplays()
+        {
+            if (match == null)
+            {
+                if (leftCorrectCountText != null) leftCorrectCountText.text = "✓ 0";
+                if (rightCorrectCountText != null) rightCorrectCountText.text = "✓ 0";
+                ApplyStreakVisual(MatchSide.Left, 0);
+                ApplyStreakVisual(MatchSide.Right, 0);
+                return;
+            }
+
+            if (leftCorrectCountText != null) leftCorrectCountText.text = $"✓ {match.LeftStats.Correct}";
+            if (rightCorrectCountText != null) rightCorrectCountText.text = $"✓ {match.RightStats.Correct}";
+            ApplyStreakVisual(MatchSide.Left, leftStreak);
+            ApplyStreakVisual(MatchSide.Right, rightStreak);
+        }
+
+        private void ApplyStreakVisual(MatchSide side, int streak)
+        {
+            bool isLeft = side == MatchSide.Left;
+            Text text = isLeft ? leftStreakText : rightStreakText;
+            Image badge = isLeft ? leftStreakBadge : rightStreakBadge;
+            Image icon = isLeft ? leftStreakIcon : rightStreakIcon;
+            if (text == null || badge == null)
+            {
+                return;
+            }
+
+            // Raster fire Image + xN text (no emoji — Volte cannot render 🔥). Keep color stages but icon must render on both panels.
+            if (streak <= 0)
+            {
+                text.text = "x0";
+                text.color = new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.70f);
+                badge.color = new Color(TextMuted.r, TextMuted.g, TextMuted.b, 0.16f);
+                if (icon != null)
+                {
+                    icon.enabled = false;
+                    icon.color = new Color(Orange.r, Orange.g, Orange.b, 0.35f);
+                }
+            }
+            else if (streak < 3)
+            {
+                text.text = $"x{streak}";
+                text.color = Ink;
+                badge.color = Surface;
+                if (icon != null)
+                {
+                    icon.enabled = true;
+                    icon.color = Hex(0xFFB740); // warm fire, visible on white pill
+                }
+            }
+            else if (streak < 5)
+            {
+                // 2x multiplier zone — Orange pill with Ink text per spec (Ink on orange readable).
+                text.text = $"x{streak}  2x";
+                text.color = Ink;
+                badge.color = Orange;
+                if (icon != null)
+                {
+                    icon.enabled = true;
+                    icon.color = Hex(0xB3261E); // deeper fire on orange pill
+                }
+            }
+            else
+            {
+                // 3x zone — Success green with white text.
+                text.text = $"x{streak}  3x";
+                text.color = Color.white;
+                badge.color = Success;
+                if (icon != null)
+                {
+                    icon.enabled = true;
+                    icon.color = Color.white; // white flame on green
+                }
+            }
         }
 
         private static string FormatEntry(int value, bool hasEntry, bool isNegative)
@@ -1922,7 +2563,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
             lastDisplayedSecond = seconds;
             timerText.text = $"{seconds / 60}:{seconds % 60:00}";
-            timerText.color = seconds <= 10 ? Error : TextLight;
+            timerText.color = seconds <= 10 ? Error : Ink;
             PlayCountdownWarning(seconds);
         }
 
@@ -1979,6 +2620,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             changeDifficultyPauseAction.SetActive(!isPreMatchDifficultySelection);
             isPaused = true;
             pauseOverlay.SetActive(true);
+            SyncPauseButtonVisibility();
             audio.StopMusic();
             audio.Play(AudioCue.Tap, 0.3f);
         }
@@ -1995,6 +2637,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             pendingRightAnswer = null;
             pauseOverlay.SetActive(false);
             isPaused = false;
+            SyncPauseButtonVisibility();
             audio.Play(AudioCue.Tap, 0.3f);
             if (IsActiveGameplay())
             {
@@ -2004,15 +2647,37 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void CreateProceduralSprites()
         {
-            roundedTexture = CreateShapeTexture(false);
-            circleTexture = CreateShapeTexture(true);
+            roundedTexture = CreateShapeTexture(false, 14f);
+            panelTexture = CreateShapeTexture(false, 14f);
+            keyTexture = CreateShapeTexture(false, 7f);
+            circleTexture = CreateShapeTexture(true, 31f);
             roundedSprite = Sprite.Create(roundedTexture, new Rect(0f, 0f, 64f, 64f), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(18f, 18f, 18f, 18f));
+            panelSprite = Sprite.Create(panelTexture, new Rect(0f, 0f, 64f, 64f), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(14f, 14f, 14f, 14f));
+            keySprite = Sprite.Create(keyTexture, new Rect(0f, 0f, 64f, 64f), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(8f, 8f, 8f, 8f));
             circleSprite = Sprite.Create(circleTexture, new Rect(0f, 0f, 64f, 64f), new Vector2(0.5f, 0.5f), 100f);
             roundedSprite.name = "NumberPullRounded";
+            panelSprite.name = "NumberPullPanel";
+            keySprite.name = "NumberPullKey";
             circleSprite.name = "NumberPullCircle";
+
+            // The professional Fire dash raster is the primary tintable uGUI streak icon.
+            Sprite importedFire = Resources.Load<Sprite>(StreakFireDashResourcePath);
+            if (importedFire != null)
+            {
+                fireSprite = importedFire;
+            }
+            else
+            {
+                fireSprite = Resources.Load<Sprite>(LegacyFireResourcePath);
+                Debug.LogWarning(
+                    fireSprite == null
+                        ? "NumberPull: UI/streak-fire-dash and legacy UI/fire sprites were not found."
+                        : "NumberPull: UI/streak-fire-dash was not found; using legacy UI/fire sprite.",
+                    this);
+            }
         }
 
-        private static Texture2D CreateShapeTexture(bool circle)
+        private static Texture2D CreateShapeTexture(bool circle, float radiusOverride)
         {
             const int size = 64;
             Texture2D texture = new(size, size, TextureFormat.RGBA32, false)
@@ -2022,7 +2687,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 wrapMode = TextureWrapMode.Clamp
             };
             Color32[] pixels = new Color32[size * size];
-            float radius = circle ? 31f : 14f;
+            float radius = radiusOverride;
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
@@ -2040,6 +2705,11 @@ namespace Lbs.MiniGames.Games.NumberPull
             return texture;
         }
 
+        private static Texture2D CreateShapeTexture(bool circle)
+        {
+            return CreateShapeTexture(circle, circle ? 31f : 14f);
+        }
+
         private Image CreateImage(RectTransform parent, string name, Color color, Sprite sprite)
         {
             GameObject item = new(name, typeof(RectTransform), typeof(Image));
@@ -2047,7 +2717,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             Image image = item.GetComponent<Image>();
             image.color = color;
             image.sprite = sprite;
-            image.type = sprite == roundedSprite ? Image.Type.Sliced : Image.Type.Simple;
+            bool isSliced = sprite == roundedSprite || sprite == panelSprite || sprite == keySprite;
+            image.type = isSliced ? Image.Type.Sliced : Image.Type.Simple;
             return image;
         }
 
@@ -2116,7 +2787,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             SelectDifficulty,
             Hub,
             Restart,
-            Continue
+            Continue,
+            Pause
         }
 
         private readonly struct TouchTarget

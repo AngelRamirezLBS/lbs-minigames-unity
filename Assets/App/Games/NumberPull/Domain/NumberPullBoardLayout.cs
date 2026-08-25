@@ -40,16 +40,16 @@ namespace Lbs.MiniGames.Games.NumberPull.Domain
 
     public static class NumberPullBoardLayout
     {
-        public const float LeftInputMaximum = 0.355f;
-        public const float RightInputMinimum = 0.645f;
-        public const float CentralStageLeft = 0.370f;
-        public const float CentralStageRight = 0.630f;
-        public const float RopeLeftAnchor = 0.380f;
-        public const float RopeRightAnchor = 0.620f;
-        public const float LeftCharacterAnchor = 0.405f;
-        public const float RightCharacterAnchor = 0.595f;
-        public const float RopeBottomAnchor = 0.407f;
-        public const float RopeTopAnchor = 0.420f;
+        public const float LeftInputMaximum = 0.325f;
+        public const float RightInputMinimum = 0.675f;
+        public const float CentralStageLeft = 0.335f;
+        public const float CentralStageRight = 0.665f;
+        public const float RopeLeftAnchor = 0.345f;
+        public const float RopeRightAnchor = 0.655f;
+        public const float LeftCharacterAnchor = 0.365f;
+        public const float RightCharacterAnchor = 0.635f;
+        public const float RopeBottomAnchor = 0.558f;
+        public const float RopeTopAnchor = 0.578f;
         public const float RopeCenterAnchor = (RopeBottomAnchor + RopeTopAnchor) * 0.5f;
         public const float CharacterVerticalAnchor = RopeCenterAnchor;
         public const float CharacterWidth = 118f;
