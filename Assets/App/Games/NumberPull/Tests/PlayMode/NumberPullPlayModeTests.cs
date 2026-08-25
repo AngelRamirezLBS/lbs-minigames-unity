@@ -14,6 +14,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         [UnityTest]
         public IEnumerator BootstrapConfiguresBuiltNumberPullSceneAcrossLifecycle()
         {
+            PlayerPrefs.DeleteKey("math.number-pull.audio-muted");
             yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
 
             for (int frame = 0; frame < 30 && SceneManager.GetActiveScene().name != "Lobby"; frame++)
@@ -39,9 +40,10 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(gameObject, Is.Not.Null);
             AssertSingleActiveListenerOwnedBy(gameObject);
             AudioSource[] sources = gameObject.GetComponents<AudioSource>();
-            Assert.That(sources, Has.Length.EqualTo(4));
-            foreach (AudioSource source in sources)
+            Assert.That(sources, Has.Length.EqualTo(5));
+            for (int index = 0; index < 4; index++)
             {
+                AudioSource source = sources[index];
                 Assert.That(source.enabled, Is.True);
                 Assert.That(source.playOnAwake, Is.False);
                 Assert.That(source.loop, Is.False);
@@ -49,6 +51,16 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
                 Assert.That(source.volume, Is.EqualTo(1f));
                 Assert.That(source.spatialBlend, Is.EqualTo(0f));
             }
+
+            AudioSource music = sources[4];
+            Assert.That(music.enabled, Is.True);
+            Assert.That(music.playOnAwake, Is.False);
+            Assert.That(music.loop, Is.True);
+            Assert.That(music.mute, Is.False);
+            Assert.That(music.volume, Is.EqualTo(0.12f));
+            Assert.That(music.spatialBlend, Is.EqualTo(0f));
+            Assert.That(music.clip, Is.SameAs(Resources.Load<AudioClip>("Audio/number-pull-background")));
+            Assert.That(music.clip.length, Is.EqualTo(44.651f).Within(0.05f));
 
             Component game = gameObject.GetComponent("NumberPullGame");
             object runtimeAudio = GetField(game, "audio");
@@ -83,6 +95,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
 
             AssertSingleActiveListenerOwnedBy(gameObject);
             Assert.That(GameObject.Find("SafeAreaRoot"), Is.Not.Null);
+            Assert.That(GameObject.Find("SoundControl").transform.parent.name, Is.EqualTo("SafeAreaRoot"));
             Assert.That(FindLoadedTransform("ResultSafeArea"), Is.Not.Null);
         }
 
@@ -140,7 +153,168 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Invoke(game, "SetMuted", true);
 
             Assert.That(source.isPlaying, Is.False);
+            Invoke(game, "SetMuted", false);
+            PlayerPrefs.DeleteKey("math.number-pull.audio-muted");
             UnityEngine.Object.Destroy(clip);
+        }
+
+        [UnityTest]
+        public IEnumerator BackgroundMusicFollowsGameplayLifecycleAndPersistsMutePreference()
+        {
+            const string preferenceKey = "math.number-pull.audio-muted";
+            PlayerPrefs.DeleteKey(preferenceKey);
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            object runtimeAudio = GetField(game, "audio");
+            AudioSource music = GetRuntimeMusicSource(runtimeAudio);
+
+            Assert.That(music.isPlaying, Is.False, "Music must remain stopped in the difficulty lobby.");
+            Invoke(game, "SetMuted", true);
+            Invoke(game, "SelectDifficulty", NumberPullDifficultyTier.LowerPrimary);
+            Assert.That(music.isPlaying, Is.False, "Music must remain stopped during the countdown.");
+            Invoke(game, "SetMuted", false);
+            Assert.That(PlayerPrefs.GetInt(preferenceKey), Is.Zero);
+            Assert.That(music.isPlaying, Is.False, "Unmuting during the countdown must not start music.");
+
+            Invoke(game, "UpdateCountdown", 5f);
+            yield return null;
+            Assert.That(music.isPlaying, Is.True, "Music must start only once gameplay begins.");
+
+            Invoke(game, "OpenPauseMenu");
+            Assert.That(music.isPlaying, Is.False, "Music must stop while gameplay is paused.");
+            Invoke(game, "ClosePauseMenu");
+            Assert.That(music.isPlaying, Is.True, "Music must resume after active gameplay resumes.");
+
+            Invoke(game, "SetMuted", true);
+            Assert.That(PlayerPrefs.GetInt(preferenceKey), Is.EqualTo(1));
+            Assert.That(music.isPlaying, Is.False);
+            Assert.That(GameObject.Find("SoundControl").transform.Find("Label").GetComponent<UnityEngine.UI.Text>().text, Is.EqualTo("SOUND OFF ×"));
+            foreach (AudioSource source in game.GetComponents<AudioSource>())
+            {
+                Assert.That(source.mute, Is.True);
+            }
+
+            Invoke(game, "SetMuted", false);
+            Assert.That(PlayerPrefs.GetInt(preferenceKey), Is.Zero);
+            Assert.That(music.isPlaying, Is.True, "Unmuting during active gameplay must resume music.");
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
+            Assert.That(music.isPlaying, Is.False);
+            Invoke(game, "SetMuted", true);
+            Invoke(game, "SetMuted", false);
+            Assert.That(music.isPlaying, Is.False, "Unmuting on the result screen must not resume music.");
+
+            Invoke(game, "ShowDifficultySelector");
+            Assert.That(music.isPlaying, Is.False);
+            Assert.That(GameObject.Find("SoundControl").transform.Find("Label").GetComponent<UnityEngine.UI.Text>().text, Is.EqualTo("SOUND ON ♪"));
+            PlayerPrefs.DeleteKey(preferenceKey);
+        }
+
+        [UnityTest]
+        public IEnumerator BackgroundMusicStopsBeforeReturningToHub()
+        {
+            PlayerPrefs.DeleteKey("math.number-pull.audio-muted");
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            AudioSource music = GetRuntimeMusicSource(GetField(game, "audio"));
+
+            Invoke(game, "SelectDifficulty", NumberPullDifficultyTier.LowerPrimary);
+            Invoke(game, "UpdateCountdown", 5f);
+            yield return null;
+            Assert.That(music.isPlaying, Is.True);
+
+            Invoke(game, "ReturnToHub");
+            Assert.That(music.isPlaying, Is.False);
+            yield return null;
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("Lobby"));
+        }
+
+        [UnityTest]
+        public IEnumerator CountdownWarningUsesFourRegularTicksThenOneDistinctFinalTick()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            ((Behaviour)game).enabled = false;
+            NumberPullMatch match = ConfigureWarningTimer(game, 6f, 0f);
+            object runtimeAudio = GetField(game, "audio");
+            int initialPlays = GetRuntimeAudioSourceIndex(runtimeAudio);
+
+            Invoke(game, "UpdateTimer");
+            match.Tick(1.1f);
+            Invoke(game, "UpdateTimer");
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 1));
+
+            for (int seconds = 4; seconds >= 2; seconds--)
+            {
+                yield return new WaitForSecondsRealtime(0.1f);
+                match.Tick(1f);
+                Invoke(game, "UpdateTimer");
+                Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + (5 - seconds) + 1));
+            }
+
+            yield return new WaitForSecondsRealtime(0.1f);
+            match.Tick(1f);
+            Invoke(game, "UpdateTimer");
+
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 5));
+            Assert.That(GetRuntimeAudioLastPlayed(runtimeAudio, 1), Is.GreaterThan(0f), "Seconds 5 through 2 must use the short regular warning tick.");
+            Assert.That(GetRuntimeAudioLastPlayed(runtimeAudio, 3), Is.GreaterThan(0f), "Second 1 must use the distinct final warning tick.");
+        }
+
+        [UnityTest]
+        public IEnumerator CountdownWarningDoesNotDuplicateWhilePausedAndResetsForRematch()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            ((Behaviour)game).enabled = false;
+            NumberPullMatch match = ConfigureWarningTimer(game, 6f, 1.1f);
+            object runtimeAudio = GetField(game, "audio");
+            int initialPlays = GetRuntimeAudioSourceIndex(runtimeAudio);
+
+            Invoke(game, "UpdateTimer");
+            Invoke(game, "UpdateTimer");
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 1));
+
+            SetField(game, "isPaused", true);
+            Invoke(game, "Update");
+            SetField(game, "isPaused", false);
+            Invoke(game, "Update");
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 1), "Pause/resume must not replay an already announced second.");
+
+            yield return new WaitForSecondsRealtime(0.1f);
+            Invoke(game, "StartMatch");
+            ConfigureWarningTimer(game, 6f, 1.1f);
+            Invoke(game, "UpdateTimer");
+
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 2), "A rematch must have its own warning cadence.");
+        }
+
+        [UnityTest]
+        public IEnumerator CountdownWarningHonorsMuteButNotReducedMotion()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            ((Behaviour)game).enabled = false;
+            object runtimeAudio = GetField(game, "audio");
+            int initialPlays = GetRuntimeAudioSourceIndex(runtimeAudio);
+
+            ConfigureWarningTimer(game, 6f, 1.1f);
+            Invoke(game, "SetMuted", true);
+            Invoke(game, "UpdateTimer");
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays));
+            Assert.That((int)GetField(game, "lastCountdownWarningSecond"), Is.EqualTo(5));
+
+            Invoke(game, "SetMuted", false);
+            Invoke(game, "UpdateTimer");
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays), "Unmuting must not replay an expired warning.");
+
+            yield return new WaitForSecondsRealtime(0.1f);
+            ConfigureWarningTimer(game, 6f, 2.1f);
+            Invoke(game, "SetReducedMotion", true);
+            Invoke(game, "UpdateTimer");
+
+            Assert.That((bool)GetField(game, "muted"), Is.False);
+            Assert.That(GetRuntimeAudioSourceIndex(runtimeAudio), Is.EqualTo(initialPlays + 1), "Reduced motion must preserve countdown audio.");
         }
 
         [UnityTest]
@@ -244,14 +418,31 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Component game = GetGame();
             UnityEngine.UI.Image purple = FindLoadedTransform("PurpleResultCharacter").GetComponent<UnityEngine.UI.Image>();
             UnityEngine.UI.Image orange = FindLoadedTransform("OrangeResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            RectTransform resultSafeArea = FindLoadedTransform("ResultSafeArea");
+            RectTransform resultCard = FindLoadedTransform("ResultCard");
+
+            Assert.That(purple.rectTransform.parent, Is.SameAs(resultSafeArea));
+            Assert.That(orange.rectTransform.parent, Is.SameAs(resultSafeArea));
+            Assert.That(resultCard.parent, Is.SameAs(resultSafeArea));
+            Assert.That(resultCard.anchorMin, Is.EqualTo(new Vector2(0.30f, 0.18f)));
+            Assert.That(resultCard.anchorMax, Is.EqualTo(new Vector2(0.70f, 0.82f)));
 
             Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
+            CanvasGroup purpleEntrance = purple.GetComponent<CanvasGroup>();
+            CanvasGroup orangeEntrance = orange.GetComponent<CanvasGroup>();
+            Assert.That(purpleEntrance.alpha, Is.Zero);
+            Assert.That(purple.rectTransform.anchoredPosition.x, Is.LessThan(0f));
+            Assert.That(Mathf.Abs(purple.rectTransform.localScale.x), Is.EqualTo(0.90f).Within(0.001f));
+            Assert.That(orangeEntrance.alpha, Is.EqualTo(0.76f).Within(0.001f));
+            Assert.That(orange.rectTransform.anchoredPosition, Is.EqualTo(Vector2.zero));
             Invoke(game, "CompleteResultEntrance");
             Canvas.ForceUpdateCanvases();
             Assert.That(purple.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/PurpleWinnerCelebration")));
             Assert.That(orange.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/OrangeLoserResult")));
             Assert.That(WorldRect(purple.rectTransform).width * WorldRect(purple.rectTransform).height,
                 Is.GreaterThan(WorldRect(orange.rectTransform).width * WorldRect(orange.rectTransform).height));
+            Assert.That(purple.rectTransform.anchorMax.x, Is.LessThanOrEqualTo(resultCard.anchorMin.x + 0.02f));
+            Assert.That(orange.rectTransform.anchorMin.x, Is.GreaterThanOrEqualTo(resultCard.anchorMax.x));
             AssertResultArtworkAndCopyRemainSeparated(purple, orange);
 
             Invoke(game, "ShowResult", CreateResult(MatchOutcome.RightWins, 5));
@@ -270,6 +461,34 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(orange.sprite, Is.SameAs(Resources.Load<Sprite>("Characters/OrangeCrewCharacter")));
             Assert.That(orange.rectTransform.localScale.x, Is.EqualTo(-1f));
             AssertResultArtworkAndCopyRemainSeparated(purple, orange);
+        }
+
+        [UnityTest]
+        public IEnumerator CompactResultModalContainsInteractiveHubAndRematchActions()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            RectTransform resultCard = FindLoadedTransform("ResultCard");
+            RectTransform rematch = FindLoadedTransform("Rematch");
+            RectTransform hub = FindLoadedTransform("BackToHub");
+
+            Assert.That(resultCard.anchorMax.x - resultCard.anchorMin.x, Is.EqualTo(0.40f).Within(0.0001f));
+            Assert.That(resultCard.anchorMax.y - resultCard.anchorMin.y, Is.EqualTo(0.64f).Within(0.0001f));
+            Assert.That(hub.IsChildOf(resultCard), Is.True);
+            AssertResultCardHasHubAndRematchTargets(game, resultCard);
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
+            Canvas.ForceUpdateCanvases();
+            Vector2 rematchCenter = RectTransformUtility.WorldToScreenPoint(null, rematch.TransformPoint(rematch.rect.center));
+            Invoke(game, "TryBeginContact", 99, rematchCenter);
+
+            Assert.That(FindLoadedTransform("ResultOverlay").gameObject.activeSelf, Is.False);
+            Assert.That((bool)game.GetType().GetProperty("IsCompleted").GetValue(game), Is.False);
+
+            Invoke(game, "ShowResult", CreateResult(MatchOutcome.Draw, 0));
+            TapTarget(game, "BackToHub", 100);
+            yield return null;
+            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("Lobby"));
         }
 
         [UnityTest]
@@ -308,7 +527,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             yield return LoadNumberPull();
             Component game = GetGame();
             Canvas particles = GameObject.Find("ParticleCanvas").GetComponent<Canvas>();
-            Canvas results = GameObject.Find("ResultOverlay").GetComponent<Canvas>();
+            Canvas results = FindLoadedTransform("ResultOverlay").GetComponent<Canvas>();
             Canvas animation = GameObject.Find("AnimationCanvas").GetComponent<Canvas>();
 
             Invoke(game, "ShowResult", CreateResult(MatchOutcome.LeftWins, -5));
@@ -316,6 +535,12 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(ActiveConfettiCount(), Is.EqualTo(28));
             Assert.That(particles.sortingOrder, Is.GreaterThan(results.sortingOrder));
             Assert.That(particles.GetComponent<UnityEngine.UI.GraphicRaycaster>(), Is.Null);
+            Assert.That(GameObject.Find("Confetti0").GetComponent<UnityEngine.UI.Image>().sprite,
+                Is.SameAs(Resources.Load<Sprite>("Particles/kenney-star-01")));
+            Assert.That(GameObject.Find("Confetti0").GetComponent<RectTransform>().sizeDelta.x,
+                Is.InRange(14f, 32f));
+            Assert.That(GameObject.Find("Confetti27").GetComponent<RectTransform>().anchoredPosition.y,
+                Is.GreaterThan(0f), "Result celebration needs a top cascade in addition to the winner burst.");
 
             Invoke(game, "UpdateParticles", 0.1f);
             RectTransform firstParticle = GameObject.Find("Confetti0").GetComponent<RectTransform>();
@@ -369,8 +594,13 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Invoke(game, "ShowResult", CreateResult(MatchOutcome.RightWins, 5));
 
             CanvasGroup group = FindLoadedTransform("ResultCard").GetComponent<CanvasGroup>();
+            UnityEngine.UI.Image winner = FindLoadedTransform("OrangeResultCharacter").GetComponent<UnityEngine.UI.Image>();
+            CanvasGroup winnerGroup = winner.GetComponent<CanvasGroup>();
             Assert.That(group.alpha, Is.EqualTo(1f));
             Assert.That(group.transform.localScale, Is.EqualTo(Vector3.one));
+            Assert.That(winnerGroup.alpha, Is.EqualTo(1f));
+            Assert.That(winner.rectTransform.anchoredPosition, Is.EqualTo(Vector2.zero));
+            Assert.That(Mathf.Abs(winner.rectTransform.localScale.x), Is.EqualTo(1f));
             Assert.That(ActiveConfettiCount(), Is.Zero);
         }
 
@@ -391,9 +621,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
 
             Component game = GetGame();
             Assert.That(GameObject.Find("DifficultySelector").activeSelf, Is.True);
-            Assert.That(GameObject.Find("HomeButton").activeSelf, Is.True);
-            Assert.That(GameObject.Find("HomeButton").GetComponent<Canvas>().sortingOrder,
-                Is.GreaterThan(GameObject.Find("DifficultySelector").GetComponent<Canvas>().sortingOrder));
+            Assert.That(GameObject.Find("HomeButton"), Is.Null);
             Assert.That(GetField(game, "match"), Is.Null);
 
             Invoke(game, "SelectDifficulty", NumberPullDifficultyTier.PreparatoryHighSchool);
@@ -432,12 +660,11 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
-        public IEnumerator HomeButtonOpensSpanishPauseMenuAndBlocksGameplayContacts()
+        public IEnumerator PauseMenuBlocksGameplayContacts()
         {
             yield return LoadNumberPull();
             Component game = GetGame();
 
-            Assert.That(GameObject.Find("HomeButton"), Is.Not.Null);
             Invoke(game, "OpenPauseMenu");
 
             Assert.That(GameObject.Find("PauseOverlay").activeSelf, Is.True);
@@ -453,7 +680,7 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
-        public IEnumerator HomeButtonDuringDifficultySelectionShowsOnlyContinueAndExit()
+        public IEnumerator PauseMenuDuringDifficultySelectionShowsOnlyContinueAndExit()
         {
             yield return LoadNumberPull();
             Component game = GetGame();
@@ -477,65 +704,13 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
-        public IEnumerator TappingHomeDuringDifficultySelectionOpensPauseAndKeepsDifficultyChoicesUsable()
+        public IEnumerator GameplayDoesNotCreateTopLeftPauseHomeControlOrInputTarget()
         {
-            yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
-            for (int frame = 0; frame < 30 && SceneManager.GetActiveScene().name != "Lobby"; frame++)
-            {
-                yield return null;
-            }
-
-            yield return SceneManager.LoadSceneAsync("NumberPull", LoadSceneMode.Single);
-            for (int frame = 0; frame < 30 && GameObject.Find("DifficultySelector") == null; frame++)
-            {
-                yield return null;
-            }
-
+            yield return LoadNumberPull();
             Component game = GetGame();
-            TapTarget(game, "HomeButton", 89);
-
-            Assert.That(GameObject.Find("PauseOverlay").activeSelf, Is.True);
-            Assert.That(GameObject.Find("ContinueMatch").activeSelf, Is.True);
-            Assert.That(GameObject.Find("ExitToHub").activeSelf, Is.True);
-            Assert.That(FindLoadedTransform("RestartMatch").gameObject.activeSelf, Is.False);
-            Assert.That(FindLoadedTransform("ChangeLevel").gameObject.activeSelf, Is.False);
-
-            TapTarget(game, "DifficultyLowerPrimary", 90);
-            Assert.That(GameObject.Find("PauseOverlay").activeSelf, Is.True, "The pause modal must reject selector-card touches.");
-            Assert.That(GameObject.Find("DifficultySelector").activeSelf, Is.True);
-            Assert.That(GetField(game, "match"), Is.Null);
-
-            TapTarget(game, "ContinueMatch", 90);
-            Assert.That(GameObject.Find("DifficultySelector").activeSelf, Is.True);
-
-            TapTarget(game, "DifficultyLowerPrimary", 91);
-            Assert.That(GameObject.Find("DifficultySelector").activeSelf, Is.False);
-            Assert.That(GetField(game, "match"), Is.Not.Null);
-        }
-
-        [UnityTest]
-        public IEnumerator ExitFromSelectorPauseNavigatesToHubWithoutStartingAMatch()
-        {
-            yield return SceneManager.LoadSceneAsync("Bootstrap", LoadSceneMode.Single);
-            for (int frame = 0; frame < 30 && SceneManager.GetActiveScene().name != "Lobby"; frame++)
-            {
-                yield return null;
-            }
-
-            yield return SceneManager.LoadSceneAsync("NumberPull", LoadSceneMode.Single);
-            for (int frame = 0; frame < 30 && GameObject.Find("DifficultySelector") == null; frame++)
-            {
-                yield return null;
-            }
-
-            Component game = GetGame();
-            object services = GetField(game, "services");
-            object session = services.GetType().GetProperty("Session").GetValue(services);
-            TapTarget(game, "HomeButton", 92);
-            TapTarget(game, "ExitToHub", 93);
-
-            Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("Lobby"));
-            Assert.That(session.GetType().GetProperty("LastResult").GetValue(session), Is.Null);
+            Assert.That(GameObject.Find("HomeButton"), Is.Null);
+            Assert.That(GameObject.Find("HomeIcon"), Is.Null);
+            AssertGameplayHasNoPauseHomeTarget(game);
         }
 
         [UnityTest]
@@ -832,6 +1007,42 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             return new NumberPullResult(outcome, balance, 42f, new PlayerStats(5, 6), new PlayerStats(4, 6));
         }
 
+        private static NumberPullMatch ConfigureWarningTimer(Component game, float durationSeconds, float elapsedSeconds)
+        {
+            NumberPullMatch match = new(
+                new MathProblemGenerator(7101),
+                new MathProblemGenerator(7102),
+                durationSeconds: durationSeconds);
+            match.Tick(elapsedSeconds);
+            SetField(game, "match", match);
+            SetField(game, "matchStarted", true);
+            SetField(game, "lastDisplayedSecond", -1);
+            SetField(game, "lastCountdownWarningSecond", int.MaxValue);
+            return match;
+        }
+
+        private static int GetRuntimeAudioSourceIndex(object runtimeAudio)
+        {
+            return (int)runtimeAudio.GetType()
+                .GetField("sourceIndex", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(runtimeAudio);
+        }
+
+        private static float GetRuntimeAudioLastPlayed(object runtimeAudio, int cueIndex)
+        {
+            float[] lastPlayed = (float[])runtimeAudio.GetType()
+                .GetField("lastPlayed", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(runtimeAudio);
+            return lastPlayed[cueIndex];
+        }
+
+        private static AudioSource GetRuntimeMusicSource(object runtimeAudio)
+        {
+            return (AudioSource)runtimeAudio.GetType()
+                .GetField("musicSource", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(runtimeAudio);
+        }
+
         private static void AssertImportedAudioCue(Array cachedClips, int cueIndex, string resourcePath, float minimumLength, float maximumLength)
         {
             AudioClip importedClip = Resources.Load<AudioClip>(resourcePath);
@@ -878,6 +1089,43 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Vector3 expectedWorldPosition = artwork.TransformPoint(upperTorsoPoint);
             Vector3 actualWorldPosition = particle.TransformPoint(particle.rect.center);
             Assert.That(Vector3.Distance(actualWorldPosition, expectedWorldPosition), Is.LessThan(0.5f));
+        }
+
+        private static void AssertResultCardHasHubAndRematchTargets(Component game, RectTransform resultCard)
+        {
+            IList touchTargets = (IList)GetField(game, "touchTargets");
+            bool hasHub = false;
+            bool hasRematch = false;
+            for (int index = 0; index < touchTargets.Count; index++)
+            {
+                object target = touchTargets[index];
+                Type targetType = target.GetType();
+                RectTransform rect = (RectTransform)targetType.GetProperty("Rect").GetValue(target);
+                if (!rect.IsChildOf(resultCard))
+                {
+                    continue;
+                }
+
+                object action = targetType.GetProperty("Action").GetValue(target);
+                hasHub |= action.ToString() == "Hub";
+                hasRematch |= action.ToString() == "Rematch";
+            }
+
+            Assert.That(hasHub, Is.True);
+            Assert.That(hasRematch, Is.True);
+        }
+
+        private static void AssertGameplayHasNoPauseHomeTarget(Component game)
+        {
+            IList touchTargets = (IList)GetField(game, "touchTargets");
+            for (int index = 0; index < touchTargets.Count; index++)
+            {
+                object target = touchTargets[index];
+                Type targetType = target.GetType();
+                RectTransform rect = (RectTransform)targetType.GetProperty("Rect").GetValue(target);
+                Assert.That(rect.name, Is.Not.EqualTo("HomeButton"));
+                Assert.That(targetType.GetProperty("Action").GetValue(target).ToString(), Is.Not.EqualTo("Home"));
+            }
         }
 
         private static void AssertSpriteFitsCharacterBounds(Sprite sprite, Rect bounds)

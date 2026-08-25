@@ -17,8 +17,10 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const float ResultEntranceDuration = 0.42f;
         private const int MaximumOwnedContacts = 32;
         private const int ParticleCount = 28;
+        private const int ResultBurstParticleCount = 18;
         private const int GameplayParticleSortingOrder = 2;
         private const int ResultParticleSortingOrder = 4;
+        private const string AudioMutedPreferenceKey = "math.number-pull.audio-muted";
         private const string PurpleCharacterResourcePath = "Characters/PurpleCrewCharacter";
         private const string PurplePullingCharacterResourcePath = "Characters/PurpleCrewCharacterPulling";
         private const string OrangeCharacterResourcePath = "Characters/OrangeCrewCharacter";
@@ -27,6 +29,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const string PurpleLoserResourcePath = "Characters/PurpleLoserResult";
         private const string OrangeWinnerResourcePath = "Characters/OrangeWinnerCelebration";
         private const string OrangeLoserResourcePath = "Characters/OrangeLoserResult";
+        private const string ResultConfettiStarResourcePath = "Particles/kenney-star-01";
 
         private static readonly Color Purple = Hex(0x9448F4);
         private static readonly Color PurpleSecondaryKeyFill = Hex(0x63349D);
@@ -66,6 +69,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Sprite leftLoserResultSprite;
         private Sprite rightWinnerResultSprite;
         private Sprite rightLoserResultSprite;
+        private Sprite resultConfettiStarSprite;
         private Texture2D roundedTexture;
         private Texture2D circleTexture;
         private RuntimeAudio audio;
@@ -90,10 +94,15 @@ namespace Lbs.MiniGames.Games.NumberPull
         private Text resultStats;
         private Image leftResultImage;
         private Image rightResultImage;
+        private Image leftResultHalo;
+        private Image rightResultHalo;
         private RectTransform resultCard;
         private CanvasGroup resultCanvasGroup;
+        private CanvasGroup leftResultCanvasGroup;
+        private CanvasGroup rightResultCanvasGroup;
         private Canvas particleCanvas;
         private Text soundLabel;
+        private Image soundControl;
         private Text motionLabel;
         private GameObject resultOverlay;
         private GameObject difficultyOverlay;
@@ -111,6 +120,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private int? pendingRightAnswer;
         private int matchIndex;
         private int lastDisplayedSecond = -1;
+        private int lastCountdownWarningSecond = int.MaxValue;
         private float countdownRemaining;
         private float leftFeedbackRemaining;
         private float rightFeedbackRemaining;
@@ -118,6 +128,8 @@ namespace Lbs.MiniGames.Games.NumberPull
         private float rightWrongRemaining;
         private float pullAnimationRemaining;
         private float resultEntranceRemaining;
+        private Image winnerResultImage;
+        private Vector2 winnerResultStartOffset;
         private int pullDirection;
         private bool interfaceBuilt;
         private bool matchStarted;
@@ -288,6 +300,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
 
             CreateProceduralSprites();
+            resultConfettiStarSprite = Resources.Load<Sprite>(ResultConfettiStarResourcePath);
             effectsRandom = new System.Random(deterministicSeed == 0 ? 72491 : deterministicSeed);
             if (!TryGetComponent(out AudioListener _))
             {
@@ -309,9 +322,9 @@ namespace Lbs.MiniGames.Games.NumberPull
             instruction.text = "Solve. Submit. Shift the balance five steps.";
             Anchor(instruction.rectTransform, new Vector2(0.30f, 0.855f), new Vector2(0.70f, 0.91f));
 
-            soundLabel = CreateUtilityControl(safeRoot, "SoundControl", "SOUND ON", new Vector2(0.025f, 0.91f), new Vector2(0.17f, 0.975f), TouchAction.ToggleSound);
+            soundLabel = CreateUtilityControl(safeRoot, "SoundControl", "SOUND ON ♪", new Vector2(0.025f, 0.91f), new Vector2(0.17f, 0.975f), TouchAction.ToggleSound, out soundControl);
             motionLabel = CreateUtilityControl(safeRoot, "MotionControl", "MOTION ON", new Vector2(0.83f, 0.91f), new Vector2(0.975f, 0.975f), TouchAction.ToggleMotion);
-            CreateHomeControl(safeRoot);
+            ApplyMuted(PlayerPrefs.GetInt(AudioMutedPreferenceKey, 0) == 1, false);
 
             leftCard = BuildPlayerCard(safeRoot, MatchSide.Left, new Vector2(0.025f, 0.075f), new Vector2(NumberPullBoardLayout.LeftInputMaximum, 0.84f));
             rightCard = BuildPlayerCard(safeRoot, MatchSide.Right, new Vector2(NumberPullBoardLayout.RightInputMinimum, 0.075f), new Vector2(0.975f, 0.84f));
@@ -519,6 +532,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 particle.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
                 particle.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                 particle.rectTransform.sizeDelta = new Vector2(18f, 18f);
+                particle.type = Image.Type.Simple;
                 particle.gameObject.SetActive(false);
                 particle.raycastTarget = false;
                 particles[index] = particle;
@@ -603,51 +617,65 @@ namespace Lbs.MiniGames.Games.NumberPull
             resultOverlay = dim.gameObject;
 
             RectTransform safeRoot = CreateSafeAreaRoot(dim.rectTransform, "ResultSafeArea");
+            leftResultHalo = CreateImage(safeRoot, "PurpleResultHalo", new Color(Purple.r, Purple.g, Purple.b, 0.22f), circleSprite);
+            Anchor(leftResultHalo.rectTransform, new Vector2(0.0f, 0.12f), new Vector2(0.29f, 0.94f));
+            leftResultHalo.raycastTarget = false;
+
+            rightResultHalo = CreateImage(safeRoot, "OrangeResultHalo", new Color(Orange.r, Orange.g, Orange.b, 0.20f), circleSprite);
+            Anchor(rightResultHalo.rectTransform, new Vector2(0.71f, 0.12f), new Vector2(1f, 0.94f));
+            rightResultHalo.raycastTarget = false;
+
             Image card = CreateImage(safeRoot, "ResultCard", Surface, roundedSprite);
-            Anchor(card.rectTransform, new Vector2(0.08f, 0.08f), new Vector2(0.92f, 0.92f));
+            Anchor(card.rectTransform, new Vector2(0.30f, 0.18f), new Vector2(0.70f, 0.82f));
             card.raycastTarget = false;
             resultCard = card.rectTransform;
             resultCanvasGroup = card.gameObject.AddComponent<CanvasGroup>();
             resultCanvasGroup.interactable = false;
             resultCanvasGroup.blocksRaycasts = false;
 
-            Image resultGlow = CreateImage(card.rectTransform, "ResultGlow", new Color(Purple.r, Purple.g, Purple.b, 0.22f), circleSprite);
-            Anchor(resultGlow.rectTransform, new Vector2(0.28f, 0.28f), new Vector2(0.72f, 0.91f));
+            Image resultGlow = CreateImage(card.rectTransform, "ResultGlow", new Color(Purple.r, Purple.g, Purple.b, 0.16f), circleSprite);
+            Anchor(resultGlow.rectTransform, new Vector2(0.12f, 0.24f), new Vector2(0.88f, 0.92f));
             resultGlow.raycastTarget = false;
 
-            leftResultImage = CreateImage(card.rectTransform, "PurpleResultCharacter", Color.white, null);
+            leftResultImage = CreateImage(safeRoot, "PurpleResultCharacter", Color.white, null);
             leftResultImage.preserveAspect = true;
             leftResultImage.raycastTarget = false;
-            rightResultImage = CreateImage(card.rectTransform, "OrangeResultCharacter", Color.white, null);
+            leftResultCanvasGroup = leftResultImage.gameObject.AddComponent<CanvasGroup>();
+            leftResultCanvasGroup.interactable = false;
+            leftResultCanvasGroup.blocksRaycasts = false;
+            rightResultImage = CreateImage(safeRoot, "OrangeResultCharacter", Color.white, null);
             rightResultImage.preserveAspect = true;
             rightResultImage.raycastTarget = false;
+            rightResultCanvasGroup = rightResultImage.gameObject.AddComponent<CanvasGroup>();
+            rightResultCanvasGroup.interactable = false;
+            rightResultCanvasGroup.blocksRaycasts = false;
 
-            resultTitle = CreateText(card.rectTransform, "ResultTitle", 64, TextAnchor.MiddleCenter, TextLight);
-            Anchor(resultTitle.rectTransform, new Vector2(0.18f, 0.82f), new Vector2(0.82f, 0.95f));
+            resultTitle = CreateText(card.rectTransform, "ResultTitle", 56, TextAnchor.MiddleCenter, TextLight);
+            Anchor(resultTitle.rectTransform, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.93f));
 
-            resultStats = CreateText(card.rectTransform, "ResultStats", 29, TextAnchor.MiddleCenter, TextMuted);
-            Anchor(resultStats.rectTransform, new Vector2(0.35f, 0.30f), new Vector2(0.65f, 0.80f));
+            resultStats = CreateText(card.rectTransform, "ResultStats", 26, TextAnchor.MiddleCenter, TextMuted);
+            Anchor(resultStats.rectTransform, new Vector2(0.10f, 0.30f), new Vector2(0.90f, 0.77f));
 
             Image rematch = CreateImage(card.rectTransform, "Rematch", Purple, roundedSprite);
-            Anchor(rematch.rectTransform, new Vector2(0.04f, 0.05f), new Vector2(0.32f, 0.23f));
+            Anchor(rematch.rectTransform, new Vector2(0.06f, 0.06f), new Vector2(0.35f, 0.25f));
             rematch.raycastTarget = false;
-            Text rematchText = CreateText(rematch.rectTransform, "Label", 24, TextAnchor.MiddleCenter, Color.white);
+            Text rematchText = CreateText(rematch.rectTransform, "Label", 20, TextAnchor.MiddleCenter, Color.white);
             rematchText.text = "REMATCH ↻";
             Stretch(rematchText.rectTransform, 8f);
             touchTargets.Add(new TouchTarget(rematch.rectTransform, null, TouchAction.Rematch, 0));
 
             Image changeDifficulty = CreateImage(card.rectTransform, "ChangeDifficulty", SurfaceRaised, roundedSprite);
-            Anchor(changeDifficulty.rectTransform, new Vector2(0.36f, 0.05f), new Vector2(0.64f, 0.23f));
+            Anchor(changeDifficulty.rectTransform, new Vector2(0.37f, 0.06f), new Vector2(0.63f, 0.25f));
             changeDifficulty.raycastTarget = false;
-            Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 22, TextAnchor.MiddleCenter, TextLight);
+            Text changeDifficultyText = CreateText(changeDifficulty.rectTransform, "Label", 18, TextAnchor.MiddleCenter, TextLight);
             changeDifficultyText.text = "CHANGE\nLEVEL";
             Stretch(changeDifficultyText.rectTransform, 6f);
             touchTargets.Add(new TouchTarget(changeDifficulty.rectTransform, null, TouchAction.ChangeDifficulty, 0));
 
             Image hub = CreateImage(card.rectTransform, "BackToHub", Orange, roundedSprite);
-            Anchor(hub.rectTransform, new Vector2(0.68f, 0.05f), new Vector2(0.96f, 0.23f));
+            Anchor(hub.rectTransform, new Vector2(0.65f, 0.06f), new Vector2(0.94f, 0.25f));
             hub.raycastTarget = false;
-            Text hubText = CreateText(hub.rectTransform, "Label", 30, TextAnchor.MiddleCenter, Ink);
+            Text hubText = CreateText(hub.rectTransform, "Label", 20, TextAnchor.MiddleCenter, Ink);
             hubText.text = "HUB ⌂";
             Stretch(hubText.rectTransform, 8f);
             touchTargets.Add(new TouchTarget(hub.rectTransform, null, TouchAction.Hub, 0));
@@ -703,7 +731,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             touchTargets.Add(new TouchTarget(card.rectTransform, null, TouchAction.SelectDifficulty, (int)tier));
         }
 
-        private Text CreateUtilityControl(RectTransform root, string name, string text, Vector2 min, Vector2 max, TouchAction action)
+        private Text CreateUtilityControl(RectTransform root, string name, string text, Vector2 min, Vector2 max, TouchAction action, out Image controlImage)
         {
             Image control = CreateImage(root, name, SurfaceDeep, roundedSprite);
             Anchor(control.rectTransform, min, max);
@@ -712,21 +740,13 @@ namespace Lbs.MiniGames.Games.NumberPull
             label.text = text;
             Stretch(label.rectTransform, 7f);
             touchTargets.Add(new TouchTarget(control.rectTransform, null, action, 0));
+            controlImage = control;
             return label;
         }
 
-        private void CreateHomeControl(RectTransform root)
+        private Text CreateUtilityControl(RectTransform root, string name, string text, Vector2 min, Vector2 max, TouchAction action)
         {
-            Image control = CreateImage(root, "HomeButton", Orange, roundedSprite);
-            Anchor(control.rectTransform, new Vector2(0.18f, 0.905f), new Vector2(0.255f, 0.975f));
-            control.raycastTarget = false;
-            Canvas homeCanvas = control.gameObject.AddComponent<Canvas>();
-            homeCanvas.overrideSorting = true;
-            homeCanvas.sortingOrder = 5;
-            Text label = CreateText(control.rectTransform, "HomeIcon", 40, TextAnchor.MiddleCenter, Ink);
-            label.text = "⌂";
-            Stretch(label.rectTransform, 4f);
-            touchTargets.Add(new TouchTarget(control.rectTransform, null, TouchAction.Home, 0));
+            return CreateUtilityControl(root, name, text, min, max, action, out _);
         }
 
         private void BuildPauseOverlay(RectTransform root)
@@ -810,6 +830,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
 
             CancelInvoke(nameof(HideCountdown));
+            audio.StopMusic();
             ResetTransientPresentation();
             int seed = deterministicSeed == 0 ? Environment.TickCount : deterministicSeed;
             seed += matchIndex * 101;
@@ -833,6 +854,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             matchStarted = false;
             countdownRemaining = CountdownDuration;
             lastDisplayedSecond = -1;
+            lastCountdownWarningSecond = int.MaxValue;
             pullAnimationRemaining = 0f;
             ropeKnot.anchoredPosition = Vector2.zero;
             ResetResultPresentation();
@@ -855,6 +877,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         private void ShowDifficultySelector()
         {
             CancelInvoke(nameof(HideCountdown));
+            audio.StopMusic();
             ResetTransientPresentation();
             isPaused = false;
             match = null;
@@ -918,6 +941,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             matchStarted = true;
             countdownText.text = "PULL!";
             audio.Play(AudioCue.Pull, 0.45f);
+            audio.StartMusic();
             Invoke(nameof(HideCountdown), 0.55f);
         }
 
@@ -994,24 +1018,12 @@ namespace Lbs.MiniGames.Games.NumberPull
                 return FindActivePauseMenuTarget(screenPosition);
             }
 
-            if (difficultyOverlay != null && difficultyOverlay.activeSelf)
-            {
-                int homeTargetIndex = FindActiveTarget(screenPosition, TouchAction.Home);
-                if (homeTargetIndex >= 0)
-                {
-                    return homeTargetIndex;
-                }
-            }
-
             for (int index = touchTargets.Count - 1; index >= 0; index--)
             {
                 TouchTarget target = touchTargets[index];
                 if (difficultyOverlay != null && difficultyOverlay.activeSelf && target.Action != TouchAction.SelectDifficulty)
                 {
-                    if (target.Action != TouchAction.Home)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 if (resultOverlay != null && resultOverlay.activeSelf && target.Action != TouchAction.Rematch && target.Action != TouchAction.ChangeDifficulty && target.Action != TouchAction.Hub)
@@ -1069,30 +1081,8 @@ namespace Lbs.MiniGames.Games.NumberPull
                 || action == TouchAction.Continue;
         }
 
-        private int FindActiveTarget(Vector2 screenPosition, TouchAction action)
-        {
-            for (int index = touchTargets.Count - 1; index >= 0; index--)
-            {
-                TouchTarget target = touchTargets[index];
-                if (target.Action == action
-                    && target.Rect.gameObject.activeInHierarchy
-                    && RectTransformUtility.RectangleContainsScreenPoint(target.Rect, screenPosition, null))
-                {
-                    return index;
-                }
-            }
-
-            return -1;
-        }
-
         private void HandleTarget(TouchTarget target)
         {
-            if (target.Action == TouchAction.Home)
-            {
-                OpenPauseMenu();
-                return;
-            }
-
             if (target.Action == TouchAction.Continue)
             {
                 ClosePauseMenu();
@@ -1109,11 +1099,6 @@ namespace Lbs.MiniGames.Games.NumberPull
             if (target.Action == TouchAction.ToggleSound)
             {
                 SetMuted(!muted);
-                if (!muted)
-                {
-                    audio.Play(AudioCue.Tap, 0.28f);
-                }
-
                 return;
             }
 
@@ -1425,14 +1410,43 @@ namespace Lbs.MiniGames.Games.NumberPull
             for (int index = 0; index < activeCount; index++)
             {
                 Image particle = particles[index];
+                bool cascade = celebration && index >= ResultBurstParticleCount;
                 particle.gameObject.SetActive(true);
-                particle.rectTransform.anchoredPosition = origin;
-                float horizontal = (float)(effectsRandom.NextDouble() * 320.0 - 160.0);
-                float vertical = (float)(effectsRandom.NextDouble() * 250.0 + 180.0);
+                particle.rectTransform.anchoredPosition = cascade ? GetResultCascadeOrigin(index) : origin;
+                float horizontal = cascade
+                    ? (float)(effectsRandom.NextDouble() * 160.0 - 80.0)
+                    : (float)(effectsRandom.NextDouble() * 320.0 - 160.0);
+                float vertical = cascade
+                    ? -(float)(effectsRandom.NextDouble() * 150.0 + 130.0)
+                    : (float)(effectsRandom.NextDouble() * 250.0 + 180.0);
                 particleVelocity[index] = new Vector2(horizontal, vertical);
-                particleLife[index] = celebration ? 2.2f : 0.8f;
+                particleLife[index] = celebration
+                    ? (float)(effectsRandom.NextDouble() * 0.8 + 1.8)
+                    : 0.8f;
                 particle.color = index % 2 == 0 ? Purple : Orange;
+                particle.sprite = celebration && resultConfettiStarSprite != null && index % 5 == 0
+                    ? resultConfettiStarSprite
+                    : index % 3 == 0 ? circleSprite : roundedSprite;
+                float size = celebration
+                    ? (float)(effectsRandom.NextDouble() * 18.0 + 14.0)
+                    : 18f;
+                particle.rectTransform.sizeDelta = new Vector2(size, size);
+                particle.rectTransform.localRotation = Quaternion.Euler(0f, 0f, (float)(effectsRandom.NextDouble() * 360.0));
             }
+        }
+
+        private Vector2 GetResultCascadeOrigin(int index)
+        {
+            RectTransform particleRect = particleCanvas.transform as RectTransform;
+            if (particleRect == null)
+            {
+                return new Vector2(0f, 400f);
+            }
+
+            float cascadeProgress = (index - ResultBurstParticleCount + 0.5f) / (ParticleCount - ResultBurstParticleCount);
+            float x = Mathf.Lerp(particleRect.rect.xMin * 0.92f, particleRect.rect.xMax * 0.92f, cascadeProgress);
+            float y = particleRect.rect.yMax - (float)(effectsRandom.NextDouble() * particleRect.rect.height * 0.12);
+            return new Vector2(x, y);
         }
 
         private void SpawnWinnerResultParticles(Image winnerImage, float fallbackX)
@@ -1491,7 +1505,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                     continue;
                 }
 
-                particleVelocity[index].y -= 480f * delta;
+                particleVelocity[index].y -= particleLife[index] > 1f ? 360f * delta : 480f * delta;
                 particles[index].rectTransform.anchoredPosition += particleVelocity[index] * delta;
                 particles[index].rectTransform.Rotate(0f, 0f, (index % 2 == 0 ? 180f : -180f) * delta);
             }
@@ -1499,9 +1513,40 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void SetMuted(bool value)
         {
+            ApplyMuted(value, true);
+        }
+
+        private void ApplyMuted(bool value, bool persist)
+        {
             muted = value;
             audio.Muted = value;
+            if (persist)
+            {
+                PlayerPrefs.SetInt(AudioMutedPreferenceKey, muted ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+
             soundLabel.text = muted ? "SOUND OFF ×" : "SOUND ON ♪";
+            if (soundControl != null)
+            {
+                soundControl.color = muted ? Error : SurfaceDeep;
+            }
+
+            if (!muted && IsActiveGameplay())
+            {
+                audio.StartMusic();
+            }
+        }
+
+        private bool IsActiveGameplay()
+        {
+            return isActiveAndEnabled
+                && matchStarted
+                && !isPaused
+                && match != null
+                && !match.IsComplete
+                && (difficultyOverlay == null || !difficultyOverlay.activeSelf)
+                && (resultOverlay == null || !resultOverlay.activeSelf);
         }
 
         private void SetReducedMotion(bool value)
@@ -1606,6 +1651,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ShowResult(NumberPullResult result)
         {
+            audio.StopMusic();
             ClearParticles();
             resultOverlay.SetActive(true);
             PresentResultCharacters(result.Outcome);
@@ -1642,28 +1688,35 @@ namespace Lbs.MiniGames.Games.NumberPull
         {
             if (outcome == MatchOutcome.LeftWins)
             {
-                ConfigureResultImage(leftResultImage, leftWinnerResultSprite ?? leftNormalCharacterSprite, new Vector2(0.02f, 0.27f), new Vector2(0.34f, 0.81f), false);
-                ConfigureResultImage(rightResultImage, rightLoserResultSprite ?? rightNormalCharacterSprite, new Vector2(0.73f, 0.39f), new Vector2(0.95f, 0.69f), false);
+                ConfigureResultImage(leftResultImage, leftResultHalo, leftWinnerResultSprite ?? leftNormalCharacterSprite, new Vector2(0.01f, 0.16f), new Vector2(0.24f, 0.90f), false);
+                ConfigureResultImage(rightResultImage, rightResultHalo, rightLoserResultSprite ?? rightNormalCharacterSprite, new Vector2(0.76f, 0.27f), new Vector2(0.96f, 0.76f), false);
+                winnerResultImage = leftResultImage;
+                winnerResultStartOffset = new Vector2(-32f, 0f);
                 return;
             }
 
             if (outcome == MatchOutcome.RightWins)
             {
-                ConfigureResultImage(leftResultImage, leftLoserResultSprite ?? leftNormalCharacterSprite, new Vector2(0.05f, 0.39f), new Vector2(0.27f, 0.69f), false);
-                ConfigureResultImage(rightResultImage, rightWinnerResultSprite ?? rightNormalCharacterSprite, new Vector2(0.66f, 0.27f), new Vector2(0.98f, 0.81f), false);
+                ConfigureResultImage(leftResultImage, leftResultHalo, leftLoserResultSprite ?? leftNormalCharacterSprite, new Vector2(0.04f, 0.27f), new Vector2(0.24f, 0.76f), false);
+                ConfigureResultImage(rightResultImage, rightResultHalo, rightWinnerResultSprite ?? rightNormalCharacterSprite, new Vector2(0.73f, 0.16f), new Vector2(0.99f, 0.90f), false);
+                winnerResultImage = rightResultImage;
+                winnerResultStartOffset = new Vector2(32f, 0f);
                 return;
             }
 
-            ConfigureResultImage(leftResultImage, leftNormalCharacterSprite, new Vector2(0.07f, 0.34f), new Vector2(0.31f, 0.76f), false);
-            ConfigureResultImage(rightResultImage, rightNormalCharacterSprite, new Vector2(0.69f, 0.34f), new Vector2(0.93f, 0.76f), true);
+            ConfigureResultImage(leftResultImage, leftResultHalo, leftNormalCharacterSprite, new Vector2(0.03f, 0.24f), new Vector2(0.24f, 0.82f), false);
+            ConfigureResultImage(rightResultImage, rightResultHalo, rightNormalCharacterSprite, new Vector2(0.75f, 0.24f), new Vector2(0.97f, 0.82f), true);
+            winnerResultImage = null;
+            winnerResultStartOffset = Vector2.zero;
         }
 
-        private static void ConfigureResultImage(Image image, Sprite sprite, Vector2 minimum, Vector2 maximum, bool flipHorizontally)
+        private static void ConfigureResultImage(Image image, Image halo, Sprite sprite, Vector2 minimum, Vector2 maximum, bool flipHorizontally)
         {
             image.sprite = sprite;
             Anchor(image.rectTransform, minimum, maximum);
             image.rectTransform.localScale = new Vector3(flipHorizontally ? -1f : 1f, 1f, 1f);
             image.gameObject.SetActive(sprite != null);
+            halo.gameObject.SetActive(sprite != null);
         }
 
         private void StartResultEntrance()
@@ -1677,6 +1730,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             resultEntranceRemaining = ResultEntranceDuration;
             resultCanvasGroup.alpha = 0f;
             resultCard.localScale = new Vector3(0.96f, 0.96f, 1f);
+            SetResultCharacterEntrance(leftResultImage, leftResultCanvasGroup);
+            SetResultCharacterEntrance(rightResultImage, rightResultCanvasGroup);
         }
 
         private void UpdateResultEntrance(float delta)
@@ -1692,6 +1747,43 @@ namespace Lbs.MiniGames.Games.NumberPull
             resultCanvasGroup.alpha = eased;
             float scale = Mathf.Lerp(0.96f, 1f, eased);
             resultCard.localScale = new Vector3(scale, scale, 1f);
+            UpdateResultCharacterEntrance(leftResultImage, leftResultCanvasGroup, eased);
+            UpdateResultCharacterEntrance(rightResultImage, rightResultCanvasGroup, eased);
+        }
+
+        private void SetResultCharacterEntrance(Image image, CanvasGroup canvasGroup)
+        {
+            if (image == null || canvasGroup == null)
+            {
+                return;
+            }
+
+            bool isWinner = image == winnerResultImage;
+            canvasGroup.alpha = isWinner ? 0f : 0.76f;
+            image.rectTransform.anchoredPosition = isWinner ? winnerResultStartOffset : Vector2.zero;
+            SetResultImageScale(image, isWinner ? 0.90f : 1f);
+        }
+
+        private void UpdateResultCharacterEntrance(Image image, CanvasGroup canvasGroup, float eased)
+        {
+            if (image == null || canvasGroup == null)
+            {
+                return;
+            }
+
+            bool isWinner = image == winnerResultImage;
+            canvasGroup.alpha = isWinner ? eased : Mathf.Lerp(0.76f, 1f, eased);
+            if (isWinner)
+            {
+                image.rectTransform.anchoredPosition = Vector2.Lerp(winnerResultStartOffset, Vector2.zero, eased);
+                SetResultImageScale(image, Mathf.Lerp(0.90f, 1f, eased));
+            }
+        }
+
+        private static void SetResultImageScale(Image image, float scale)
+        {
+            float direction = image.rectTransform.localScale.x < 0f ? -1f : 1f;
+            image.rectTransform.localScale = new Vector3(direction * scale, scale, 1f);
         }
 
         private void CompleteResultEntrance()
@@ -1706,6 +1798,21 @@ namespace Lbs.MiniGames.Games.NumberPull
             {
                 resultCard.localScale = Vector3.one;
             }
+
+            CompleteResultCharacterEntrance(leftResultImage, leftResultCanvasGroup);
+            CompleteResultCharacterEntrance(rightResultImage, rightResultCanvasGroup);
+        }
+
+        private static void CompleteResultCharacterEntrance(Image image, CanvasGroup canvasGroup)
+        {
+            if (image == null || canvasGroup == null)
+            {
+                return;
+            }
+
+            canvasGroup.alpha = 1f;
+            image.rectTransform.anchoredPosition = Vector2.zero;
+            SetResultImageScale(image, 1f);
         }
 
         private void ResetResultPresentation()
@@ -1714,6 +1821,10 @@ namespace Lbs.MiniGames.Games.NumberPull
             ClearParticles();
             ResetResultImage(leftResultImage);
             ResetResultImage(rightResultImage);
+            ResetResultHalo(leftResultHalo);
+            ResetResultHalo(rightResultHalo);
+            winnerResultImage = null;
+            winnerResultStartOffset = Vector2.zero;
             if (resultOverlay != null)
             {
                 resultOverlay.SetActive(false);
@@ -1734,6 +1845,14 @@ namespace Lbs.MiniGames.Games.NumberPull
             image.gameObject.SetActive(false);
         }
 
+        private static void ResetResultHalo(Image halo)
+        {
+            if (halo != null)
+            {
+                halo.gameObject.SetActive(false);
+            }
+        }
+
         private void ReportCompletedResult(NumberPullResult result)
         {
             if (resultReported)
@@ -1752,6 +1871,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ReturnToHub()
         {
+            audio.Stop();
             ResetContactOwnership();
             pendingLeftAnswer = null;
             pendingRightAnswer = null;
@@ -1803,6 +1923,18 @@ namespace Lbs.MiniGames.Games.NumberPull
             lastDisplayedSecond = seconds;
             timerText.text = $"{seconds / 60}:{seconds % 60:00}";
             timerText.color = seconds <= 10 ? Error : TextLight;
+            PlayCountdownWarning(seconds);
+        }
+
+        private void PlayCountdownWarning(int seconds)
+        {
+            if (!matchStarted || seconds < 1 || seconds > 5 || seconds == lastCountdownWarningSecond)
+            {
+                return;
+            }
+
+            lastCountdownWarningSecond = seconds;
+            audio.Play(seconds == 1 ? AudioCue.Pull : AudioCue.Correct, seconds == 1 ? 0.30f : 0.22f);
         }
 
         private int FindContact(int fingerId)
@@ -1847,6 +1979,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             changeDifficultyPauseAction.SetActive(!isPreMatchDifficultySelection);
             isPaused = true;
             pauseOverlay.SetActive(true);
+            audio.StopMusic();
             audio.Play(AudioCue.Tap, 0.3f);
         }
 
@@ -1863,6 +1996,10 @@ namespace Lbs.MiniGames.Games.NumberPull
             pauseOverlay.SetActive(false);
             isPaused = false;
             audio.Play(AudioCue.Tap, 0.3f);
+            if (IsActiveGameplay())
+            {
+                audio.StartMusic();
+            }
         }
 
         private void CreateProceduralSprites()
@@ -1978,7 +2115,6 @@ namespace Lbs.MiniGames.Games.NumberPull
             ChangeDifficulty,
             SelectDifficulty,
             Hub,
-            Home,
             Restart,
             Continue
         }
@@ -2031,11 +2167,14 @@ namespace Lbs.MiniGames.Games.NumberPull
             private const string CorrectResourcePath = "Audio/number-pull-correct";
             private const string PullResourcePath = "Audio/number-pull-rope-pull";
             private const string WinResourcePath = "Audio/number-pull-win";
+            private const string MusicResourcePath = "Audio/number-pull-background";
             private readonly AudioSource[] sources = new AudioSource[4];
             private readonly AudioClip[] clips = new AudioClip[6];
             private readonly bool[] ownsClips = new bool[6];
             private readonly float[] lastPlayed = new float[6];
             private readonly Func<string, AudioClip> resourceLoader;
+            private readonly AudioSource musicSource;
+            private readonly AudioClip musicClip;
             private int sourceIndex;
 
             public RuntimeAudio(GameObject owner, Func<string, AudioClip> resourceLoader = null)
@@ -2050,6 +2189,15 @@ namespace Lbs.MiniGames.Games.NumberPull
                     sources[index].volume = 1f;
                     sources[index].spatialBlend = 0f;
                 }
+
+                musicSource = owner.AddComponent<AudioSource>();
+                musicSource.playOnAwake = false;
+                musicSource.loop = true;
+                musicSource.mute = false;
+                musicSource.volume = 0.12f;
+                musicSource.spatialBlend = 0f;
+                musicClip = this.resourceLoader(MusicResourcePath);
+                musicSource.clip = musicClip;
 
                 clips[(int)AudioCue.Tap] = CreateTone("NP Tap", 0.055f, 520f, 760f, 0.25f);
                 ownsClips[(int)AudioCue.Tap] = true;
@@ -2076,6 +2224,12 @@ namespace Lbs.MiniGames.Games.NumberPull
                 set
                 {
                     muted = value;
+                    for (int index = 0; index < sources.Length; index++)
+                    {
+                        sources[index].mute = muted;
+                    }
+
+                    musicSource.mute = muted;
                     if (muted)
                     {
                         Stop();
@@ -2109,6 +2263,21 @@ namespace Lbs.MiniGames.Games.NumberPull
                 {
                     sources[index].Stop();
                 }
+
+                StopMusic();
+            }
+
+            public void StartMusic()
+            {
+                if (!Muted && musicClip != null && !musicSource.isPlaying)
+                {
+                    musicSource.Play();
+                }
+            }
+
+            public void StopMusic()
+            {
+                musicSource.Stop();
             }
 
             public void Dispose()
