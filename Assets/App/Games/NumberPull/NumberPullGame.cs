@@ -23,6 +23,8 @@ namespace Lbs.MiniGames.Games.NumberPull
         private const int ResultSortingOrder = 5;
         private const int ResultParticleSortingOrder = 6;
         private const int DifficultySortingOrder = 7;
+        private const float KeyPressScale = 0.96f;
+        private static readonly Vector2 KeyPressOffset = new(0f, -3f);
         private const string AudioMutedPreferenceKey = "math.number-pull.audio-muted";
         private const string PurpleCharacterResourcePath = "Characters/PurpleCrewCharacter";
         private const string PurplePullingCharacterResourcePath = "Characters/PurpleCrewCharacterPulling";
@@ -59,6 +61,7 @@ namespace Lbs.MiniGames.Games.NumberPull
         [SerializeField] private int deterministicSeed;
 
         private readonly List<TouchTarget> touchTargets = new(32);
+        private readonly List<KeyPressFeedback> keyPressFeedback = new(26);
         private readonly ContactOwnership[] contacts = new ContactOwnership[MaximumOwnedContacts];
         private readonly Image[] particles = new Image[ParticleCount];
         private readonly Vector2[] particleVelocity = new Vector2[ParticleCount];
@@ -563,7 +566,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             Text text = CreateText(button.rectTransform, "Label", action == TouchAction.Clear || action == TouchAction.Submit ? 22 : 30, TextAnchor.MiddleCenter, labelColor);
             text.text = label;
             Stretch(text.rectTransform, 4f);
-            touchTargets.Add(new TouchTarget(button.rectTransform, side, action, value));
+            int feedbackIndex = TrackKeyPressFeedback(button, side);
+            touchTargets.Add(new TouchTarget(button.rectTransform, side, action, value, feedbackIndex));
         }
 
         private void BuildCenterStage(RectTransform root)
@@ -1298,7 +1302,8 @@ namespace Lbs.MiniGames.Games.NumberPull
                 }
 
                 TouchTarget target = touchTargets[targetIndex];
-                contacts[index] = new ContactOwnership(true, fingerId, target.Side, target.Action);
+                contacts[index] = new ContactOwnership(true, fingerId, target.Side, target.Action, target.KeyPressFeedbackIndex);
+                PressKey(target.KeyPressFeedbackIndex);
                 HandleTarget(target);
                 return;
             }
@@ -1788,6 +1793,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 }
 
                 leftLockoutRemaining = duration;
+                ResetKeyPressFeedback(side);
                 if (leftLockoutOverlay != null)
                 {
                     leftLockoutOverlay.gameObject.SetActive(true);
@@ -1811,6 +1817,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 }
 
                 rightLockoutRemaining = duration;
+                ResetKeyPressFeedback(side);
                 if (rightLockoutOverlay != null)
                 {
                     rightLockoutOverlay.gameObject.SetActive(true);
@@ -1830,6 +1837,7 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private void ClearLockouts()
         {
+            ResetKeyPressFeedback();
             leftLockoutRemaining = 0f;
             rightLockoutRemaining = 0f;
             if (leftLockoutOverlay != null)
@@ -2494,7 +2502,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 return;
             }
 
-            // Raster fire Image + xN text (no emoji — Volte cannot render 🔥). Keep color stages but icon must render on both panels.
+            // Keep the fire icon and color stages while displaying only the consecutive-answer count.
             if (streak <= 0)
             {
                 text.text = "x0";
@@ -2519,8 +2527,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
             else if (streak < 5)
             {
-                // 2x multiplier zone — Orange pill with Ink text per spec (Ink on orange readable).
-                text.text = $"x{streak}  2x";
+                // Orange streak stage with Ink text for readable contrast.
+                text.text = $"x{streak}";
                 text.color = Ink;
                 badge.color = Orange;
                 if (icon != null)
@@ -2531,8 +2539,8 @@ namespace Lbs.MiniGames.Games.NumberPull
             }
             else
             {
-                // 3x zone — Success green with white text.
-                text.text = $"x{streak}  3x";
+                // Success streak stage with white text.
+                text.text = $"x{streak}";
                 text.color = Color.white;
                 badge.color = Success;
                 if (icon != null)
@@ -2596,13 +2604,72 @@ namespace Lbs.MiniGames.Games.NumberPull
             int index = FindContact(fingerId);
             if (index >= 0)
             {
+                ReleaseKey(contacts[index].KeyPressFeedbackIndex);
                 contacts[index] = default;
             }
         }
 
         private void ResetContactOwnership()
         {
+            ResetKeyPressFeedback();
             Array.Clear(contacts, 0, contacts.Length);
+        }
+
+        private int TrackKeyPressFeedback(Image image, MatchSide side)
+        {
+            keyPressFeedback.Add(new KeyPressFeedback(image, side));
+            return keyPressFeedback.Count - 1;
+        }
+
+        private void PressKey(int feedbackIndex)
+        {
+            if (feedbackIndex < 0 || feedbackIndex >= keyPressFeedback.Count)
+            {
+                return;
+            }
+
+            KeyPressFeedback feedback = keyPressFeedback[feedbackIndex];
+            feedback.PressCount++;
+            feedback.Image.color = Color.Lerp(feedback.OriginalColor, Ink, 0.18f);
+            feedback.Rect.localScale = feedback.BaseScale * KeyPressScale;
+            feedback.Rect.anchoredPosition = feedback.BasePosition + KeyPressOffset;
+        }
+
+        private void ReleaseKey(int feedbackIndex)
+        {
+            if (feedbackIndex < 0 || feedbackIndex >= keyPressFeedback.Count)
+            {
+                return;
+            }
+
+            KeyPressFeedback feedback = keyPressFeedback[feedbackIndex];
+            feedback.PressCount = Mathf.Max(0, feedback.PressCount - 1);
+            if (feedback.PressCount == 0)
+            {
+                RestoreKeyPressFeedback(feedback);
+            }
+        }
+
+        private void ResetKeyPressFeedback(MatchSide? side = null)
+        {
+            for (int index = 0; index < keyPressFeedback.Count; index++)
+            {
+                KeyPressFeedback feedback = keyPressFeedback[index];
+                if (side.HasValue && feedback.Side != side.Value)
+                {
+                    continue;
+                }
+
+                feedback.PressCount = 0;
+                RestoreKeyPressFeedback(feedback);
+            }
+        }
+
+        private static void RestoreKeyPressFeedback(KeyPressFeedback feedback)
+        {
+            feedback.Image.color = feedback.OriginalColor;
+            feedback.Rect.localScale = feedback.BaseScale;
+            feedback.Rect.anchoredPosition = feedback.BasePosition;
         }
 
         private void OpenPauseMenu()
@@ -2793,34 +2860,59 @@ namespace Lbs.MiniGames.Games.NumberPull
 
         private readonly struct TouchTarget
         {
-            public TouchTarget(RectTransform rect, MatchSide? side, TouchAction action, int value)
+            public TouchTarget(RectTransform rect, MatchSide? side, TouchAction action, int value, int keyPressFeedbackIndex = -1)
             {
                 Rect = rect;
                 Side = side;
                 Action = action;
                 Value = value;
+                KeyPressFeedbackIndex = keyPressFeedbackIndex;
             }
 
             public RectTransform Rect { get; }
             public MatchSide? Side { get; }
             public TouchAction Action { get; }
             public int Value { get; }
+            public int KeyPressFeedbackIndex { get; }
         }
 
         private readonly struct ContactOwnership
         {
-            public ContactOwnership(bool active, int fingerId, MatchSide? side, TouchAction action)
+            public ContactOwnership(bool active, int fingerId, MatchSide? side, TouchAction action, int keyPressFeedbackIndex)
             {
                 Active = active;
                 FingerId = fingerId;
                 Side = side;
                 Action = action;
+                KeyPressFeedbackIndex = keyPressFeedbackIndex;
             }
 
             public bool Active { get; }
             public int FingerId { get; }
             public MatchSide? Side { get; }
             public TouchAction Action { get; }
+            public int KeyPressFeedbackIndex { get; }
+        }
+
+        private sealed class KeyPressFeedback
+        {
+            public KeyPressFeedback(Image image, MatchSide side)
+            {
+                Image = image;
+                Rect = image.rectTransform;
+                OriginalColor = image.color;
+                BaseScale = Rect.localScale;
+                BasePosition = Rect.anchoredPosition;
+                Side = side;
+            }
+
+            public Image Image { get; }
+            public RectTransform Rect { get; }
+            public Color OriginalColor { get; }
+            public Vector3 BaseScale { get; }
+            public Vector2 BasePosition { get; }
+            public MatchSide Side { get; }
+            public int PressCount { get; set; }
         }
 
         private enum AudioCue

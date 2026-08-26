@@ -797,6 +797,51 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
         }
 
         [UnityTest]
+        public IEnumerator KeypadContactsShowIndependentPressFeedbackAndRestoreOnCleanup()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            RectTransform leftKey = FindChild(GameObject.Find("LeftCard").transform, "1Key").GetComponent<RectTransform>();
+            RectTransform rightKey = FindChild(GameObject.Find("RightCard").transform, "2Key").GetComponent<RectTransform>();
+            UnityEngine.UI.Image leftImage = leftKey.GetComponent<UnityEngine.UI.Image>();
+            UnityEngine.UI.Image rightImage = rightKey.GetComponent<UnityEngine.UI.Image>();
+            Color leftColor = leftImage.color;
+            Color rightColor = rightImage.color;
+            Vector3 leftScale = leftKey.localScale;
+            Vector3 rightScale = rightKey.localScale;
+            Vector2 leftPosition = leftKey.anchoredPosition;
+            Vector2 rightPosition = rightKey.anchoredPosition;
+
+            Canvas.ForceUpdateCanvases();
+            Invoke(game, "TryBeginContact", 401, ScreenPoint(leftKey));
+            Invoke(game, "TryBeginContact", 402, ScreenPoint(rightKey));
+
+            Assert.That(leftImage.color, Is.Not.EqualTo(leftColor));
+            Assert.That(rightImage.color, Is.Not.EqualTo(rightColor));
+            Assert.That(leftKey.localScale, Is.Not.EqualTo(leftScale));
+            Assert.That(rightKey.localScale, Is.Not.EqualTo(rightScale));
+            Assert.That(leftKey.anchoredPosition, Is.Not.EqualTo(leftPosition));
+            Assert.That(rightKey.anchoredPosition, Is.Not.EqualTo(rightPosition));
+
+            Invoke(game, "ReleaseContact", 401);
+            Assert.That(leftImage.color, Is.EqualTo(leftColor));
+            Assert.That(leftKey.localScale, Is.EqualTo(leftScale));
+            Assert.That(leftKey.anchoredPosition, Is.EqualTo(leftPosition));
+            Assert.That(rightImage.color, Is.Not.EqualTo(rightColor));
+
+            Invoke(game, "OnApplicationFocus", false);
+            AssertKeyRestored(rightImage, rightKey, rightColor, rightScale, rightPosition);
+
+            Invoke(game, "TryBeginContact", 403, ScreenPoint(rightKey));
+            Invoke(game, "SetLockout", MatchSide.Right, 2f);
+            AssertKeyRestored(rightImage, rightKey, rightColor, rightScale, rightPosition);
+
+            Invoke(game, "TryBeginContact", 404, ScreenPoint(leftKey));
+            Invoke(game, "ResetContactOwnership");
+            AssertKeyRestored(leftImage, leftKey, leftColor, leftScale, leftPosition);
+        }
+
+        [UnityTest]
         public IEnumerator CrewVisualsUseFeatureLocalSpritesWithoutBlockingInput()
         {
             yield return LoadNumberPull();
@@ -887,6 +932,30 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Assert.That(icon.GetComponentsInParent<UnityEngine.UI.Mask>(true), Is.Empty);
             Assert.That(icon.canvas, Is.Not.Null);
             Assert.That(icon.canvas.sortingOrder, Is.EqualTo(0));
+        }
+
+        [UnityTest]
+        public IEnumerator StreakBadgesShowOnlyTheConsecutiveCorrectCount()
+        {
+            yield return LoadNumberPull();
+            Component game = GetGame();
+            UnityEngine.UI.Text leftStreak = (UnityEngine.UI.Text)GetField(game, "leftStreakText");
+            UnityEngine.UI.Text rightStreak = (UnityEngine.UI.Text)GetField(game, "rightStreakText");
+
+            Assert.That(leftStreak.text, Is.EqualTo("x0"));
+            Assert.That(rightStreak.text, Is.EqualTo("x0"));
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Correct, SubmissionFeedback.None, true));
+            Assert.That(leftStreak.text, Is.EqualTo("x1"));
+            Assert.That(rightStreak.text, Is.EqualTo("x0"));
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Neutralized, SubmissionFeedback.None, false));
+            Assert.That(leftStreak.text, Is.EqualTo("x2"));
+
+            Invoke(game, "PresentSubmission", new SubmissionResult(SubmissionFeedback.Incorrect, SubmissionFeedback.None, false));
+            Assert.That(leftStreak.text, Is.EqualTo("x0"));
+            Assert.That(leftStreak.text, Does.StartWith("x"));
+            Assert.That(rightStreak.text, Does.StartWith("x"));
         }
 
         [UnityTest]
@@ -1407,6 +1476,18 @@ namespace Lbs.MiniGames.Games.NumberPull.Tests
             Vector2 position = RectTransformUtility.WorldToScreenPoint(null, target.TransformPoint(target.rect.center));
             Invoke(game, "TryBeginContact", fingerId, position);
             Invoke(game, "ReleaseContact", fingerId);
+        }
+
+        private static Vector2 ScreenPoint(RectTransform target)
+        {
+            return RectTransformUtility.WorldToScreenPoint(null, target.TransformPoint(target.rect.center));
+        }
+
+        private static void AssertKeyRestored(UnityEngine.UI.Image image, RectTransform key, Color color, Vector3 scale, Vector2 position)
+        {
+            Assert.That(image.color, Is.EqualTo(color));
+            Assert.That(key.localScale, Is.EqualTo(scale));
+            Assert.That(key.anchoredPosition, Is.EqualTo(position));
         }
 
         private static bool HasOwnedContact(Component game)
