@@ -4,7 +4,7 @@ using Lbs.MiniGames.Shared;
 
 namespace Lbs.MiniGames.Navigation
 {
-    public sealed class GameLauncher
+    public sealed class GameLauncher : IGameLauncher
     {
         private readonly GameSession session;
         private readonly ISceneLoader sceneLoader;

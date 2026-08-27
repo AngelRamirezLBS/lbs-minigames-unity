@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ad84fc16c694f809854d4fe30d48691, type: 3}
+  m_Name: WildWhizLevelSet
+  m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Games.WildWhiz.WildWhizLevelSet
+  levels:
+  - id: habit-1
+    instruction: Sort by habitat.
+    instructionClip: {fileID: 8300000, guid: d1111111111111111111111111111111, type: 3}
+    targets:
+    - forest
+    - ocean
+    targetSprites:
+    - {fileID: 21300000, guid: 987be8a30491ff34bb04039682c61d03, type: 3}
+    - {fileID: 21300000, guid: 19b51aff7e4bd0245a89cf06f74daee4, type: 3}
+    items:
+    - tokenId: fox
+      spriteKey: fox
+      sprite: {fileID: 21300000, guid: e3e37a5aabc641047b90ec7b6e625e51, type: 3}
+    - tokenId: bear
+      spriteKey: bear
+      sprite: {fileID: 21300000, guid: 27c07f4b34bd9314283f68c38e695d08, type: 3}
+    - tokenId: dolphin
+      spriteKey: dolphin
+      sprite: {fileID: 21300000, guid: 0a5140c7342347044bf63d0aff3656af, type: 3}
+    - tokenId: octopus
+      spriteKey: octopus
+      sprite: {fileID: 21300000, guid: 2fc31e91ed8eaee4b8a86a667a06d5aa, type: 3}
+    expectedEntries:
+    - tokenId: fox
+      targetId: forest
+    - tokenId: bear
+      targetId: forest
+    - tokenId: dolphin
+      targetId: ocean
+    - tokenId: octopus
+      targetId: ocean
+  - id: diet-2
+    instruction: Sort by diet.
+    instructionClip: {fileID: 8300000, guid: d2222222222222222222222222222222, type: 3}
+    targets:
+    - herbivore
+    - carnivore
+    targetSprites:
+    - {fileID: 21300000, guid: d3da7b9c1644f1747958ae53ea11e55a, type: 3}
+    - {fileID: 21300000, guid: 6440d390c1a813f43a4404cc95a27b1b, type: 3}
+    items:
+    - tokenId: rabbit
+      spriteKey: rabbit
+      sprite: {fileID: 21300000, guid: 792624c8638e1ba4280879266a449944, type: 3}
+    - tokenId: giraffe
+      spriteKey: giraffe
+      sprite: {fileID: 21300000, guid: 85df77fb3bace9545af108e1d8fe5222, type: 3}
+    - tokenId: lion
+      spriteKey: lion
+      sprite: {fileID: 21300000, guid: 907bc94cbdee86e40baf290e0ee51cce, type: 3}
+    - tokenId: wolf
+      spriteKey: wolf
+      sprite: {fileID: 21300000, guid: d2067bde7e832a14f863fbeb7346a346, type: 3}
+    expectedEntries:
+    - tokenId: rabbit
+      targetId: herbivore
+    - tokenId: giraffe
+      targetId: herbivore
+    - tokenId: lion
+      targetId: carnivore
+    - tokenId: wolf
+      targetId: carnivore
+  - id: move-3
+    instruction: Sort by movement.
+    instructionClip: {fileID: 8300000, guid: d3333333333333333333333333333333, type: 3}
+    targets:
+    - fly
+    - swim
+    - walk
+    targetSprites:
+    - {fileID: 21300000, guid: 8ea96adea5a38464581291e90d9683f9, type: 3}
+    - {fileID: 21300000, guid: 3d9e31136133ccc43b17bb9fc6d99dff, type: 3}
+    - {fileID: 21300000, guid: 679a830fbe7691349aebe6be8f362d84, type: 3}
+    items:
+    - tokenId: eagle
+      spriteKey: eagle
+      sprite: {fileID: 21300000, guid: fb427a3e96de11b46bd80ca2fbdb6b81, type: 3}
+    - tokenId: parrot
+      spriteKey: parrot
+      sprite: {fileID: 21300000, guid: 044cd28d743f418498a756d19e38072e, type: 3}
+    - tokenId: shark
+      spriteKey: shark
+      sprite: {fileID: 21300000, guid: 8456193099e49f64eaeb13d4105eb62a, type: 3}
+    - tokenId: elephant
+      spriteKey: elephant
+      sprite: {fileID: 21300000, guid: 2b4a1ae6f45b2c24c9285de02017f736, type: 3}
+    expectedEntries:
+    - tokenId: eagle
+      targetId: fly
+    - tokenId: parrot
+      targetId: fly
+    - tokenId: shark
+      targetId: swim
+    - tokenId: elephant
+      targetId: walk

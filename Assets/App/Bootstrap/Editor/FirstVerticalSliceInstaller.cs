@@ -47,7 +47,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 throw new System.InvalidOperationException("MiniGameCatalog could not be created or loaded.");
             }
 
-            catalog.Configure(new List<GameCategory> { animals }, new List<GameDefinition> { classification });
+            // Additive — preserve existing wild-whiz entries
+            catalog.EnsureCategory(animals);
+            catalog.EnsureGame(classification);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
@@ -57,12 +59,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             CreateBootstrapScene(catalog);
             CreateLobbyScene(catalog);
             CreateClassificationScene();
-            EditorBuildSettings.scenes = new[]
-            {
-                new EditorBuildSettingsScene("Assets/App/Bootstrap/Bootstrap.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Lobby/Lobby.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Games/Classification/Classification.unity", true)
-            };
+            EnsureBuildScene("Assets/App/Bootstrap/Bootstrap.unity", true);
+            EnsureBuildScene("Assets/App/Lobby/Lobby.unity", true);
+            EnsureBuildScene("Assets/App/Games/Classification/Classification.unity", true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
@@ -144,6 +143,21 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             return asset;
         }
 
+        private static void EnsureBuildScene(string path, bool enabled)
+        {
+            List<EditorBuildSettingsScene> scenes = new(EditorBuildSettings.scenes);
+            foreach (EditorBuildSettingsScene s in scenes)
+            {
+                if (string.Equals(s.path, path, System.StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            scenes.Add(new EditorBuildSettingsScene(path, enabled));
+            EditorBuildSettings.scenes = scenes.ToArray();
+        }
+
         private static void EnsureFolders()
         {
             string[] folders =
@@ -158,6 +172,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games",
                 "Assets/App/Games/Common",
                 "Assets/App/Games/Classification",
+                "Assets/App/Games/WildWhiz",
+                "Assets/App/Games/WildWhiz/Art",
+                "Assets/App/Games/WildWhiz/Audio",
+                "Assets/App/Games/WildWhiz/Data",
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching"
             };
