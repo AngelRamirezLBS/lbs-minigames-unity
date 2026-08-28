@@ -1,0 +1,14 @@
+{
+  "name": "Lbs.MiniGames.NumberPull.Tests.EditMode",
+  "rootNamespace": "Lbs.MiniGames.Games.NumberPull.Tests",
+  "references": [
+    "Lbs.MiniGames.NumberPull.Domain"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

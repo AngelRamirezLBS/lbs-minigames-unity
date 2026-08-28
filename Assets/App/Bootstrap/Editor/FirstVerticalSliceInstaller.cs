@@ -18,6 +18,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CategoryPath = CatalogFolder + "/AnimalsCategory.asset";
         private const string DefinitionPath = CatalogFolder + "/ClassificationGame.asset";
         private const string CatalogPath = CatalogFolder + "/MiniGameCatalog.asset";
+        private const string MathematicsCategoryPath = CatalogFolder + "/MathematicsCategory.asset";
+        private const string NumberPullDefinitionPath = CatalogFolder + "/NumberPullGame.asset";
         private const string VolteRegularPath = "Assets/App/Theme/Fonts/Volte-Regular.otf";
         private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieHubPath = "Assets/App/Theme/Brand/WolfieHub.png";
@@ -41,13 +43,28 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Drag the dolphin to the correct group.");
             classification.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(ClassificationThumbnailPath));
 
+            GameCategory mathematics = AssetDatabase.LoadAssetAtPath<GameCategory>(MathematicsCategoryPath);
+            GameDefinition numberPull = AssetDatabase.LoadAssetAtPath<GameDefinition>(NumberPullDefinitionPath);
+
             GameCatalog catalog = CreateOrLoad<GameCatalog>(CatalogPath);
             if (catalog == null)
             {
                 throw new System.InvalidOperationException("MiniGameCatalog could not be created or loaded.");
             }
 
-            catalog.Configure(new List<GameCategory> { animals }, new List<GameDefinition> { classification });
+            List<GameCategory> categories = new() { animals };
+            if (mathematics != null)
+            {
+                categories.Add(mathematics);
+            }
+
+            List<GameDefinition> games = new() { classification };
+            if (numberPull != null)
+            {
+                games.Add(numberPull);
+            }
+
+            catalog.Configure(categories, games);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
@@ -61,7 +78,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             {
                 new EditorBuildSettingsScene("Assets/App/Bootstrap/Bootstrap.unity", true),
                 new EditorBuildSettingsScene("Assets/App/Lobby/Lobby.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Games/Classification/Classification.unity", true)
+                new EditorBuildSettingsScene("Assets/App/Games/Classification/Classification.unity", true),
+                new EditorBuildSettingsScene("Assets/App/Games/NumberPull/NumberPull.unity", true)
             };
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
