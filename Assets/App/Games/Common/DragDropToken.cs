@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using Lbs.MiniGames.Shared;
 
 namespace Lbs.MiniGames.Games.Common
 {
@@ -94,6 +96,13 @@ namespace Lbs.MiniGames.Games.Common
             rectTransform.anchoredPosition = Vector2.zero;
             rectTransform.sizeDelta = new Vector2(136f, 136f);
             canvasGroup.blocksRaycasts = false;
+            Image visual = GetComponentInChildren<Image>();
+            if (visual != null)
+            {
+                Outline outline = visual.gameObject.GetComponent<Outline>() ?? visual.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.086f, 0.478f, 0.290f);
+                outline.effectDistance = new Vector2(5f, -5f);
+            }
             Dropped?.Invoke(this);
         }
 

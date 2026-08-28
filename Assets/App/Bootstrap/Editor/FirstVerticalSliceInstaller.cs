@@ -52,19 +52,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 throw new System.InvalidOperationException("MiniGameCatalog could not be created or loaded.");
             }
 
-            List<GameCategory> categories = new() { animals };
-            if (mathematics != null)
-            {
-                categories.Add(mathematics);
-            }
-
-            List<GameDefinition> games = new() { classification };
-            if (numberPull != null)
-            {
-                games.Add(numberPull);
-            }
-
-            catalog.Configure(categories, games);
+            catalog.EnsureCategory(animals);
+            catalog.EnsureCategory(mathematics);
+            catalog.EnsureGame(classification);
+            catalog.EnsureGame(numberPull);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
@@ -74,13 +65,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             CreateBootstrapScene(catalog);
             CreateLobbyScene(catalog);
             CreateClassificationScene();
-            EditorBuildSettings.scenes = new[]
-            {
-                new EditorBuildSettingsScene("Assets/App/Bootstrap/Bootstrap.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Lobby/Lobby.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Games/Classification/Classification.unity", true),
-                new EditorBuildSettingsScene("Assets/App/Games/NumberPull/NumberPull.unity", true)
-            };
+            EnsureBuildScene("Assets/App/Bootstrap/Bootstrap.unity", true);
+            EnsureBuildScene("Assets/App/Lobby/Lobby.unity", true);
+            EnsureBuildScene("Assets/App/Games/Classification/Classification.unity", true);
+            EnsureBuildScene("Assets/App/Games/NumberPull/NumberPull.unity", true);
+            EnsureBuildScene("Assets/App/Games/WildWhiz/WildWhiz.unity", true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
@@ -162,6 +151,21 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             return asset;
         }
 
+        private static void EnsureBuildScene(string path, bool enabled)
+        {
+            List<EditorBuildSettingsScene> scenes = new(EditorBuildSettings.scenes);
+            foreach (EditorBuildSettingsScene s in scenes)
+            {
+                if (string.Equals(s.path, path, System.StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            scenes.Add(new EditorBuildSettingsScene(path, enabled));
+            EditorBuildSettings.scenes = scenes.ToArray();
+        }
+
         private static void EnsureFolders()
         {
             string[] folders =
@@ -176,6 +180,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games",
                 "Assets/App/Games/Common",
                 "Assets/App/Games/Classification",
+                "Assets/App/Games/WildWhiz",
+                "Assets/App/Games/WildWhiz/Art",
+                "Assets/App/Games/WildWhiz/Audio",
+                "Assets/App/Games/WildWhiz/Data",
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching"
             };

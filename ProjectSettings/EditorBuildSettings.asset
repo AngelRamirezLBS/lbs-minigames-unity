@@ -17,4 +17,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/NumberPull/NumberPull.unity
     guid: c3a8f9ec0e6547e18d47e48b93802f11
+  - enabled: 1
+    path: Assets/App/Games/WildWhiz/WildWhiz.unity
+    guid: 73333333333333333333333333333333
   m_configObjects: {}
