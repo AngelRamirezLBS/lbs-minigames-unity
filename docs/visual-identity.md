@@ -33,6 +33,8 @@ Exact neutral, success, and error colors were not supplied; the proposed values 
 
 Use **Volte** as the interface typeface. The supplied identity font reference is [`fonts/Volte-Regular.otf`](../fonts/Volte-Regular.otf); do not assume that other weights are available or use them as a dependency.
 
+**Approved synthetic-weight exception:** only top-level Hub and game header titles may use Volte Regular with a tightly matched, same-color 1-reference-pixel UGUI outline/stroke when visibly heavier treatment is needed. The titles must use `FontStyle.Normal` with Best Fit disabled. This explicit exception does not authorize a second font asset, additional interface weights, or synthetic-weight treatment anywhere else; all other UI continues to use Volte Regular without assumed weights.
+
 Use the provided logo as a source reference, not as permission to redefine the provisional product name or create a final lockup.
 
 ## Visual language

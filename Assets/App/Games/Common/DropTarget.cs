@@ -18,11 +18,11 @@ namespace Lbs.MiniGames.Games.Common
 
         public void OnDrop(PointerEventData eventData)
         {
-            DragDropToken token = eventData.pointerDrag == null
+            DragDropToken token = eventData == null || eventData.pointerDrag == null
                 ? null
                 : eventData.pointerDrag.GetComponent<DragDropToken>();
 
-            if (token != null)
+            if (token != null && token.TryResolveDrop(eventData))
             {
                 TokenDropped?.Invoke(this, token);
             }
