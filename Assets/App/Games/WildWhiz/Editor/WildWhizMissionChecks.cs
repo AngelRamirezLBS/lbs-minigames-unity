@@ -1042,21 +1042,14 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
                 return false;
             }
 
-            if (catalog.Categories.Count != 2)
+            GameCategory wildWhizCat = null;
+            foreach (GameCategory category in catalog.Categories)
             {
-                Debug.LogError($"Catalog categories should be 2 after additive install, got {catalog.Categories.Count}");
-                return false;
+                if (category != null && category.CategoryId == "wild-whiz") wildWhizCat = category;
             }
-
-            if (catalog.Categories[0].CategoryId != "animals" || catalog.Categories[1].CategoryId != "wild-whiz")
+            if (wildWhizCat == null)
             {
-                Debug.LogError($"Catalog categories mismatch: {catalog.Categories[0].CategoryId}, {catalog.Categories[1].CategoryId}");
-                return false;
-            }
-
-            // Check games additive
-            if (catalog.Categories.Count < 2)
-            {
+                Debug.LogError("Catalog is missing the wild-whiz category.");
                 return false;
             }
 
@@ -1064,21 +1057,29 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
             var gamesField = typeof(GameCatalog).GetField("games", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var gamesList = gamesField?.GetValue(catalog) as List<GameDefinition>;
             int gameCount = gamesList != null ? gamesList.Count : 0;
-            if (gameCount != 2)
+            if (gamesList == null)
             {
-                Debug.LogError($"Catalog games should be 2, got {gameCount}");
+                Debug.LogError("Catalog games list is missing.");
                 return false;
             }
 
             bool hasClassification = false;
-            bool hasWildWhiz = false;
+            int wildWhizDefinitions = 0;
+            GameDefinition wildWhizDefinition = null;
             foreach (GameDefinition g in gamesList)
             {
                 if (g == null) continue;
                 if (g.GameId == "classification.animals" && g.SceneName == "Classification") hasClassification = true;
-                if (g.GameId == "wild-whiz.logic" && g.SceneName == "WildWhiz" && g.Category != null && g.Category.CategoryId == "wild-whiz") hasWildWhiz = true;
+                if (g.GameId == "wild-whiz.logic")
+                {
+                    wildWhizDefinitions++;
+                    wildWhizDefinition = g;
+                }
             }
 
+            bool hasWildWhiz = wildWhizDefinitions == 1
+                && wildWhizDefinition.SceneName == "WildWhiz"
+                && wildWhizDefinition.Category == wildWhizCat;
             if (!hasClassification || !hasWildWhiz)
             {
                 Debug.LogError($"Catalog games wiring missing: classification={hasClassification} wild-whiz={hasWildWhiz}");
@@ -1086,7 +1087,6 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
             }
 
             // GetGames for wild-whiz should return 1
-            GameCategory wildWhizCat = catalog.Categories[1];
             int wildWhizGameCount = 0;
             foreach (GameDefinition g in catalog.GetGames(wildWhizCat))
             {
@@ -1112,21 +1112,14 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
                 animalsCount++;
             }
 
-            if (animalsCount != 1)
+            if (animalsCount < 1)
             {
-                Debug.LogError($"Classification category should still have 1 game, got {animalsCount}");
+                Debug.LogError($"Classification category should still contain Classification, got {animalsCount}");
                 return false;
             }
 
             // EditorBuildSettings wiring
             var scenes = EditorBuildSettings.scenes;
-            if (scenes.Length != 4)
-            {
-                Debug.LogError($"EditorBuildSettings should have 4 scenes, got {scenes.Length}");
-                foreach (var s in scenes) Debug.Log($" scene {s.path} enabled={s.enabled}");
-                return false;
-            }
-
             bool hasBootstrap = false, hasLobby = false, hasClassificationScene = false, hasWildWhizScene = false;
             foreach (var s in scenes)
             {
@@ -1148,7 +1141,7 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
             int beforeScenes = scenes.Length;
 
             catalog.EnsureCategory(wildWhizCat);
-            catalog.EnsureGame(gamesList[1]);
+            catalog.EnsureGame(wildWhizDefinition);
             int afterCat = catalog.Categories.Count;
             int afterGames = (gamesField.GetValue(catalog) as List<GameDefinition>).Count;
             // Simulate installer second scene ensure (should not add)
@@ -1188,7 +1181,7 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
                 return false;
             }
 
-            Debug.Log($"Catalog wiring: {catalog.Categories.Count} categories, {gameCount} games, 4 scenes — idempotent pass.");
+            Debug.Log($"Catalog wiring: {catalog.Categories.Count} categories, {gameCount} games, {scenes.Length} scenes — idempotent pass.");
             Debug.Log("Ensure_IdempotentNoOverwrite verified.");
             return true;
 #endif

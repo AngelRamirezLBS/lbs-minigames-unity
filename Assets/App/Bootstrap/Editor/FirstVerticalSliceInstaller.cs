@@ -20,6 +20,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CatalogPath = CatalogFolder + "/MiniGameCatalog.asset";
         private const string MathematicsCategoryPath = CatalogFolder + "/MathematicsCategory.asset";
         private const string NumberPullDefinitionPath = CatalogFolder + "/NumberPullGame.asset";
+        private const string WildWhizCategoryPath = CatalogFolder + "/WildWhizCategory.asset";
+        private const string WildWhizDefinitionPath = CatalogFolder + "/WildWhizGame.asset";
         private const string VolteRegularPath = "Assets/App/Theme/Fonts/Volte-Regular.otf";
         private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieHubPath = "Assets/App/Theme/Brand/WolfieHub.png";
@@ -45,6 +47,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
 
             GameCategory mathematics = AssetDatabase.LoadAssetAtPath<GameCategory>(MathematicsCategoryPath);
             GameDefinition numberPull = AssetDatabase.LoadAssetAtPath<GameDefinition>(NumberPullDefinitionPath);
+            GameCategory wildWhiz = AssetDatabase.LoadAssetAtPath<GameCategory>(WildWhizCategoryPath);
+            GameDefinition wildWhizGame = AssetDatabase.LoadAssetAtPath<GameDefinition>(WildWhizDefinitionPath);
 
             GameCatalog catalog = CreateOrLoad<GameCatalog>(CatalogPath);
             if (catalog == null)
@@ -56,9 +60,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             catalog.EnsureCategory(mathematics);
             catalog.EnsureGame(classification);
             catalog.EnsureGame(numberPull);
+            catalog.EnsureCategory(wildWhiz);
+            catalog.EnsureGame(wildWhizGame);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
+            EditorUtility.SetDirty(wildWhiz);
+            EditorUtility.SetDirty(wildWhizGame);
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
 
