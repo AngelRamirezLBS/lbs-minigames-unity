@@ -14,5 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Catalog.GameCatalog
   categories:
   - {fileID: 11400000, guid: 16331af95411b4472b42f080f3204625, type: 2}
+  - {fileID: 11400000, guid: a476d15cb7580b545aa2fd4b8858848b, type: 2}
   games:
   - {fileID: 11400000, guid: fe1824aac052f4ad7b045e0d730b973c, type: 2}
+  - {fileID: 11400000, guid: 2f95e8ccd214c1243a3c3d5442414e68, type: 2}

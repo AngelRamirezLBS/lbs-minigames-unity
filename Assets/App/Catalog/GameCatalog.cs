@@ -27,5 +27,11 @@ namespace Lbs.MiniGames.Catalog
             categories = catalogCategories;
             games = catalogGames;
         }
+
+        public void Add(GameCategory category, GameDefinition game)
+        {
+            if (category != null && !categories.Contains(category)) categories.Add(category);
+            if (game != null && !games.Contains(game)) games.Add(game);
+        }
     }
 }
