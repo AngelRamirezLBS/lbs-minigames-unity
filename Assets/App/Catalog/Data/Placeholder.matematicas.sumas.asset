@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c9fe78c23ed43495c98397b3c634c432, type: 3}
-  m_Name: ClassificationGame
+  m_Name: Placeholder.matematicas.sumas
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Catalog.GameDefinition
-  gameId: classification.animals
-  visibleName: "Clasificaci\xF3n de animales"
-  category: {fileID: 11400000, guid: 0207ecf32b4c94f5fb25fee54c8f3280, type: 2}
-  thumbnail: {fileID: 21300000, guid: 2f4af02d64e743c397b6c8862b00473a, type: 3}
-  sceneName: Classification
-  description: "Clasifica los animales seg\xFAn el grupo al que pertenecen."
+  gameId: matematicas.sumas
+  visibleName: Sumas y Restas
+  category: {fileID: 11400000, guid: 7402c3cde37344e38b42ae274515b6bb, type: 2}
+  thumbnail: {fileID: 0}
+  sceneName: 
+  description: Resuelve sumas y restas de manera divertida.
