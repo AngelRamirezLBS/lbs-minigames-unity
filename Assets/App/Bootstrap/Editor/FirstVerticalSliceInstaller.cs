@@ -4,6 +4,7 @@ using Lbs.MiniGames.Catalog;
 using Lbs.MiniGames.Games.Classification;
 using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Lobby;
+using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +27,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string ShapeCategoryPath = CatalogFolder + "/ShapeCategory.asset";
         private const string ShapeDefinitionPath = CatalogFolder + "/ShapeAnalogyGame.asset";
         private const string ShapeScenePath = "Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity";
+        private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
+        private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
+        private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
+        private const string AudioConfigPath = "Assets/App/Shared/Audio/AppAudioConfig.asset";
 
         [MenuItem("Tools/LBS Mini Games/Install First Vertical Slice")]
         public static void Install()
@@ -36,6 +41,15 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
             animals.Configure("animals", "Animals", "Learn how animals belong to different groups.");
 
+            // Difficulty definitions (future-ready, non-destructive)
+            DifficultyDefinition easy = CreateOrLoad<DifficultyDefinition>(DifficultyEasyPath);
+            easy.Configure("easy", "Easy", 0, "Gentle introduction with fewer distractors.");
+            DifficultyDefinition medium = CreateOrLoad<DifficultyDefinition>(DifficultyMediumPath);
+            medium.Configure("medium", "Medium", 1, "Balanced challenge.");
+            DifficultyDefinition hard = CreateOrLoad<DifficultyDefinition>(DifficultyHardPath);
+            hard.Configure("hard", "Hard", 2, "Extra cards and timed pressure.");
+            var allDifficulties = new List<DifficultyDefinition> { easy, medium, hard };
+
             GameDefinition classification = CreateOrLoad<GameDefinition>(DefinitionPath);
             classification.Configure(
                 "classification.animals",
@@ -44,6 +58,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Classification",
                 "Drag the dolphin to the correct group.");
             classification.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(ClassificationThumbnailPath));
+            classification.ConfigureDifficulties(allDifficulties, medium);
 
             GameCatalog catalog = CreateOrLoad<GameCatalog>(CatalogPath);
             if (catalog == null)
@@ -56,11 +71,23 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             shapes.Configure("shape-analogy", "Shape Analogy", "Find the shape and fill relationship.");
             GameDefinition shapeGame = CreateOrLoad<GameDefinition>(ShapeDefinitionPath);
             shapeGame.Configure("shape.analogy", "Shape Analogy", shapes, "ShapeAnalogy", "Look at the relationship and drag the correct card into the empty space.");
+            shapeGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.Add(shapes, shapeGame);
+
+            // Global audio config (persistent music) — non-destructive, uses existing bg track
+            AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
+            AudioClip bg = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ShapeAnalogy/Sounds/Music/bg_cabinet_menu.mp3");
+            if (bg == null) bg = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Resources/ShapeAnalogy/Music/bg_cabinet_menu.mp3");
+            if (bg != null) audioConfig.Configure(bg, 0.25f, 0.125f);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
+            EditorUtility.SetDirty(easy);
+            EditorUtility.SetDirty(medium);
+            EditorUtility.SetDirty(hard);
             EditorUtility.SetDirty(catalog);
+            EditorUtility.SetDirty(shapeGame);
+            EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
 
             CreateBootstrapScene(catalog);
@@ -95,6 +122,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             bootstrap.SetCatalog(catalog);
             SerializedObject serialized = new(bootstrap);
             serialized.FindProperty("lobbySceneName").stringValue = "Lobby";
+            AppAudioConfig audioConfig = AssetDatabase.LoadAssetAtPath<AppAudioConfig>(AudioConfigPath);
+            if (audioConfig != null) serialized.FindProperty("audioConfig").objectReferenceValue = audioConfig;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(bootstrap);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -199,6 +228,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 CatalogFolder,
                 "Assets/App/Navigation",
                 "Assets/App/Shared",
+                "Assets/App/Shared/Audio",
+                "Assets/App/Shared/UI",
+                "Assets/App/Shared/UI/LevelChrome",
+                "Assets/App/GameKits",
+                "Assets/App/GameKits/DragDrop",
+                "Assets/App/GameKits/DragDrop/Core",
+                "Assets/App/GameKits/DragDrop/Runtime",
                 "Assets/App/Games",
                 "Assets/App/Games/Common",
                 "Assets/App/Games/Classification",

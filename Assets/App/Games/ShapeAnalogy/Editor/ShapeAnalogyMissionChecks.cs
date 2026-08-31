@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Lbs.MiniGames.Games.ShapeAnalogy;
+using Lbs.MiniGames.Shared.UI;
 
 namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
 {
@@ -39,11 +40,13 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 foreach (string reference in references) if (serialized.FindProperty(reference).objectReferenceValue == null) failures++;
                 game.CaptureSuccess();
                 failures += CheckCelebration();
+                failures += CheckResultPresentationOrder();
                 Canvas canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
                 foreach (ParticleSystem particles in canvas.GetComponentsInChildren<ParticleSystem>()) { particles.Simulate(.1f, true, true, true); particles.Simulate(.6f, true, false, true); if (particles.particleCount == 0) failures++; }
                 foreach (ShapeAnalogyUIParticleRenderer bridge in canvas.GetComponentsInChildren<ShapeAnalogyUIParticleRenderer>()) { bridge.Refresh(); if (bridge.transform.parent.parent.name == "Stars" && (bridge.LastRenderedParticleCount == 0 || bridge.ActiveImageCount == 0)) failures++; }
                 failures += CheckDistinctVisibleOutput(canvas);
                 game.CaptureFinal();
+                failures += CheckResultPresentationOrder();
                 GameObject root = GameObject.Find("ResultCelebration");
                 Image dim = GameObject.Find("ResultBackdropDim")?.GetComponent<Image>();
                 if (!root || root.transform.Find("ResultBackdropGlow") != null || !root.transform.Find("Stars").gameObject.activeInHierarchy || !root.transform.Find("ConfettiStreamers").gameObject.activeInHierarchy || dim == null || dim.raycastTarget || dim.rectTransform.anchorMin != Vector2.zero || dim.rectTransform.anchorMax != Vector2.one || dim.rectTransform.offsetMin != Vector2.zero || dim.rectTransform.offsetMax != Vector2.zero || dim.color.a < .1f || dim.color.a > .16f) failures++;
@@ -76,24 +79,26 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 string[] references = { "exitIcon", "hongNeutral", "hong1", "hong2", "hong3", "instruction", "tryAgain", "celebration4Star", "celebration5Star", "circleConfetti", "rectangularConfetti", "serpentina" };
                 foreach (string reference in references) if (serialized.FindProperty(reference).objectReferenceValue == null) failures++;
                 game.CaptureInitial();
-                failures += CheckVisible("Exit", new Vector2(110, 150));
-                failures += CheckVisible("Hong", new Vector2(110, 930));
-                failures += CheckVisible("GivenStar", new Vector2(850, 305));
-                failures += CheckVisible("GivenHeart", new Vector2(1070, 305));
-                failures += CheckVisible("PatternStar", new Vector2(850, 550));
-                failures += CheckVisible("MissingSlot", new Vector2(1070, 550));
-                failures += CheckVisible("HeartAnswer", new Vector2(760, 835));
-                failures += CheckVisible("StarAnswer", new Vector2(960, 835));
-                failures += CheckVisible("CorrectAnswer", new Vector2(1160, 835));
+                failures += CheckVisible("Exit", LevelChromeLayout.ExitCenter);
+                failures += CheckVisible("Hong", LevelChromeLayout.HongCenter);
+                failures += CheckVisible("GivenStar", new Vector2(910, 235));
+                failures += CheckVisible("GivenHeart", new Vector2(1150, 235));
+                failures += CheckVisible("PatternStar", new Vector2(910, 475));
+                failures += CheckVisible("MissingSlot", new Vector2(1150, 475));
+                failures += CheckVisible("HeartAnswer", new Vector2(750, 855));
+                failures += CheckVisible("StarAnswer", new Vector2(1020, 855));
+                failures += CheckVisible("CorrectAnswer", new Vector2(1290, 855));
                 failures += CheckArtwork("Exit", "ExitArtwork");
                 failures += CheckArtwork("Hong", "HongArtwork");
                 game.CaptureSuccess();
                 failures += CheckCelebration();
-                failures += CheckVisible("ResultBackdropDim", new Vector2(960, 540));
+                failures += CheckStretchedOverlay("ResultBackdropDim");
+                failures += CheckResultPresentationOrder();
                 game.CaptureFinal();
-                failures += CheckVisible("FinalScore", new Vector2(820, 550));
-                failures += CheckVisible("FinalStarA", new Vector2(1010, 550));
-                failures += CheckVisible("FinalStarB", new Vector2(1140, 550));
+                failures += CheckResultPresentationOrder();
+                failures += CheckVisible("FinalScore", new Vector2(840, 553));
+                failures += CheckVisible("FinalStarA", new Vector2(1043, 528));
+                failures += CheckVisible("FinalStarB", new Vector2(1093, 578));
             }
             EditorSceneManager.CloseScene(scene, true);
             Debug.Log($"SHAPE_ANALOGY_MISSION_SUMMARY failures={failures} assets={assets.Length} core=pass wiring=checked cleanup=checked idempotence=checked");
@@ -110,6 +115,36 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
             return Vector2.Distance(center, expectedTopOriginCenter) < 1f
                 && center.x - rect.rect.width / 2 >= 0 && center.x + rect.rect.width / 2 <= 1920
                 && center.y - rect.rect.height / 2 >= 0 && center.y + rect.rect.height / 2 <= 1080 ? 0 : 1;
+        }
+
+        private static int CheckStretchedOverlay(string name)
+        {
+            GameObject gameObject = GameObject.Find(name);
+            if (gameObject == null || !gameObject.activeInHierarchy) return 1;
+            RectTransform rect = gameObject.GetComponent<RectTransform>();
+            if (rect == null || rect.rect.width <= 0 || rect.rect.height <= 0) return 1;
+            if (rect.anchorMin != Vector2.zero || rect.anchorMax != Vector2.one) return 1;
+            if (rect.offsetMin != Vector2.zero || rect.offsetMax != Vector2.zero) return 1;
+            Image image = gameObject.GetComponent<Image>();
+            if (image != null && image.raycastTarget) return 1;
+            return 0;
+        }
+
+        private static int CheckResultPresentationOrder()
+        {
+            Transform board = GameObject.Find("ShapeAnalogyBoard")?.transform;
+            Transform dim = GameObject.Find("ResultBackdropDim")?.transform;
+            Transform celebration = GameObject.Find("ResultCelebration")?.transform;
+            if (board == null || dim == null || celebration == null || dim.parent != board || celebration.parent != board) return 1;
+            Image dimImage = dim.GetComponent<Image>();
+            if (dimImage == null || !Mathf.Approximately(dimImage.color.a, .13f)) return 1;
+            if (dim.GetSiblingIndex() >= celebration.GetSiblingIndex()) return 1;
+            foreach (string boardElement in new[] { "WarmYellowBackground", "GivenStar", "GivenHeart", "PatternStar", "MissingSlot", "Hong", "Exit" })
+            {
+                Transform element = board.Find(boardElement);
+                if (element == null || element.GetSiblingIndex() >= dim.GetSiblingIndex()) return 1;
+            }
+            return 0;
         }
 
         private static int CheckArtwork(string parentName, string childName)
