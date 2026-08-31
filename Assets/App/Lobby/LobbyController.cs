@@ -71,6 +71,13 @@ namespace Lbs.MiniGames.Lobby
         [Header("Wolfie Avatar")]
         [Tooltip("Optional non-interactive Wolfie sprite shown as a round header avatar.")]
         [SerializeField] private Sprite mascotSprite;
+        [Header("Background Decorations")]
+        [Tooltip("Low-opacity, slowly-rotating decorative shapes drawn behind the content. Order: blob, blob outline, spiral, hex, dots, ribbon, cloud, small blobs.")]
+        [SerializeField] private Sprite[] backgroundDecorations;
+        [Tooltip("Opacity multiplier applied to the whole decoration layer. Keep it low so the shapes read as subtle background texture, not content.")]
+        [Range(0.02f, 0.40f)] [SerializeField] private float backgroundDecorOpacity = 0.22f;
+        [Tooltip("Base rotation speed in degrees/second. Shapes alternate around this value; large shapes drift slower, small ones a touch faster.")]
+        [SerializeField] private float backgroundDecorBaseSpeed = 2.5f;
 
         private AppServices services;
 
@@ -82,6 +89,24 @@ namespace Lbs.MiniGames.Lobby
 
         private bool launchInProgress;
         private bool loggedFontFallback;
+
+        // Background decoration layer: each item rotates slowly on its own axis so the
+        // scene feels alive without ever drawing attention away from the cards.
+        private readonly List<BackgroundDecorView> backgroundDecor = new();
+
+        private sealed class BackgroundDecorView
+        {
+            public readonly RectTransform Rect;
+            public readonly float Weight;
+            public readonly float DegreesPerSecond;
+
+            public BackgroundDecorView(RectTransform rect, float weight, float degreesPerSecond)
+            {
+                Rect = rect;
+                Weight = weight;
+                DegreesPerSecond = degreesPerSecond;
+            }
+        }
 
         public void SetCatalog(GameCatalog gameCatalog)
         {
@@ -103,10 +128,32 @@ namespace Lbs.MiniGames.Lobby
             mascotSprite = sprite;
         }
 
+        public void SetBackgroundDecorations(Sprite[] sprites)
+        {
+            backgroundDecorations = sprites;
+        }
+
+        public void SetBackgroundDecorOpacity(float opacity)
+        {
+            backgroundDecorOpacity = opacity;
+        }
+
         public void Configure(AppServices appServices)
         {
             services = appServices;
             BuildInterface();
+        }
+
+        private void Update()
+        {
+            // Slow, gentle rotation on the background shapes (LogicLike-style). Time.deltaTime is
+            // intentional: the decor is purely cosmetic, so it should pause with the game rather
+            // than keep spinning behind a paused screen.
+            for (int index = 0; index < backgroundDecor.Count; index++)
+            {
+                BackgroundDecorView decor = backgroundDecor[index];
+                decor.Rect.Rotate(0f, 0f, decor.DegreesPerSecond * Time.deltaTime);
+            }
         }
 
         private void BuildInterface()
@@ -124,6 +171,12 @@ namespace Lbs.MiniGames.Lobby
             // 1. Full-screen violet background.
             Image background = UiFactory.CreateImage(root, "HubBackground", Purple);
             UiFactory.Stretch(background.rectTransform, 0f);
+
+            // 1b. Subtle rotating decoration layer, drawn right above the flat color but
+            //     BELOW the scroll content. Shapes bleed off the screen edges so they read
+            //     as ambient background texture rather than placed stickers; the cards and
+            //     header render on top and keep the scene focused.
+            CreateBackgroundDecorations(root);
 
             // 2. Scroll viewport stretches to the very top so category content scrolls
             //    UNDER the translucent header (the LogicLike effect). Built first so the
@@ -154,6 +207,110 @@ namespace Lbs.MiniGames.Lobby
 
             // 4. Pill difficulty selector: button in the header band + overlay dropdown.
             CreateDifficultySelector(root, font);
+        }
+
+        private void CreateBackgroundDecorations(RectTransform root)
+        {
+            if (backgroundDecorations == null || backgroundDecorations.Length == 0)
+            {
+                return;
+            }
+
+            backgroundDecor.Clear();
+
+            // One shared parent holds every shape so the layer can be faded as a whole and
+            // is trivially redrawable. It is an early sibling of the canvas, so the scroll
+            // content (created later) renders on top of it. It never intercepts raycasts.
+            GameObject decorRoot = new("BackgroundDecor", typeof(RectTransform));
+            decorRoot.transform.SetParent(root, false);
+            RectTransform decorRect = decorRoot.GetComponent<RectTransform>();
+            UiFactory.Stretch(decorRect, 0f);
+
+            // Layout per shape: anchor box (fractions of the reference 1920x1080) and a
+            // relative prominence weight. Some boxes intentionally stretch past the screen so
+            // the shape bleeds off an edge — that is what makes it feel like part of the
+            // environment, not a decal. All shapes keep raycastTarget off.
+            //
+            // Opacity model: each Image keeps full colour alpha; the whole layer is faded by
+            // ONE CanvasGroup using backgroundDecorOpacity. The per-shape Weight only takes
+            // that master fade and makes a given shape more/less prominent relative to the
+            // rest, so the single serialized field stays the "how subtle" knob.
+            DecorationSpec[] specs =
+            {
+                // blob_filled: large, top-left corner bleeding off left+top.
+                new(new Vector2(-0.22f, 0.60f), new Vector2(0.26f, 1.08f), 1.0f, 1.0f),
+                // blob_outline: outline hugging the upper-right.
+                new(new Vector2(0.66f, 0.72f), new Vector2(1.10f, 1.16f), 0.7f, -1.0f),
+                // spiral: hero shape, mid-left, a bit more presence.
+                new(new Vector2(-0.10f, 0.18f), new Vector2(0.20f, 0.52f), 1.15f, 1.0f),
+                // hex_outline: lower-left, half off-screen.
+                new(new Vector2(-0.16f, -0.18f), new Vector2(0.20f, 0.34f), 0.7f, -1.0f),
+                // dots: scattered texture across the centre-right.
+                new(new Vector2(0.30f, 0.08f), new Vector2(0.82f, 0.62f), 0.55f, 0.8f),
+                // ribbon: bottom band, bleeding off the bottom-right.
+                new(new Vector2(0.52f, -0.34f), new Vector2(1.12f, 0.10f), 0.8f, 1.0f),
+                // cloud: soft puff mid-right.
+                new(new Vector2(0.72f, 0.30f), new Vector2(1.04f, 0.64f), 0.8f, -0.8f),
+                // blobs_small: cluster, upper-centre, very faint.
+                new(new Vector2(0.34f, 0.66f), new Vector2(0.66f, 0.92f), 0.45f, 0.8f),
+            };
+
+            // Build one view per shape, keeping its relative weight so the fade pass below can
+            // align the opacity to the exact sprite that was added (a null sprite is skipped
+            // without shifting later shapes). Bleed shapes off the edges for an ambient feel.
+            float maxWeight = 1f;
+            for (int index = 0; index < specs.Length && index < backgroundDecorations.Length; index++)
+            {
+                Sprite sprite = backgroundDecorations[index];
+                if (sprite == null)
+                {
+                    continue;
+                }
+
+                DecorationSpec spec = specs[index];
+                Image image = UiFactory.CreateImage(decorRect, "Decor_" + sprite.name, Color.white);
+                image.sprite = sprite;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+
+                UiFactory.Anchor(image.rectTransform, spec.MinAnchor, spec.MaxAnchor);
+
+                // Alternate decay so larger shapes rotate slower than smaller ones; the sign
+                // gives a bit of life so not everything spins the same direction.
+                float falloff = 1f / Mathf.Max(1f, Mathf.Abs(spec.MaxAnchor.x - spec.MinAnchor.x));
+                float speed = backgroundDecorBaseSpeed * spec.SpeedSign * (0.6f + falloff);
+                backgroundDecor.Add(new BackgroundDecorView(image.rectTransform, spec.Weight, speed));
+                maxWeight = Mathf.Max(maxWeight, spec.Weight);
+            }
+
+            // Fade the layer with ONE alpha. Per-shape weight makes the strongest shape land at
+            // exactly backgroundDecorOpacity and lighter shapes sit proportionally below it, so
+            // the single serialized field stays the master "how subtle" knob.
+            float weightScale = 1f / maxWeight;
+            CanvasGroup group = decorRoot.AddComponent<CanvasGroup>();
+            group.interactable = false;
+            group.blocksRaycasts = false;
+            foreach (BackgroundDecorView decor in backgroundDecor)
+            {
+                Image image = decor.Rect.GetComponent<Image>();
+                image.color = new Color(1f, 1f, 1f, backgroundDecorOpacity * decor.Weight * weightScale);
+            }
+        }
+
+        private readonly struct DecorationSpec
+        {
+            public readonly Vector2 MinAnchor;
+            public readonly Vector2 MaxAnchor;
+            public readonly float Weight;
+            public readonly float SpeedSign;
+
+            public DecorationSpec(Vector2 minAnchor, Vector2 maxAnchor, float weight, float speedSign)
+            {
+                MinAnchor = minAnchor;
+                MaxAnchor = maxAnchor;
+                Weight = weight;
+                SpeedSign = speedSign;
+            }
         }
 
         private void CreateHeaderContent(RectTransform headerRoot, Font font)

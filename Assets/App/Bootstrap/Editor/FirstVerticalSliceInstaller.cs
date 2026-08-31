@@ -23,6 +23,18 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string VolteRegularPath = "Assets/App/Theme/Fonts/Volte-Regular.otf";
         private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieAvatarPath = "Assets/App/Theme/Brand/WolfieAvatar.png";
+        private const string BackgroundFolder = "Assets/App/Theme/Background";
+        private static readonly string[] BackgroundDecorationPaths =
+        {
+            BackgroundFolder + "/bg_blob_filled.png",
+            BackgroundFolder + "/bg_blob_outline.png",
+            BackgroundFolder + "/bg_spiral.png",
+            BackgroundFolder + "/bg_hex_outline.png",
+            BackgroundFolder + "/bg_dots.png",
+            BackgroundFolder + "/bg_ribbon.png",
+            BackgroundFolder + "/bg_cloud.png",
+            BackgroundFolder + "/bg_blobs_small.png"
+        };
         private const string ClassificationThumbnailPath = "Assets/App/Games/Classification/ClassificationThumbnail.png";
 
         [MenuItem("Tools/LBS Mini Games/Install First Vertical Slice")]
@@ -146,6 +158,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             controller.SetInterfaceFont(AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath));
             controller.SetBrandLogo(AssetDatabase.LoadAssetAtPath<Sprite>(BrandLogoPath));
             controller.SetMascotSprite(LoadSprite(WolfieAvatarPath));
+            controller.SetBackgroundDecorations(LoadBackgroundDecorations());
             EditorUtility.SetDirty(controller);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, "Assets/App/Lobby/Lobby.unity");
@@ -206,6 +219,20 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             return AssetDatabase.LoadAssetAtPath<Sprite>(path);
         }
 
+        private static Sprite[] LoadBackgroundDecorations()
+        {
+            // Order must match the DecorationSpec layout in LobbyController: blob, blob
+            // outline, spiral, hex, dots, ribbon, cloud, small blobs. LoadSprite forces each
+            // PNG to import as a single Sprite so they resolve once the project is imported.
+            Sprite[] sprites = new Sprite[BackgroundDecorationPaths.Length];
+            for (int index = 0; index < BackgroundDecorationPaths.Length; index++)
+            {
+                sprites[index] = LoadSprite(BackgroundDecorationPaths[index]);
+            }
+
+            return sprites;
+        }
+
         private static T CreateOrLoad<T>(string path) where T : ScriptableObject
         {
             T asset = AssetDatabase.LoadAssetAtPath<T>(path);
@@ -234,7 +261,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/Common",
                 "Assets/App/Games/Classification",
                 "Assets/App/Games/Memory",
-                "Assets/App/Games/Matching"
+                "Assets/App/Games/Matching",
+                "Assets/App/Theme",
+                BackgroundFolder
             };
 
             foreach (string folder in folders)
