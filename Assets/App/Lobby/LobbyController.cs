@@ -12,37 +12,74 @@ namespace Lbs.MiniGames.Lobby
 {
     public sealed class LobbyController : MonoBehaviour, IAppScene
     {
+        private enum DifficultyLevel
+        {
+            PrimariaBaja,
+            PrimariaAlta,
+            Secundaria
+        }
+
+        private sealed class DifficultyOptionView
+        {
+            public readonly RoundedSurface Surface;
+            public readonly Text Label;
+
+            public DifficultyOptionView(RoundedSurface surface, Text label)
+            {
+                Surface = surface;
+                Label = label;
+            }
+        }
+
         private static readonly Color Purple = new(0.580f, 0.282f, 0.957f);
+        private static readonly Color HeaderOverlay = new(0f, 0f, 0f, 0.38f);
         private static readonly Color Orange = new(1f, 0.718f, 0.251f);
         private static readonly Color DarkInk = new(0.141f, 0.102f, 0.208f);
-        private static readonly Color NeutralCanvas = new(0.969f, 0.961f, 0.980f);
+        private static readonly Color Transparent = new(0f, 0f, 0f, 0f);
         private static readonly Color White = Color.white;
         private static readonly Color PalePurple = new(0.927f, 0.875f, 0.992f);
         private static readonly Color SoftPurple = new(0.780f, 0.643f, 0.980f);
 
-        private const int MaximumCardsPerPage = 8;
         private const float OpeningDelaySeconds = 0.16f;
-        private const float WolfieDialogueMascotWidthFraction = 0.30f;
+
+        // Scroll content / section layout (reference 1920x1080).
+        private const float SectionHeaderHeight = 58f;
+        // Width / height. Tuned so cards read as low and wide like LogicLike (~1.4) rather
+        // than tall/square; keeps 3.5 visible and keeps the card from feeling oversized.
+        private const float TileAspectRatio = 1.42f;
+        private const float TileHorizontalGap = 44f;
+        // Vertical space AFTER a card row (before the next section's label). Keeping it
+        // larger than the gap below the label makes each label read as belonging to the
+        // cards underneath it, not the ones above (LogicLike grouping).
+        private const float SectionVerticalGap = 76f;
+        // Vertical gap between a category label and the first card of its own row.
+        private const float LabelToCardsGap = 36f;
+        // Inner margin from the screen edge for section labels and the first/last cards in
+        // each horizontal row. Sized for comfortable tablet/TV breathing room (not cramped).
+        private const float ContentInnerMargin = 40f;
+        private const float MaxTileWidth = 620f;
+        // Top inset so the first section starts clear of the translucent header band
+        // (header is y>=0.86 -> ~151 reference px) with breathing room for the tiles.
+        private const float ScrollTopPadding = 200f;
+        // Card drop shadow: offset (down, in ref px) + low-opacity dark color.
+        private const float ShadowOffsetY = 14f;
+        private static readonly Color CardShadow = new(0.141f, 0.102f, 0.208f, 0.55f);
 
         [SerializeField] private GameCatalog catalog;
         [SerializeField] private Font interfaceFont;
         [SerializeField] private Sprite brandLogo;
-        [Header("Mascot Layout")]
-        [Tooltip("Optional non-interactive Wolfie sprite shown in the Hub mascot area.")]
+        [Header("Wolfie Avatar")]
+        [Tooltip("Optional non-interactive Wolfie sprite shown as a round header avatar.")]
         [SerializeField] private Sprite mascotSprite;
-        [Tooltip("Fraction of the main content width reserved for the mascot area.")]
-        [SerializeField, Range(0.20f, 0.30f)] private float mascotAreaWidthFraction = 0.30f;
-        [Tooltip("Inset from the mascot area's bottom-right edge in reference pixels.")]
-        [SerializeField] private Vector2 mascotBottomRightInset = new(18f, 18f);
-
-        private readonly List<GameDefinition> games = new();
 
         private AppServices services;
-        private RectTransform gameGridRoot;
-        private Text pageIndicator;
-        private Button previousPageButton;
-        private Button nextPageButton;
-        private int pageIndex;
+
+        // Difficulty selector state (design-only, it does not filter the catalog).
+        private DifficultyLevel currentDifficulty = DifficultyLevel.PrimariaBaja;
+        private Text difficultyLabel;
+        private GameObject difficultyDropdown;
+        private readonly List<DifficultyOptionView> difficultyOptions = new();
+
         private bool launchInProgress;
         private bool loggedFontFallback;
 
@@ -84,189 +121,435 @@ namespace Lbs.MiniGames.Lobby
             RectTransform root = canvas.GetComponent<RectTransform>();
             Font font = ResolveInterfaceFont();
 
-            Image background = UiFactory.CreateImage(root, "HubBackground", NeutralCanvas);
+            // 1. Full-screen violet background.
+            Image background = UiFactory.CreateImage(root, "HubBackground", Purple);
             UiFactory.Stretch(background.rectTransform, 0f);
 
-            Image header = UiFactory.CreateImage(root, "HubHeader", Purple);
-            UiFactory.Anchor(header.rectTransform, new Vector2(0f, 0.845f), new Vector2(1f, 1f));
+            // 2. Scroll viewport stretches to the very top so category content scrolls
+            //    UNDER the translucent header (the LogicLike effect). Built first so the
+            //    header renders on top of it.
+            GameObject mainArea = new("MainArea", typeof(RectTransform));
+            mainArea.transform.SetParent(root, false);
+            // The scrollable area runs edge-to-edge horizontally. Individual labels/cards
+            // carry their own inner margin, so there is no outer purple gutter next to the
+            // horizontal card rows (they reach the screen edges as they scroll).
+            RectTransform mainAreaRoot = mainArea.GetComponent<RectTransform>();
+            UiFactory.Anchor(mainAreaRoot, new Vector2(0f, 0f), new Vector2(1f, 1f));
+            CreateScrollableCategoryList(mainAreaRoot, font);
 
+            // 3. Header band: a translucent near-black overlay across the top. Drawn as a
+            //    later sibling, so scrolled content passes beneath it (LogicLike style).
+            //    Its raycastTarget blocks scroll-drag from starting on the fixed header;
+            //    the difficulty pill and its dropdown are later siblings and stay clickable.
+            Image headerBand = UiFactory.CreateImage(root, "HubHeaderBand", HeaderOverlay);
+            UiFactory.Anchor(headerBand.rectTransform, new Vector2(0f, 0.86f), new Vector2(1f, 1f));
+            headerBand.raycastTarget = true;
+
+            GameObject headerObject = new("HubHeader", typeof(RectTransform));
+            headerObject.transform.SetParent(root, false);
+            RectTransform headerRoot = headerObject.GetComponent<RectTransform>();
+            UiFactory.Anchor(headerRoot, new Vector2(0f, 0.86f), new Vector2(1f, 1f));
+            headerRoot.transform.SetAsLastSibling();
+            CreateHeaderContent(headerRoot, font);
+
+            // 4. Pill difficulty selector: button in the header band + overlay dropdown.
+            CreateDifficultySelector(root, font);
+        }
+
+        private void CreateHeaderContent(RectTransform headerRoot, Font font)
+        {
             if (brandLogo != null)
             {
-                Image logo = UiFactory.CreateImage(root, "LbsPlusLogo", White);
+                Image logo = UiFactory.CreateImage(headerRoot, "LbsPlusLogo", White);
                 logo.sprite = brandLogo;
                 logo.preserveAspect = true;
                 logo.raycastTarget = false;
-                UiFactory.Anchor(logo.rectTransform, new Vector2(0.075f, 0.865f), new Vector2(0.130f, 0.975f));
+                UiFactory.Anchor(logo.rectTransform, new Vector2(0.075f, 0.16f), new Vector2(0.125f, 0.84f));
             }
 
-            Text title = UiFactory.CreateText(root, "HubTitle", font, 56, TextAnchor.MiddleLeft, White);
+            Text title = UiFactory.CreateText(headerRoot, "HubTitle", font, 48, TextAnchor.MiddleLeft, White);
             title.text = "LBS+ Games";
             UiFactory.ApplySyntheticHeaderStroke(title, White);
             title.raycastTarget = false;
-            float titleLeft = brandLogo != null ? 0.145f : 0.075f;
-            UiFactory.Anchor(title.rectTransform, new Vector2(titleLeft, 0.865f), new Vector2(0.58f, 0.975f));
+            float titleLeft = brandLogo != null ? 0.140f : 0.075f;
+            UiFactory.Anchor(title.rectTransform, new Vector2(titleLeft, 0.24f), new Vector2(0.40f, 0.76f));
 
-            GameObject mainArea = new("MainArea", typeof(RectTransform));
-            mainArea.transform.SetParent(root, false);
-            RectTransform mainAreaRoot = mainArea.GetComponent<RectTransform>();
-            UiFactory.Anchor(mainAreaRoot, new Vector2(0.075f, 0.175f), new Vector2(0.925f, 0.765f));
-
-            float mascotWidth = Mathf.Clamp(
-                Mathf.Max(mascotAreaWidthFraction, WolfieDialogueMascotWidthFraction),
-                0.20f,
-                0.30f);
-            GameObject gamesArea = new("GamesArea", typeof(RectTransform));
-            gamesArea.transform.SetParent(mainAreaRoot, false);
-            RectTransform gamesAreaRoot = gamesArea.GetComponent<RectTransform>();
-            UiFactory.Anchor(gamesAreaRoot, Vector2.zero, new Vector2(1f - mascotWidth, 1f));
-
-            GameObject gameGrid = new("GameGrid", typeof(RectTransform));
-            gameGrid.transform.SetParent(gamesAreaRoot, false);
-            gameGridRoot = gameGrid.GetComponent<RectTransform>();
-            UiFactory.Stretch(gameGridRoot, 0f);
-
-            GameObject mascotArea = new("MascotArea", typeof(RectTransform));
-            mascotArea.transform.SetParent(mainAreaRoot, false);
-            RectTransform mascotAreaRoot = mascotArea.GetComponent<RectTransform>();
-            UiFactory.Anchor(mascotAreaRoot, new Vector2(1f - mascotWidth, 0f), Vector2.one);
-            CreateMascotImage(mascotAreaRoot);
-            CreateWolfieSpeechBubble(mascotAreaRoot, font);
-
-            CreatePagingControls(root, font);
-            CollectGames();
-            ShowPage(0);
+            CreateWolfieAvatar(headerRoot);
         }
 
-        private void CollectGames()
+        private void CreateWolfieAvatar(RectTransform headerRoot)
         {
-            games.Clear();
-            if (catalog == null)
+            if (mascotSprite == null)
             {
                 return;
             }
 
-            foreach (GameCategory category in catalog.Categories)
+            // Round avatar: a white circular plate behind the masked mascot image,
+            // placed to the right of the logo/title (no longer a lateral panel).
+            RoundedSurface ring = UiFactory.CreateRoundedSurface(headerRoot, "WolfieAvatar", White, 999f, false);
+            UiFactory.Anchor(ring.rectTransform, new Vector2(0.415f, 0.16f), new Vector2(0.478f, 0.84f));
+            Mask mask = ring.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = true;
+
+            Image mascot = UiFactory.CreateImage(ring.rectTransform, "Mascot", Color.white);
+            mascot.sprite = mascotSprite;
+            mascot.preserveAspect = true;
+            mascot.raycastTarget = false;
+            UiFactory.Stretch(mascot.rectTransform, 4f);
+        }
+
+        private void CreateDifficultySelector(RectTransform root, Font font)
+        {
+            // Pill button in the header band.
+            RoundedSurface pill = UiFactory.CreateRoundedSurface(root, "DifficultyPill", White, 999f, true);
+            UiFactory.Anchor(pill.rectTransform, new Vector2(0.70f, 0.885f), new Vector2(0.95f, 0.940f));
+            Button pillButton = pill.gameObject.AddComponent<Button>();
+            pillButton.targetGraphic = pill;
+
+            Text pillLabel = UiFactory.CreateText(pill.rectTransform, "Label", font, 28, TextAnchor.MiddleCenter, DarkInk);
+            pillLabel.text = "Dificultad: " + DifficultyLabel(currentDifficulty);
+            pillLabel.raycastTarget = false;
+            UiFactory.Stretch(pillLabel.rectTransform, 8f);
+            difficultyLabel = pillLabel;
+            pillButton.onClick.AddListener(ToggleDifficultyDropdown);
+
+            // Overlay dropdown panel (drops below the pill, never filters the catalog).
+            GameObject dropdownObject = new("DifficultyDropdown", typeof(RectTransform));
+            dropdownObject.transform.SetParent(root, false);
+            dropdownObject.transform.SetAsLastSibling();
+            RectTransform dropdown = dropdownObject.GetComponent<RectTransform>();
+            UiFactory.Anchor(dropdown, new Vector2(0.66f, 0.58f), new Vector2(0.95f, 0.84f));
+
+            RoundedSurface panel = UiFactory.CreateRoundedSurface(dropdown, "PanelSurface", White, 24f, true);
+            UiFactory.Stretch(panel.rectTransform, 3f);
+            RectTransform panelRoot = panel.rectTransform;
+
+            DifficultyLevel[] levels =
+            {
+                DifficultyLevel.PrimariaBaja,
+                DifficultyLevel.PrimariaAlta,
+                DifficultyLevel.Secundaria
+            };
+
+            for (int index = 0; index < levels.Length; index++)
+            {
+                float minY = index == 0 ? 0.66f : index == 1 ? 0.335f : 0.01f;
+                float maxY = index == 0 ? 0.99f : index == 1 ? 0.655f : 0.325f;
+                RoundedSurface option = UiFactory.CreateRoundedSurface(panelRoot, "Option", White, 16f, true);
+                UiFactory.Anchor(option.rectTransform, new Vector2(0.03f, minY), new Vector2(0.97f, maxY));
+
+                Text optionLabel = UiFactory.CreateText(option.rectTransform, "Label", font, 26, TextAnchor.MiddleCenter, DarkInk);
+                optionLabel.text = DifficultyLabel(levels[index]);
+                optionLabel.raycastTarget = false;
+                UiFactory.Stretch(optionLabel.rectTransform, 6f);
+
+                Button optionButton = option.gameObject.AddComponent<Button>();
+                optionButton.targetGraphic = option;
+                int capturedIndex = index;
+                optionButton.onClick.AddListener(() => SelectDifficulty(capturedIndex));
+
+                difficultyOptions.Add(new DifficultyOptionView(option, optionLabel));
+            }
+
+            dropdownObject.SetActive(false);
+            difficultyDropdown = dropdownObject;
+            RefreshDifficultyPresentation();
+        }
+
+        private static string DifficultyLabel(DifficultyLevel level)
+        {
+            switch (level)
+            {
+                case DifficultyLevel.PrimariaAlta:
+                    return "Primaria Alta";
+                case DifficultyLevel.Secundaria:
+                    return "Secundaria";
+                default:
+                    return "Primaria Baja";
+            }
+        }
+
+        private void ToggleDifficultyDropdown()
+        {
+            if (difficultyDropdown != null && difficultyDropdown.activeSelf)
+            {
+                difficultyDropdown.SetActive(false);
+            }
+            else if (difficultyDropdown != null)
+            {
+                difficultyDropdown.SetActive(true);
+            }
+        }
+
+        private void SelectDifficulty(int index)
+        {
+            currentDifficulty = (DifficultyLevel)index;
+            RefreshDifficultyPresentation();
+            if (difficultyDropdown != null)
+            {
+                difficultyDropdown.SetActive(false);
+            }
+        }
+
+        private void RefreshDifficultyPresentation()
+        {
+            if (difficultyLabel != null)
+            {
+                difficultyLabel.text = "Dificultad: " + DifficultyLabel(currentDifficulty);
+            }
+
+            for (int index = 0; index < difficultyOptions.Count; index++)
+            {
+                bool selected = index == (int)currentDifficulty;
+                difficultyOptions[index].Surface.color = selected ? PalePurple : White;
+                difficultyOptions[index].Label.color = selected ? Purple : DarkInk;
+            }
+        }
+
+        private void CreateScrollableCategoryList(RectTransform mainArea, Font font)
+        {
+            // Force a layout pass first so content/section rect widths are valid when we
+            // read them below. Reading a rect before the canvas lays out yields 0/stale
+            // widths, which pushes the section headers (and tile rows) off-screen left.
+            Canvas.ForceUpdateCanvases();
+
+            ScrollRect scrollRect = mainArea.gameObject.AddComponent<ScrollRect>();
+            mainArea.gameObject.AddComponent<RectMask2D>();
+
+            Image backdrop = mainArea.gameObject.AddComponent<Image>();
+            backdrop.color = Transparent;
+            backdrop.raycastTarget = true;
+
+            // Content stretches across the full viewport width (anchors 0->1) so its
+            // width always matches the scroll area without reading rect in a build frame.
+            GameObject contentObject = new("Content", typeof(RectTransform));
+            contentObject.transform.SetParent(mainArea, false);
+            RectTransform content = contentObject.GetComponent<RectTransform>();
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(1f, 1f);
+            content.pivot = new Vector2(0f, 1f);
+            content.anchoredPosition = Vector2.zero;
+
+            scrollRect.viewport = mainArea;
+            scrollRect.content = content;
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+
+            // Viewport width is valid after the forced layout above; thread it into the
+            // section builder instead of reading section.rect.width mid-construction.
+            float viewportWidth = mainArea.rect.width;
+
+            float yCursor = ScrollTopPadding;
+            foreach (GameCategory category in catalog != null ? catalog.Categories : System.Array.Empty<GameCategory>())
             {
                 if (category == null)
                 {
                     continue;
                 }
 
+                List<GameDefinition> sectionGames = new();
                 foreach (GameDefinition game in catalog.GetGames(category))
                 {
                     if (game != null)
                     {
-                        games.Add(game);
+                        sectionGames.Add(game);
                     }
                 }
+
+                yCursor = CreateCategorySection(content, category, sectionGames, viewportWidth, yCursor, font);
             }
+
+            content.sizeDelta = new Vector2(0f, yCursor);
         }
 
-        private void ShowPage(int requestedPage)
+        private float CreateCategorySection(
+            RectTransform content,
+            GameCategory category,
+            List<GameDefinition> games,
+            float viewportWidth,
+            float yCursor,
+            Font font)
         {
-            int pageCount = Mathf.Max(1, Mathf.CeilToInt(games.Count / (float)MaximumCardsPerPage));
-            pageIndex = Mathf.Clamp(requestedPage, 0, pageCount - 1);
-            ClearGallery();
+            int count = games.Count;
 
-            if (games.Count == 0)
+            // Size cards so ~3.5 columns fit across the row: 3 fully visible plus a clear
+            // half-card peek of the 4th at the right edge (classic carousel affordance).
+            // tileHeight derives from ratio, so the aspect ratio is preserved automatically.
+            const float visibleColumns = 3.5f;
+            float rowWidth = viewportWidth;
+            float contentLeft = ContentInnerMargin;
+            // Solve: contentLeft + visibleColumns*tileWidth + (visibleColumns-1)*gap == rowWidth.
+            float tileWidth = (rowWidth - contentLeft - ((visibleColumns - 1f) * TileHorizontalGap)) / visibleColumns;
+            tileWidth = Mathf.Min(tileWidth, MaxTileWidth);
+            float tileHeight = tileWidth / TileAspectRatio;
+
+            float sectionHeight = SectionHeaderHeight + tileHeight + SectionVerticalGap;
+
+            GameObject sectionObject = new(category.DisplayName + "Section", typeof(RectTransform));
+            sectionObject.transform.SetParent(content, false);
+            RectTransform section = sectionObject.GetComponent<RectTransform>();
+            section.anchorMin = new Vector2(0f, 1f);
+            section.anchorMax = new Vector2(1f, 1f);
+            section.pivot = new Vector2(0f, 1f);
+            section.anchoredPosition = new Vector2(0f, -yCursor);
+            section.sizeDelta = new Vector2(0f, sectionHeight);
+
+            // Category label sits in its own full-width header band ABOVE the card row
+            // (LogicLike style), so long names like "Matemáticas" always have room and
+            // never collide with the cards. It is left-aligned with a small inner margin.
+            Text header = UiFactory.CreateText(section, "SectionTitle", font, 50, TextAnchor.MiddleLeft, White);
+            header.text = category.DisplayName;
+            UiFactory.ApplySyntheticHeaderStroke(header, White);
+            header.raycastTarget = false;
+            UiFactory.Anchor(header.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
+            header.rectTransform.pivot = new Vector2(0f, 1f);
+            header.rectTransform.anchoredPosition = new Vector2(ContentInnerMargin, 0f);
+            header.rectTransform.sizeDelta = new Vector2(-(ContentInnerMargin * 2f), SectionHeaderHeight);
+
+            if (count == 0)
             {
-                CreateEmptyGallery();
+                CreateSectionComingSoon(section, rowWidth, tileHeight, font);
             }
             else
             {
-                Canvas.ForceUpdateCanvases();
-                CreatePageCards();
-            }
-
-            bool hasMultiplePages = pageCount > 1;
-            pageIndicator.gameObject.SetActive(hasMultiplePages);
-            previousPageButton.gameObject.SetActive(hasMultiplePages);
-            nextPageButton.gameObject.SetActive(hasMultiplePages);
-            if (hasMultiplePages)
-            {
-                pageIndicator.text = $"{pageIndex + 1} / {pageCount}";
-                previousPageButton.interactable = pageIndex > 0;
-                nextPageButton.interactable = pageIndex < pageCount - 1;
-            }
-        }
-
-        private void CreatePageCards()
-        {
-            int firstGameIndex = pageIndex * MaximumCardsPerPage;
-            int cardCount = Mathf.Min(MaximumCardsPerPage, games.Count - firstGameIndex);
-            int rows = cardCount <= 4 ? 1 : 2;
-            int columns = rows == 1 ? cardCount : Mathf.Min(4, Mathf.CeilToInt(cardCount / 2f));
-
-            float horizontalPadding = 32f;
-            float verticalPadding = 20f;
-            float horizontalGap = 30f;
-            float verticalGap = 28f;
-            float availableWidth = gameGridRoot.rect.width - (horizontalPadding * 2f) - (horizontalGap * (columns - 1));
-            float availableHeight = gameGridRoot.rect.height - (verticalPadding * 2f) - (verticalGap * (rows - 1));
-            const float cardAspectRatio = 1.4f;
-            float maximumCardWidth = (availableHeight / rows) * cardAspectRatio;
-            float cardWidth = Mathf.Min(availableWidth / columns, maximumCardWidth);
-            float cardHeight = cardWidth / cardAspectRatio;
-
-            int cardOffset = 0;
-            for (int row = 0; row < rows; row++)
-            {
-                int cardsInRow = Mathf.Min(columns, cardCount - cardOffset);
-                float rowWidth = cardsInRow * cardWidth + (cardsInRow - 1) * horizontalGap;
-                float rowStart = -rowWidth * 0.5f + cardWidth * 0.5f;
-                float rowPosition = rows == 1
-                    ? 0f
-                    : (row == 0 ? (cardHeight + verticalGap) * 0.5f : -(cardHeight + verticalGap) * 0.5f);
-
-                for (int column = 0; column < cardsInRow; column++)
+                // Horizontal scroll row. The content carries the left inner margin so the
+                // row viewport itself stays edge-to-edge (no purple gap while scrolling).
+                // A matching right margin keeps the last card off the screen edge at the end
+                // of the scroll, so the list breathes on both sides.
+                float contentRight = ContentInnerMargin;
+                float rowContentWidth = contentLeft + (count * tileWidth) + ((count - 1) * TileHorizontalGap) + contentRight;
+                RectTransform row = CreateHorizontalCardRow(section, tileWidth, tileHeight, rowContentWidth);
+                for (int index = 0; index < count; index++)
                 {
-                    GameDefinition game = games[firstGameIndex + cardOffset++];
-                    CreateGameCard(game, new Vector2(rowStart + column * (cardWidth + horizontalGap), rowPosition), new Vector2(cardWidth, cardHeight));
+                    float x = contentLeft + (index * (tileWidth + TileHorizontalGap));
+                    CreateGameCard(games[index], row, new Vector2(x, 0f), new Vector2(tileWidth, tileHeight));
                 }
             }
+
+            return yCursor + sectionHeight;
         }
 
-        private void CreateGameCard(GameDefinition game, Vector2 position, Vector2 size)
+        private static RectTransform CreateHorizontalCardRow(
+            RectTransform section,
+            float tileWidth,
+            float tileHeight,
+            float contentWidth)
         {
-            RoundedSurface outline = UiFactory.CreateRoundedSurface(gameGridRoot, "GameCard", Purple, 40f);
+            RectTransform rowViewport = new GameObject("CardRowViewport", typeof(RectTransform)).GetComponent<RectTransform>();
+            rowViewport.SetParent(section, false);
+
+            // Occupy exactly the card band of the section: below the label (top inset =
+            // SectionHeaderHeight) and above the vertical gap (bottom inset = SectionVerticalGap),
+            // with horizontal margins. Using offsetMin/offsetMax avoids negative-height sign bugs.
+            rowViewport.anchorMin = new Vector2(0f, 0f);
+            rowViewport.anchorMax = new Vector2(1f, 1f);
+            // Top inset = below the section label. The viewport is tall enough to include
+            // the card height PLUS the shadow offset, so the RectMask2D does not clip the
+            // drop shadow's bottom edge. Runs edge-to-edge horizontally (no side margin).
+            rowViewport.offsetMin = new Vector2(0f, SectionVerticalGap - LabelToCardsGap);
+            rowViewport.offsetMax = new Vector2(0f, -(SectionHeaderHeight + LabelToCardsGap - ShadowOffsetY));
+
+            // Transparent backdrop so the row receives drags; clips cards to its bounds.
+            Image viewportImage = rowViewport.gameObject.AddComponent<Image>();
+            viewportImage.color = Transparent;
+            rowViewport.gameObject.AddComponent<RectMask2D>();
+
+            ScrollRect rowScroll = rowViewport.gameObject.AddComponent<ScrollRect>();
+            rowScroll.horizontal = true;
+            rowScroll.vertical = false;
+            rowScroll.movementType = ScrollRect.MovementType.Clamped;
+            rowScroll.scrollSensitivity = 10f;
+            rowScroll.viewport = rowViewport;
+
+            // Gate the row's horizontal scroll behind the gesture's dominant axis so the
+            // page's vertical scroll stays the primary scroll (nested-ScrollRect conflict).
+            ScrollAxisRouter router = rowViewport.gameObject.AddComponent<ScrollAxisRouter>();
+            router.Configure(rowScroll);
+
+            RectTransform rowContent = new GameObject("CardRowContent", typeof(RectTransform)).GetComponent<RectTransform>();
+            rowContent.SetParent(rowViewport, false);
+            rowContent.anchorMin = new Vector2(0f, 1f);
+            rowContent.anchorMax = new Vector2(0f, 1f);
+            rowContent.pivot = new Vector2(0f, 1f);
+            rowContent.anchoredPosition = Vector2.zero;
+            // Taller than the card by the shadow offset so the drop shadow stays inside the
+            // RectMask2D (otherwise the mask clips the shadow's bottom edge).
+            rowContent.sizeDelta = new Vector2(contentWidth, tileHeight + ShadowOffsetY);
+
+            rowScroll.content = rowContent;
+            // Ensure the row starts scrolled to the far left (no card cut off at the edge)
+            // regardless of the order the ScrollRect is wired up in.
+            rowScroll.horizontalNormalizedPosition = 0f;
+            return rowContent;
+        }
+
+        private static void CreateSectionComingSoon(RectTransform section, float width, float height, Font font)
+        {
+            RoundedSurface surface = UiFactory.CreateRoundedSurface(section, "ComingSoon", White, 30f, false);
+            RectTransform rect = surface.rectTransform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(width, height);
+
+            Text label = UiFactory.CreateText(rect, "Label", font, 34, TextAnchor.MiddleCenter, DarkInk);
+            label.text = "Próximamente";
+            label.resizeTextForBestFit = false;
+            label.raycastTarget = false;
+            UiFactory.Stretch(label.rectTransform, 8f);
+        }
+
+        private void CreateGameCard(GameDefinition game, RectTransform parent, Vector2 position, Vector2 size)
+        {
+            // Solid drop shadow behind the card, offset down a few reference pixels.
+            // Created BEFORE the outline so it renders underneath (last sibling wins).
+            RoundedSurface shadow = UiFactory.CreateRoundedSurface(parent, "CardShadow", CardShadow, 44f, false);
+            shadow.rectTransform.anchorMin = new Vector2(0f, 1f);
+            shadow.rectTransform.anchorMax = new Vector2(0f, 1f);
+            shadow.rectTransform.pivot = new Vector2(0f, 1f);
+            shadow.rectTransform.anchoredPosition = position + new Vector2(0f, -ShadowOffsetY);
+            shadow.rectTransform.sizeDelta = size;
+
+            RoundedSurface outline = UiFactory.CreateRoundedSurface(parent, "GameCard", White, 36f);
             RectTransform cardTransform = outline.rectTransform;
-            cardTransform.anchorMin = new Vector2(0.5f, 0.5f);
-            cardTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            cardTransform.pivot = new Vector2(0.5f, 0.5f);
+            cardTransform.anchorMin = new Vector2(0f, 1f);
+            cardTransform.anchorMax = new Vector2(0f, 1f);
+            cardTransform.pivot = new Vector2(0f, 1f);
             cardTransform.anchoredPosition = position;
             cardTransform.sizeDelta = size;
 
-            RoundedSurface cardSurface = UiFactory.CreateRoundedSurface(cardTransform, "CardSurface", White, 34f, false);
-            UiFactory.Stretch(cardSurface.rectTransform, 6f);
-
             CreateCardArtwork(cardTransform, game);
 
-            Text category = UiFactory.CreateText(cardTransform, "Category", ResolveInterfaceFont(), 22, TextAnchor.MiddleLeft, Purple);
-            category.text = game.Category == null ? "Juego" : game.Category.DisplayName;
-            category.raycastTarget = false;
-            UiFactory.Anchor(category.rectTransform, new Vector2(0.06f, 0.155f), new Vector2(0.94f, 0.235f));
-
-            Text title = UiFactory.CreateText(cardTransform, "Title", ResolveInterfaceFont(), 40, TextAnchor.UpperLeft, DarkInk);
+            Text title = UiFactory.CreateText(cardTransform, "Title", ResolveInterfaceFont(), 34, TextAnchor.MiddleCenter, DarkInk);
             title.text = game.VisibleName;
+            // Centered + synthesized weight (single same-color stroke) to match the LogicLike
+            // card label treatment. Best Fit stays off (moves with the scroll, would re-layout
+            // every frame). A hint of extra weight with the existing header-stroke helper.
+            UiFactory.ApplySyntheticHeaderStroke(title, DarkInk);
             title.raycastTarget = false;
-            UiFactory.Anchor(title.rectTransform, new Vector2(0.06f, 0.030f), new Vector2(0.94f, 0.150f));
+            UiFactory.Anchor(title.rectTransform, new Vector2(0.04f, 0.02f), new Vector2(0.96f, 0.24f));
 
-            RoundedSurface openingCue = UiFactory.CreateRoundedSurface(cardTransform, "OpeningCue", Orange, 18f, false);
-            UiFactory.Anchor(openingCue.rectTransform, new Vector2(0.68f, 0.765f), new Vector2(0.93f, 0.900f));
-            Text openingLabel = UiFactory.CreateText(openingCue.rectTransform, "Label", ResolveInterfaceFont(), 20, TextAnchor.MiddleCenter, DarkInk);
+            RoundedSurface openingCue = UiFactory.CreateRoundedSurface(cardTransform, "OpeningCue", Orange, 20f, false);
+            UiFactory.Anchor(openingCue.rectTransform, new Vector2(0.40f, 0.42f), new Vector2(0.60f, 0.58f));
+            Text openingLabel = UiFactory.CreateText(openingCue.rectTransform, "Label", ResolveInterfaceFont(), 22, TextAnchor.MiddleCenter, DarkInk);
             openingLabel.text = "Abriendo...";
+            openingLabel.resizeTextForBestFit = false;
             openingLabel.raycastTarget = false;
-            UiFactory.Stretch(openingLabel.rectTransform, 6f);
+            UiFactory.Stretch(openingLabel.rectTransform, 4f);
 
             GameCardFeedback feedback = outline.gameObject.AddComponent<GameCardFeedback>();
-            feedback.Configure(outline, openingCue.gameObject, Purple, Orange);
+            feedback.Configure(outline, openingCue.gameObject, White, PalePurple);
             feedback.SelectionRequested += card => RequestLaunch(game, card);
         }
 
         private void CreateCardArtwork(RectTransform cardTransform, GameDefinition game)
         {
-            RoundedSurface artBackground = UiFactory.CreateRoundedSurface(cardTransform, "Artwork", PalePurple, 26f, false);
-            UiFactory.Anchor(artBackground.rectTransform, new Vector2(0.03f, 0.23975f), new Vector2(0.97f, 0.98f));
+            RoundedSurface artBackground = UiFactory.CreateRoundedSurface(cardTransform, "Artwork", PalePurple, 30f, false);
+            // Edge-to-edge art (no inner padding) like LogicLike — the artwork fills the card
+            // up to the bottom title band. Floor at 0.26 clears the title below.
+            UiFactory.Anchor(artBackground.rectTransform, new Vector2(0f, 0.26f), new Vector2(1f, 1f));
             Mask artworkMask = artBackground.gameObject.AddComponent<Mask>();
             artworkMask.showMaskGraphic = false;
 
@@ -282,6 +565,7 @@ namespace Lbs.MiniGames.Lobby
                 return;
             }
 
+            // Procedural fallback art (orange planet + purple node + soft node), kept as-is.
             RoundedSurface orangePlanet = UiFactory.CreateRoundedSurface(artBackground.rectTransform, "OrangePlanet", Orange, 999f, false);
             UiFactory.Anchor(orangePlanet.rectTransform, new Vector2(0.12f, 0.20f), new Vector2(0.37f, 0.70f));
 
@@ -290,31 +574,6 @@ namespace Lbs.MiniGames.Lobby
 
             RoundedSurface softNode = UiFactory.CreateRoundedSurface(artBackground.rectTransform, "SoftNode", SoftPurple, 999f, false);
             UiFactory.Anchor(softNode.rectTransform, new Vector2(0.66f, 0.17f), new Vector2(0.86f, 0.46f));
-        }
-
-        private void CreatePagingControls(RectTransform root, Font font)
-        {
-            previousPageButton = UiFactory.CreateRoundedButton(root, "PreviousPage", font, "Anterior", Purple, White, 22f);
-            UiFactory.Anchor(previousPageButton.GetComponent<RectTransform>(), new Vector2(0.075f, 0.065f), new Vector2(0.205f, 0.130f));
-            previousPageButton.onClick.AddListener(() => ShowPage(pageIndex - 1));
-
-            nextPageButton = UiFactory.CreateRoundedButton(root, "NextPage", font, "Siguiente", Orange, DarkInk, 22f);
-            UiFactory.Anchor(nextPageButton.GetComponent<RectTransform>(), new Vector2(0.795f, 0.065f), new Vector2(0.925f, 0.130f));
-            nextPageButton.onClick.AddListener(() => ShowPage(pageIndex + 1));
-
-            pageIndicator = UiFactory.CreateText(root, "PageIndicator", font, 28, TextAnchor.MiddleCenter, DarkInk);
-            pageIndicator.raycastTarget = false;
-            UiFactory.Anchor(pageIndicator.rectTransform, new Vector2(0.43f, 0.065f), new Vector2(0.57f, 0.130f));
-        }
-
-        private void CreateEmptyGallery()
-        {
-            RoundedSurface emptySurface = UiFactory.CreateRoundedSurface(gameGridRoot, "EmptyGallery", White, 32f, false);
-            UiFactory.Stretch(emptySurface.rectTransform, 32f);
-            Text message = UiFactory.CreateText(emptySurface.rectTransform, "Message", ResolveInterfaceFont(), 34, TextAnchor.MiddleCenter, DarkInk);
-            message.text = "Aún no hay juegos disponibles.";
-            message.raycastTarget = false;
-            UiFactory.Stretch(message.rectTransform, 32f);
         }
 
         private void RequestLaunch(GameDefinition game, GameCardFeedback card)
@@ -346,55 +605,6 @@ namespace Lbs.MiniGames.Lobby
                     card.ResetOpening();
                 }
             }
-        }
-
-        private void ClearGallery()
-        {
-            for (int index = gameGridRoot.childCount - 1; index >= 0; index--)
-            {
-                Destroy(gameGridRoot.GetChild(index).gameObject);
-            }
-        }
-
-        private void CreateMascotImage(RectTransform mascotAreaRoot)
-        {
-            if (mascotSprite == null)
-            {
-                return;
-            }
-
-            Image mascot = UiFactory.CreateImage(mascotAreaRoot, "WolfieImage", White);
-            mascot.sprite = mascotSprite;
-            mascot.preserveAspect = true;
-            mascot.raycastTarget = false;
-            UiFactory.Stretch(mascot.rectTransform, 0f);
-            mascot.rectTransform.offsetMax = -Vector2.Max(Vector2.zero, mascotBottomRightInset);
-        }
-
-        private static void CreateWolfieSpeechBubble(RectTransform mascotAreaRoot, Font font)
-        {
-            RoundedSurface bubble = UiFactory.CreateRoundedSurface(
-                mascotAreaRoot,
-                "WolfieSpeechBubble",
-                White,
-                28f,
-                false);
-            UiFactory.Anchor(bubble.rectTransform, new Vector2(0f, 0.35f), new Vector2(0.31f, 0.96f));
-
-            RoundedSurface tail = UiFactory.CreateRoundedSurface(
-                mascotAreaRoot,
-                "WolfieSpeechTail",
-                White,
-                999f,
-                false);
-            UiFactory.Anchor(tail.rectTransform, new Vector2(0.22f, 0.29f), new Vector2(0.31f, 0.40f));
-            tail.rectTransform.localEulerAngles = new Vector3(0f, 0f, -45f);
-
-            Text message = UiFactory.CreateText(bubble.rectTransform, "Message", font, 32, TextAnchor.MiddleCenter, DarkInk);
-            message.text = "¡Hola! Elige un juego y aprendamos juntos.";
-            message.raycastTarget = false;
-            message.resizeTextForBestFit = false;
-            UiFactory.Stretch(message.rectTransform, 28f);
         }
 
         private Font ResolveInterfaceFont()

@@ -13,7 +13,6 @@ namespace Lbs.MiniGames.Shared
     {
         private readonly HashSet<int> activePointers = new();
 
-        private RectTransform cardTransform;
         private RoundedSurface outline;
         private GameObject openingCue;
         private Color defaultOutline;
@@ -28,7 +27,6 @@ namespace Lbs.MiniGames.Shared
             Color normalOutline,
             Color activeOutline)
         {
-            cardTransform = (RectTransform)transform;
             outline = cardOutline;
             openingCue = cardOpeningCue;
             defaultOutline = normalOutline;
@@ -46,7 +44,6 @@ namespace Lbs.MiniGames.Shared
 
             isOpening = true;
             openingCue.SetActive(true);
-            cardTransform.localScale = Vector3.one * 0.98f;
         }
 
         public void ResetOpening()
@@ -54,7 +51,6 @@ namespace Lbs.MiniGames.Shared
             isOpening = false;
             openingCue.SetActive(false);
             activePointers.Clear();
-            cardTransform.localScale = Vector3.one;
             outline.color = defaultOutline;
         }
 
@@ -97,7 +93,8 @@ namespace Lbs.MiniGames.Shared
             }
 
             bool isPressed = activePointers.Count > 0;
-            cardTransform.localScale = isPressed ? Vector3.one * 0.96f : Vector3.one;
+            // No scale-down on press: cards keep their size when tapped (LogicLike-style).
+            // Only the outline color shifts as the press feedback.
             outline.color = isPressed ? pressedOutline : defaultOutline;
         }
     }

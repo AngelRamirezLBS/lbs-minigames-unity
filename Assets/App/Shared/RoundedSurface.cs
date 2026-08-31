@@ -8,7 +8,13 @@ namespace Lbs.MiniGames.Shared
     /// </summary>
     public sealed class RoundedSurface : MaskableGraphic
     {
-        private const int CornerSegments = 12;
+        // Cap the total tessellation (a near-full circle needs a lot; a small card corner
+        // does not). Larger radii get more segments, so the avatar reads as a smooth curve
+        // while card corners stay cheap — this keeps the Hub UGUI vertex count low enough
+        // to scroll at full frame rate on Android tablets/TVs.
+        private const int MaxCornerSegments = 32;
+        private const int MinCornerSegments = 8;
+        private const float SegmentsPerPixel = 0.35f;
 
         [SerializeField, Min(0f)] private float cornerRadius = 24f;
 
@@ -34,6 +40,10 @@ namespace Lbs.MiniGames.Shared
                 return;
             }
 
+            // Adaptive tessellation: the bigger the radius, the more segments (smooth);
+            // small card corners use few segments (cheap). Clamped so it stays sane.
+            int cornerSegments = Mathf.Clamp(Mathf.RoundToInt(radius * SegmentsPerPixel), MinCornerSegments, MaxCornerSegments);
+
             UIVertex vertex = UIVertex.simpleVert;
             vertex.color = color;
             vertex.position = rect.center;
@@ -52,9 +62,9 @@ namespace Lbs.MiniGames.Shared
             for (int corner = 0; corner < centers.Length; corner++)
             {
                 int firstSegment = corner == 0 ? 0 : 1;
-                for (int segment = firstSegment; segment <= CornerSegments; segment++)
+                for (int segment = firstSegment; segment <= cornerSegments; segment++)
                 {
-                    float angle = (startAngles[corner] + (90f * segment / CornerSegments)) * Mathf.Deg2Rad;
+                    float angle = (startAngles[corner] + (90f * segment / cornerSegments)) * Mathf.Deg2Rad;
                     vertex.position = centers[corner] + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
                     vertexHelper.AddVert(vertex);
                     perimeterCount++;
