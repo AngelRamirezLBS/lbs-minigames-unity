@@ -8,7 +8,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
     {
         public const float Duration = 2.4f;
         public const float PixelsPerUnit = 400f;
-        public const int TotalMaxParticles = 40;
+        public const int TotalMaxParticles = 28; // updated: 14 stars (7+7) + 8 confetti (4+4) + 6 serpentinas (2+2+2) = 28 total, avoids burst+rate > max popping
         private static readonly Color[] StarColors =
         {
             new(0.1f, 0.85f, 1f), new(1f, 0.24f, 0.68f), new(1f, 0.55f, 0.12f), new(0.58f, 0.28f, 0.96f)
@@ -62,8 +62,8 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 UiFactory.Stretch(rect, 0);
                 ParticleSystem particleSystem = particleObject.GetComponent<ParticleSystem>();
                 bool isSerpentina = names[i].StartsWith("Serpentina");
-                int effectiveMax = isSerpentina ? 6 : maxParticlesPerSystem;
-                float effectiveRate = isSerpentina ? 1.4f : ratePerSystem;
+                int effectiveMax = isSerpentina ? 2 : maxParticlesPerSystem; // updated: serpentinas max 2 each (2+2+2=6) avoids culling, was 6 each (18) stacked stretched
+                float effectiveRate = isSerpentina ? 0f : ratePerSystem; // updated: serpentinas rate 0 only burst, avoids burst+rate > max popping, was 1.4f continuous
                 Configure(particleSystem, seeds[i], .025f * i, effectiveRate, effectiveMax, isConfetti, isSerpentina, names[i]);
                 ParticleSystemRenderer renderer = particleSystem.GetComponent<ParticleSystemRenderer>();
                 renderer.enabled = false;
@@ -87,15 +87,41 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             main.simulationSpace = ParticleSystemSimulationSpace.Local;
             main.useUnscaledTime = true;
             main.maxParticles = maxParticles;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(2.4f, 2.8f);
             main.startSpeed = 0f;
-            main.startSize = isSerpentina ? new ParticleSystem.MinMaxCurve(.38f, .45f) : isConfetti ? new ParticleSystem.MinMaxCurve(.14f, .20f) : new ParticleSystem.MinMaxCurve(.14f, .22f);
-            main.gravityModifier = isConfetti ? 0.45f : 0f;
+            // updated: per-system size/lifetime/gravity to support star pause+fall and large serpentinas
+            if (systemName == "4Star")
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(2.8f, 3.2f); // updated: longer lifetime to allow 0.2s pause at top + slow fall to bottom before disappearing
+                main.startSize = new ParticleSystem.MinMaxCurve(.12f, .18f); // updated: 4Star small variant, was .14-.22 uniform
+                main.gravityModifier = 0.30f; // updated: stars now fall with gravity 0.30 slow, was 0f static
+            }
+            else if (systemName == "5Star")
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(2.8f, 3.2f); // updated: longer lifetime for pause+fall
+                main.startSize = new ParticleSystem.MinMaxCurve(.20f, .28f); // updated: 5Star large variant, was .14-.22 uniform
+                main.gravityModifier = 0.30f; // updated: was 0f
+            }
+            else if (isSerpentina)
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(2.4f, 2.8f);
+                main.startSize = new ParticleSystem.MinMaxCurve(.38f, .50f); // updated: serpentinas large .38-.50, was .38-.45
+                main.gravityModifier = 0.45f;
+            }
+            else
+            {
+                main.startLifetime = new ParticleSystem.MinMaxCurve(2.4f, 2.8f);
+                main.startSize = new ParticleSystem.MinMaxCurve(.14f, .20f);
+                main.gravityModifier = 0.45f;
+            }
 
             ParticleSystem.EmissionModule emission = particleSystem.emission;
             emission.rateOverTime = ratePerSystem;
-            // Ordenada: Stars 7 burst 2; Circle/Rect 4 burst 2; Serpentina/2/3 6 burst 5 → total 40 ordenado
-            short burstCount = isSerpentina ? (short)5 : (short)2;
+            // updated: serpentinas total 5 large particles via 2+2+1 bursts, was 5 each (15) stacked stretched
+            short burstCount;
+            if (systemName == "Serpentina") burstCount = 2; // updated: was 5 shared for all serpentinas
+            else if (systemName == "Serpentina2") burstCount = 2; // updated: was 5
+            else if (systemName == "Serpentina3") burstCount = 1; // updated: was 5, total 2+2+1=5 large serpentinas
+            else burstCount = 2;
             emission.SetBursts(new[] { new ParticleSystem.Burst(burstTime, burstCount) });
 
             ParticleSystem.ShapeModule shape = particleSystem.shape;
@@ -106,29 +132,44 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             ParticleSystem.VelocityOverLifetimeModule velocity = particleSystem.velocityOverLifetime;
             velocity.enabled = true;
             velocity.space = ParticleSystemSimulationSpace.Local;
-            // Organized flow: deterministic X per system, rise, pause for 0.2s, then fall vertically in a center-bottom fan.
+            // updated: star trajectory rise -> 0.2s static pause at top -> slow fall to bottom
             AnimationCurve outwardLeft = new(new Keyframe(0f, 0f), new Keyframe(0.32f, 1.5f), new Keyframe(0.55f, -6.6f), new Keyframe(1f, -9.0f));
             AnimationCurve outwardRight = new(new Keyframe(0f, 0f), new Keyframe(0.32f, -1.5f), new Keyframe(0.55f, 6.6f), new Keyframe(1f, 9.0f));
+            AnimationCurve starYSlow = new(new Keyframe(0f, 4.5f), new Keyframe(0.35f, 0f), new Keyframe(0.50f, 0f), new Keyframe(1f, -2.8f)); // updated: plateau 0.35-0.50 = 0.2s pause, then slow fall -2.8
+            AnimationCurve starYFast = new(new Keyframe(0f, 5.2f), new Keyframe(0.35f, 0f), new Keyframe(0.50f, 0f), new Keyframe(1f, -3.2f)); // updated: plateau pause, then fall -3.2
             AnimationCurve upwardSlow = new(new Keyframe(0f, 3.0f), new Keyframe(0.35f, 2.6f), new Keyframe(0.60f, 0.9f), new Keyframe(0.75f, 0.0f), new Keyframe(1f, -1.8f));
             AnimationCurve upwardFast = new(new Keyframe(0f, 3.6f), new Keyframe(0.35f, 3.2f), new Keyframe(0.60f, 1.1f), new Keyframe(0.75f, 0.0f), new Keyframe(1f, -2.0f));
             AnimationCurve zero = new(new Keyframe(0f, 0f), new Keyframe(1f, 0f));
-            // X determinística por sistema: evita caos aleatorio MinMaxCurve(left,right)
-            // 4Star/Circle/Serpentina2 → left; 5Star/Rect/Serpentina3 → right; Serpentina central → vertical (0)
+            AnimationCurve serpXMin = new(new Keyframe(0f, 0f), new Keyframe(0.30f, -1.2f), new Keyframe(0.55f, -4.8f), new Keyframe(1f, -7.0f)); // updated: central serpentina dispersion -7
+            AnimationCurve serpXMax = new(new Keyframe(0f, 0f), new Keyframe(0.30f, 1.2f), new Keyframe(0.55f, 4.8f), new Keyframe(1f, 7.0f)); // updated: dispersion +7, avoids vertical stacking (was zero)
             bool isLeft = systemName == "4Star" || systemName == "CircleConfetti" || systemName == "Serpentina2";
             bool isRight = systemName == "5Star" || systemName == "RectangularConfetti" || systemName == "Serpentina3";
             bool isCenter = systemName == "Serpentina";
-            if (isCenter) velocity.x = new ParticleSystem.MinMaxCurve(1f, zero, zero);
+            if (systemName == "4Star" || systemName == "5Star")
+            {
+                // updated: stars keep outward dispersion but Y now has pause plateau
+                if (isLeft) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardLeft, outwardLeft);
+                else if (isRight) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardRight, outwardRight);
+                else velocity.x = new ParticleSystem.MinMaxCurve(1f, zero, zero);
+                velocity.y = new ParticleSystem.MinMaxCurve(1f, starYSlow, starYFast); // updated: pause 0.2s at top
+            }
+            else if (isCenter) velocity.x = new ParticleSystem.MinMaxCurve(1f, serpXMin, serpXMax); // updated: TwoCurves -7 to +7 dispersion, was zero vertical
             else if (isLeft) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardLeft, outwardLeft);
             else if (isRight) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardRight, outwardRight);
             else velocity.x = new ParticleSystem.MinMaxCurve(1f, zero, zero);
-            velocity.y = new ParticleSystem.MinMaxCurve(1f, upwardSlow, upwardFast);
+            if (systemName == "4Star" || systemName == "5Star")
+            {
+                // y already set for stars
+            }
+            else if (isCenter) velocity.y = new ParticleSystem.MinMaxCurve(1f, upwardSlow, upwardFast);
+            else velocity.y = new ParticleSystem.MinMaxCurve(1f, upwardSlow, upwardFast);
             velocity.z = new ParticleSystem.MinMaxCurve(1f, zero, zero);
 
             ParticleSystem.RotationOverLifetimeModule rotation = particleSystem.rotationOverLifetime;
             rotation.enabled = isConfetti;
             rotation.z = isSerpentina
-                ? new ParticleSystem.MinMaxCurve(-155f * Mathf.Deg2Rad, 155f * Mathf.Deg2Rad)
-                : new ParticleSystem.MinMaxCurve(-100f * Mathf.Deg2Rad, 100f * Mathf.Deg2Rad);
+                ? new ParticleSystem.MinMaxCurve(-35f * Mathf.Deg2Rad, 35f * Mathf.Deg2Rad) // updated: slower rotation - was ±155/±100 looked weird
+                : new ParticleSystem.MinMaxCurve(-25f * Mathf.Deg2Rad, 25f * Mathf.Deg2Rad); // updated: slower rotation - was ±155/±100 looked weird
 
             ParticleSystem.ColorOverLifetimeModule fade = particleSystem.colorOverLifetime;
             fade.enabled = true;

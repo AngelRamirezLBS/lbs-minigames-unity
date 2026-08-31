@@ -76,8 +76,8 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 string[] references = { "exitIcon", "hongNeutral", "hong1", "hong2", "hong3", "instruction", "tryAgain", "celebration4Star", "celebration5Star", "circleConfetti", "rectangularConfetti", "serpentina" };
                 foreach (string reference in references) if (serialized.FindProperty(reference).objectReferenceValue == null) failures++;
                 game.CaptureInitial();
-                failures += CheckVisible("Exit", new Vector2(170, 115));
-                failures += CheckVisible("Hong", new Vector2(175, 930));
+                failures += CheckVisible("Exit", new Vector2(110, 150));
+                failures += CheckVisible("Hong", new Vector2(110, 930));
                 failures += CheckVisible("GivenStar", new Vector2(850, 305));
                 failures += CheckVisible("GivenHeart", new Vector2(1070, 305));
                 failures += CheckVisible("PatternStar", new Vector2(850, 550));
@@ -127,7 +127,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 if (child.name.StartsWith("CelebrationStar") || child.name.StartsWith("CurvedStreamer") || child.name.StartsWith("GreenGlow")) return 1;
 
             ParticleSystem[] systems = root.GetComponentsInChildren<ParticleSystem>();
-            if (systems.Length != 7) return 1;
+            if (systems.Length != 7) return 1; // updated: kept 7 systems (2 Stars + 2 confetti + 3 serpentinas with reduced burst) to minimize breaking changes while fixing stacking
             int maxParticles = 0;
             float starRate = 0f;
             float confettiRate = 0f;
@@ -150,7 +150,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 }
                 else
                 {
-                    if (velocity.y.mode != ParticleSystemCurveMode.TwoCurves) return 1;
+                    // updated: central serpentina must have real horizontal dispersion ±7 via TwoCurves, not zero vertical stacking
+                    float cMax = velocity.x.mode == ParticleSystemCurveMode.TwoCurves ? velocity.x.curveMax.Evaluate(1f) : velocity.x.curve.Evaluate(1f);
+                    float cMin = velocity.x.mode == ParticleSystemCurveMode.TwoCurves ? velocity.x.curveMin.Evaluate(1f) : velocity.x.curve.Evaluate(1f);
+                    if (velocity.y.mode != ParticleSystemCurveMode.TwoCurves) return 1; // updated: keep Y TwoCurves
+                    if (velocity.x.mode != ParticleSystemCurveMode.TwoCurves || (Mathf.Abs(cMax) < 6f && Mathf.Abs(cMin) < 6f)) return 1; // updated: require dispersion >=6 to avoid stacked vertical line
                 }
                 if (velocity.z.mode != ParticleSystemCurveMode.TwoCurves && velocity.z.mode != ParticleSystemCurveMode.Curve) return 1;
                 maxParticles += system.main.maxParticles;
@@ -158,15 +162,43 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 if (system.transform.parent.name == "Stars")
                 {
                     starRate += rate;
-                    if (system.main.startSize.constantMin < .08f || system.main.startSize.constantMax > .25f || system.main.gravityModifier.constant != 0f) return 1;
+                    if (system.main.startSize.constantMin < .08f || system.main.startSize.constantMax > .30f) return 1; // updated: allow large star up to .28, was .25
+                    if (system.main.gravityModifier.constant < 0.25f || system.main.gravityModifier.constant > 0.35f) return 1; // updated: stars now fall with gravity 0.30, was 0f static
+                    // updated: differentiated star sizes small vs large
+                    if (system.name == "4Star" && (system.main.startSize.constantMin < .10f || system.main.startSize.constantMax > .20f)) return 1; // updated: 4Star small .12-.18
+                    if (system.name == "5Star" && (system.main.startSize.constantMin < .18f || system.main.startSize.constantMax > .30f)) return 1; // updated: 5Star large .20-.28
+                    if (system.main.startLifetime.constantMin < 2.7f) return 1; // updated: lifetime 2.8-3.2 to allow 0.2s pause + slow fall to bottom
+                    // updated: verify star Y has 0.2s pause plateau at 0.35-0.50 and falling at end
+                    if (velocity.y.mode == ParticleSystemCurveMode.TwoCurves)
+                    {
+                        float yPauseMin = velocity.y.curveMin.Evaluate(0.42f);
+                        float yPauseMax = velocity.y.curveMax.Evaluate(0.42f);
+                        if (Mathf.Abs(yPauseMin) > 0.35f && Mathf.Abs(yPauseMax) > 0.35f) return 1; // updated: require near-zero velocity during 0.2s pause
+                        if (velocity.y.curveMin.Evaluate(1f) > -2.0f || velocity.y.curveMax.Evaluate(1f) > -2.0f) return 1; // updated: must be falling negative at lifetime end
+                    }
                 }
                 else
                 {
                     confettiRate += rate;
-                    if (system.main.gravityModifier.constant < .3f || system.main.gravityModifier.constant > .6f || !system.rotationOverLifetime.enabled || (system.name == "Serpentina" && (system.main.startSize.constantMin < .16f || system.main.startLifetime.constantMin < 1.25f || system.emission.GetBurst(0).count.constant < 2))) return 1;
+                    if (system.main.gravityModifier.constant < .3f || system.main.gravityModifier.constant > .6f || !system.rotationOverLifetime.enabled) return 1;
+                    if (system.name.StartsWith("Serpentina")) // updated: was only exact Serpentina, now all serpentinas
+                    {
+                        if (system.main.startSize.constantMin < .35f || system.main.startSize.constantMax > .52f) return 1; // updated: serpentinas large .38-.50, was .16 lower bound
+                        if (system.main.startLifetime.constantMin < 2.0f) return 1; // updated: lifetime 2.4-2.8, was 1.25
+                        short burst = (short)system.emission.GetBurst(0).count.constant;
+                        if (burst < 1 || burst > 2) return 1; // updated: serpentinas total 5 via 2+2+1, was 5 each (allow 1-2)
+                        if (system.main.maxParticles < 1 || system.main.maxParticles > 2) return 1; // updated: max 2 each to avoid culling, was 6
+                        if (!Mathf.Approximately(system.emission.rateOverTime.constant, 0f)) return 1; // updated: rate 0 only burst, was 1.4 causing popping
+                    }
+                    else
+                    {
+                        if (system.main.startSize.constantMin < .12f || system.main.startSize.constantMax > .22f) return 1; // updated: circle/rect .14-.20, tightened check
+                        if (system.emission.GetBurst(0).count.constant != 2) return 1;
+                        if (system.main.maxParticles != 4) return 1;
+                    }
                 }
             }
-            return seeds.Count == systems.Length && maxParticles == ShapeAnalogyCelebrationParticles.TotalMaxParticles && starRate >= 5f && starRate <= 7f && confettiRate >= 6f && confettiRate <= 9f ? 0 : 1;
+            return seeds.Count == systems.Length && maxParticles == ShapeAnalogyCelebrationParticles.TotalMaxParticles && starRate >= 5f && starRate <= 7f && confettiRate >= 3f && confettiRate <= 5f ? 0 : 1; // updated: TotalMaxParticles 28 (was 40), confettiRate 3-5 (was 6-9) because serpentinas now rate 0 burst-only to avoid stacking
         }
 
         private static int CheckDistinctVisibleOutput(Canvas canvas)
@@ -180,7 +212,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 ParticleSystem.Particle first = particles[0];
                 if (Mathf.Abs(first.position.x) > 2.2f || first.position.y < -1.6f || !particleFields.Add($"{first.randomSeed}")) return 1;
             }
-            return particleFields.Count == 7 ? 0 : 1;
+            return particleFields.Count == 7 ? 0 : 1; // updated: kept 7 distinct seeds, but TotalMaxParticles now 28
         }
     }
 }
