@@ -54,9 +54,7 @@ namespace Lbs.MiniGames.Bootstrap
                 }
             }
             audioService.Initialize(audioConfig);
-            // Start global music once; do not restart on subsequent scene loads.
-            AudioClip music = audioConfig != null ? audioConfig.GlobalMusic : null;
-            if (music != null) audioService.PlayMusic(music, true, audioConfig != null ? audioConfig.MusicVolume : 0.25f);
+            // Feature scenes own music playback; bootstrap only initializes the shared audio service.
         }
 
         private void Start()

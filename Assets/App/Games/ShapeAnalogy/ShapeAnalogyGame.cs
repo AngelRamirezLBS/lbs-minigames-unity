@@ -23,7 +23,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina;
         [SerializeField] private Sprite serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, tryAgain;
-        [SerializeField] private AudioClip bgMusic; // transitional fallback; global music now owned by AppAudioService via AppAudioConfig
+        [SerializeField] private AudioClip bgMusic; // ShapeAnalogy level music routed through the shared audio service
         [SerializeField] private AudioClip successSfx;
         [SerializeField] private AudioClip failSfx;
         [SerializeField] private AudioClip[] compliments;
@@ -62,7 +62,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             services = appServices;
             appAudio = appServices != null ? appServices.Audio : null;
             Build();
-            // Global music: owned by ApplicationBootstrap. Do not restart same clip; fallback handled by bootstrap if config missing.
+            // ShapeAnalogy owns this music while the level is active; the shared service provides playback and volume handling.
             if (appAudio != null && bgMusic != null)
             {
                 appAudio.PlayMusic(bgMusic, true, 0.25f);
@@ -70,7 +70,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             else if (appAudio == null && bgMusic != null)
             {
                 // Transitional fallback when injected service absent (e.g., editor tests without bootstrap)
-                Debug.LogWarning("[ShapeAnalogy] IAppAudioService not injected — music will not play globally. Assign AppAudioConfig to bootstrap.", this);
+                Debug.LogWarning("[ShapeAnalogy] IAppAudioService not injected — level music will not play.", this);
             }
             PlayInstruction();
             playback = StartCoroutine(HongPlayback());
@@ -468,8 +468,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             if(audioSource)audioSource.Stop();
             if(sfxSource) sfxSource.Stop();
             if(voiceSource)voiceSource.Stop();
-            if(appAudio != null) appAudio.StopVoice();
-            // Do NOT stop global music here — it persists across scenes. Only voice/SFX are stopped.
+            if(appAudio != null)
+            {
+                appAudio.StopVoice();
+                appAudio.StopMusic();
+            }
             if(proximityHighlighter) proximityHighlighter.HideImmediate(); else proximity?.gameObject.SetActive(false);
             foreach(var card in draggables) if(card) card.Restore();
             if(board){board.anchoredPosition=Vector2.zero;ClearCelebrationVisuals();foreach(Transform child in board)if(child.name.StartsWith("Final"))RemoveTransient(child.gameObject);}
