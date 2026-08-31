@@ -150,6 +150,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Bootstrap.ApplicationBootstrap
   catalog: {fileID: 11400000, guid: 79f8214eedb464eb6996dcb6a63c5e9b, type: 2}
   lobbySceneName: Lobby
+  audioConfig: {fileID: 11400000, guid: 2f8c72d3ad3a4c1db1715508d6bdde7c, type: 2}
 --- !u!4 &1820686942
 Transform:
   m_ObjectHideFlags: 0

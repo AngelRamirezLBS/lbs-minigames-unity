@@ -102,6 +102,7 @@ namespace Lbs.MiniGames.Games.WildWhiz.Editor
         {
             public readonly List<string> Calls = new();
             public void Launch(GameDefinition game) => Calls.Add("Launch");
+            public void Launch(Lbs.MiniGames.Navigation.GameLaunchRequest request) => Calls.Add("Launch");
             public void Complete(MiniGameResult result) => Calls.Add("Complete");
             public void ShowLobby() => Calls.Add("ShowLobby");
         }

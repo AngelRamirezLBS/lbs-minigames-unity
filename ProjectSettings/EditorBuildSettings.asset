@@ -20,4 +20,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/WildWhiz/WildWhiz.unity
     guid: 73333333333333333333333333333333
+  - enabled: 1
+    path: Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity
+    guid: 63e2d578163821f4db1c6eeb10e07322
   m_configObjects: {}

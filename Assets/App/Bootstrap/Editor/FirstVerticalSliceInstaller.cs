@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using Lbs.MiniGames.Bootstrap;
 using Lbs.MiniGames.Catalog;
 using Lbs.MiniGames.Games.Classification;
+using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Lobby;
+using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,6 +28,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieHubPath = "Assets/App/Theme/Brand/WolfieHub.png";
         private const string ClassificationThumbnailPath = "Assets/App/Games/Classification/ClassificationThumbnail.png";
+        private const string ShapeCategoryPath = CatalogFolder + "/ShapeCategory.asset";
+        private const string ShapeDefinitionPath = CatalogFolder + "/ShapeAnalogyGame.asset";
+        private const string ShapeScenePath = "Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity";
+        private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
+        private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
+        private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
+        private const string AudioConfigPath = "Assets/App/Shared/Audio/AppAudioConfig.asset";
 
         [MenuItem("Tools/LBS Mini Games/Install First Vertical Slice")]
         public static void Install()
@@ -36,6 +45,15 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
             animals.Configure("animals", "Animals", "Learn how animals belong to different groups.");
 
+            // Difficulty definitions (future-ready, non-destructive)
+            DifficultyDefinition easy = CreateOrLoad<DifficultyDefinition>(DifficultyEasyPath);
+            easy.Configure("easy", "Easy", 0, "Gentle introduction with fewer distractors.");
+            DifficultyDefinition medium = CreateOrLoad<DifficultyDefinition>(DifficultyMediumPath);
+            medium.Configure("medium", "Medium", 1, "Balanced challenge.");
+            DifficultyDefinition hard = CreateOrLoad<DifficultyDefinition>(DifficultyHardPath);
+            hard.Configure("hard", "Hard", 2, "Extra cards and timed pressure.");
+            var allDifficulties = new List<DifficultyDefinition> { easy, medium, hard };
+
             GameDefinition classification = CreateOrLoad<GameDefinition>(DefinitionPath);
             classification.Configure(
                 "classification.animals",
@@ -44,6 +62,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Classification",
                 "Drag the dolphin to the correct group.");
             classification.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(ClassificationThumbnailPath));
+            classification.ConfigureDifficulties(allDifficulties, medium);
 
             GameCategory mathematics = AssetDatabase.LoadAssetAtPath<GameCategory>(MathematicsCategoryPath);
             GameDefinition numberPull = AssetDatabase.LoadAssetAtPath<GameDefinition>(NumberPullDefinitionPath);
@@ -58,16 +77,37 @@ namespace Lbs.MiniGames.Bootstrap.Editor
 
             catalog.EnsureCategory(animals);
             catalog.EnsureCategory(mathematics);
+            catalog.EnsureCategory(wildWhiz);
+            GameCategory shapes = CreateOrLoad<GameCategory>(ShapeCategoryPath);
+            shapes.Configure("shape-analogy", "Shape Analogy", "Find the shape and fill relationship.");
+            GameDefinition shapeGame = CreateOrLoad<GameDefinition>(ShapeDefinitionPath);
+            shapeGame.Configure("shape.analogy", "Shape Analogy", shapes, "ShapeAnalogy", "Look at the relationship and drag the correct card into the empty space.");
+            shapeGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureCategory(shapes);
             catalog.EnsureGame(classification);
             catalog.EnsureGame(numberPull);
-            catalog.EnsureCategory(wildWhiz);
             catalog.EnsureGame(wildWhizGame);
+            catalog.EnsureGame(shapeGame);
+
+            // Global audio config (persistent music) — non-destructive, uses existing bg track
+            AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
+            AudioClip bg = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ShapeAnalogy/Sounds/Music/bg_cabinet_menu.mp3");
+            if (bg == null) bg = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Resources/ShapeAnalogy/Music/bg_cabinet_menu.mp3");
+            if (bg != null) audioConfig.Configure(bg, 0.25f, 0.125f);
 
             EditorUtility.SetDirty(animals);
             EditorUtility.SetDirty(classification);
-            EditorUtility.SetDirty(wildWhiz);
-            EditorUtility.SetDirty(wildWhizGame);
+            EditorUtility.SetDirty(easy);
+            EditorUtility.SetDirty(medium);
+            EditorUtility.SetDirty(hard);
+            if (mathematics != null) EditorUtility.SetDirty(mathematics);
+            if (numberPull != null) EditorUtility.SetDirty(numberPull);
+            if (wildWhiz != null) EditorUtility.SetDirty(wildWhiz);
+            if (wildWhizGame != null) EditorUtility.SetDirty(wildWhizGame);
+            EditorUtility.SetDirty(shapes);
             EditorUtility.SetDirty(catalog);
+            EditorUtility.SetDirty(shapeGame);
+            EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
 
             CreateBootstrapScene(catalog);
@@ -78,6 +118,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureBuildScene("Assets/App/Games/Classification/Classification.unity", true);
             EnsureBuildScene("Assets/App/Games/NumberPull/NumberPull.unity", true);
             EnsureBuildScene("Assets/App/Games/WildWhiz/WildWhiz.unity", true);
+            CreateShapeAnalogyScene();
+            EnsureBuildScene(ShapeScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
@@ -99,6 +141,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             bootstrap.SetCatalog(catalog);
             SerializedObject serialized = new(bootstrap);
             serialized.FindProperty("lobbySceneName").stringValue = "Lobby";
+            AppAudioConfig audioConfig = AssetDatabase.LoadAssetAtPath<AppAudioConfig>(AudioConfigPath);
+            if (audioConfig != null) serialized.FindProperty("audioConfig").objectReferenceValue = audioConfig;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(bootstrap);
             EditorSceneManager.MarkSceneDirty(scene);
@@ -129,6 +173,39 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             gameObject.transform.SetParent(canvas.transform, false);
             gameObject.AddComponent<ClassificationGame>();
             EditorSceneManager.SaveScene(scene, "Assets/App/Games/Classification/Classification.unity");
+        }
+
+        private static void CreateShapeAnalogyScene()
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("ShapeAnalogyGame");
+            gameObject.transform.SetParent(canvas.transform, false);
+            ShapeAnalogyGame game = gameObject.AddComponent<ShapeAnalogyGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ShapeAnalogy/Sounds/Instruction.mp3");
+            serialized.FindProperty("tryAgain").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ShapeAnalogy/Sounds/TryAgain.mp3");
+            serialized.FindProperty("starEmpty").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Star_UnFilled.png");
+            serialized.FindProperty("starFull").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Star_FullFilled.png");
+            serialized.FindProperty("heartEmpty").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Heart_UnFilled.png");
+            serialized.FindProperty("heartFull").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Heart_FullFilled.png");
+            serialized.FindProperty("missing").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Missingitem.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorSceneManager.SaveScene(scene, ShapeScenePath);
         }
 
         private static Canvas CreateCanvas()
@@ -185,6 +262,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 CatalogFolder,
                 "Assets/App/Navigation",
                 "Assets/App/Shared",
+                "Assets/App/Shared/Audio",
+                "Assets/App/Shared/UI",
+                "Assets/App/Shared/UI/LevelChrome",
+                "Assets/App/GameKits",
+                "Assets/App/GameKits/DragDrop",
+                "Assets/App/GameKits/DragDrop/Core",
+                "Assets/App/GameKits/DragDrop/Runtime",
                 "Assets/App/Games",
                 "Assets/App/Games/Common",
                 "Assets/App/Games/Classification",
@@ -192,6 +276,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/WildWhiz/Art",
                 "Assets/App/Games/WildWhiz/Audio",
                 "Assets/App/Games/WildWhiz/Data",
+                "Assets/App/Games/ShapeAnalogy",
+                "Assets/App/Games/ShapeAnalogy/Sounds",
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching"
             };
