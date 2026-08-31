@@ -1,0 +1,1 @@
+{"name":"Lbs.MiniGames.ClothesSelection.Tests.Editor","references":["Lbs.MiniGames.Selection.Core","Lbs.MiniGames.ClothesSelection.Core"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

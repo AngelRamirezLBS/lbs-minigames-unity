@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace Lbs.MiniGames.Games.ShapeAnalogy
 {
-    public sealed class ShapeAnalogyGame : MonoBehaviour, IAppScene
+    public sealed class ShapeAnalogyGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
         private static readonly Color Background = new(1f, .886f, .678f);
         private static readonly Color Orange = new(1f, .38f, .08f);
@@ -46,6 +46,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private LevelChrome levelChrome;
         private readonly ShapeAnalogyState state = new();
         private Coroutine playback;
+        private bool transitionHandoffPending;
         private Coroutine resultBackdropFade;
         private int activePointer = int.MinValue;
         private bool wasPausedByFocus;
@@ -72,8 +73,22 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 // Transitional fallback when injected service absent (e.g., editor tests without bootstrap)
                 Debug.LogWarning("[ShapeAnalogy] IAppAudioService not injected — level music will not play.", this);
             }
+            if (appServices?.LevelSequence?.IsTransitioning == true) transitionHandoffPending = true;
+            else StartInstructionPlayback();
+        }
+
+        public RectTransform TransitionRoot => board;
+        public void CompleteTransitionHandoff()
+        {
+            if (!transitionHandoffPending) return;
+            transitionHandoffPending = false;
+            StartInstructionPlayback();
+        }
+
+        private void StartInstructionPlayback()
+        {
             PlayInstruction();
-            playback = StartCoroutine(HongPlayback());
+            if (playback == null) playback = StartCoroutine(HongPlayback());
         }
 
         private void Build()
@@ -224,6 +239,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             }
             else if (outcome == ShapeAnalogyDropOutcome.Incorrect)
             {
+                state.RecordMistake();
                 // SFX via dedicated source or global service (does not duck music)
                 if (appAudio != null && failSfx != null) appAudio.PlaySfx(failSfx);
                 else if (failSfx && sfxSource) sfxSource.PlayOneShot(failSfx);
@@ -258,7 +274,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
 
         private void HideMissingArtwork() { if (missingImage) missingImage.gameObject.SetActive(false); }
         private IEnumerator ResolveIncorrect(DragDropCard card){ yield return CardAnimator.ShakeBoard(board); foreach(var c in draggables) c.Restore(); state.FinishResolve(); }
-        private IEnumerator Celebrate(){CreateCelebration(); yield return new WaitForSecondsRealtime(1f); CreateFinal(); state.FinishCelebration(); yield return new WaitForSecondsRealtime(1f); state.ArmFinal();}
+        private IEnumerator Celebrate(){CreateCelebration(); yield return new WaitForSecondsRealtime(1f); CreateFinal(); state.FinishCelebration(); yield return new WaitForSecondsRealtime(2f); services?.GameLauncher.Complete(new MiniGameResult("shape.analogy", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId)); services?.LevelSequence?.Advance(LevelSequenceRoute.ShapeAnalogySuccessTarget);}
         private void CreateCelebration()
         {
             ClearCelebrationVisuals();
@@ -301,14 +317,14 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             haloShadow2.useGraphicAlpha = true;
             Font sFont = scoreFont ? scoreFont : font;
             Text score = UiFactory.CreateText(board, "FinalScore", sFont, 165, TextAnchor.MiddleCenter, Color.white);
-            score.text = "+8";
+            score.text = "+" + state.Score;
             PixelRect(score.rectTransform, groupCenter + new Vector2(-125f, 3f), new Vector2(200, 200));
             Shadow scoreShadow = score.gameObject.AddComponent<Shadow>();
             scoreShadow.effectColor = new Color(0, 0, 0, 0.22f);
             scoreShadow.effectDistance = new Vector2(3f, -3f);
             scoreShadow.useGraphicAlpha = true;
             CreateCard(board, "FinalStarA", finalStar, groupCenter + new Vector2(78f, -22f), new Vector2(175, 175), false);
-            CreateCard(board, "FinalStarB", finalStar, groupCenter + new Vector2(128f, 28f), new Vector2(195, 195), false);
+            if (state.StarCount == 2) CreateCard(board, "FinalStarB", finalStar, groupCenter + new Vector2(128f, 28f), new Vector2(195, 195), false);
             Transform starA = board.Find("FinalStarA");
             if (starA)
             {
@@ -365,17 +381,17 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             Transform scoreTr = board.Find("FinalScore");
             Transform starATr = board.Find("FinalStarA");
             Transform starBTr = board.Find("FinalStarB");
-            if (dim && haloBlurTr && haloTr && celebration && scoreTr && starATr && starBTr)
+            if (dim && haloBlurTr && haloTr && celebration && scoreTr && starATr)
             {
                 if (dim.GetSiblingIndex() > haloBlurTr.GetSiblingIndex()) dim.SetSiblingIndex(haloBlurTr.GetSiblingIndex());
-                int baseIndex = Mathf.Min(dim.GetSiblingIndex(), haloBlurTr.GetSiblingIndex(), haloTr.GetSiblingIndex(), celebration.GetSiblingIndex(), scoreTr.GetSiblingIndex(), starATr.GetSiblingIndex(), starBTr.GetSiblingIndex());
+                int baseIndex = Mathf.Min(dim.GetSiblingIndex(), haloBlurTr.GetSiblingIndex(), haloTr.GetSiblingIndex(), celebration.GetSiblingIndex(), scoreTr.GetSiblingIndex(), starATr.GetSiblingIndex());
                 dim.SetSiblingIndex(baseIndex);
                 haloBlurTr.SetSiblingIndex(baseIndex + 1);
                 haloTr.SetSiblingIndex(baseIndex + 2);
                 celebration.SetSiblingIndex(baseIndex + 3);
                 scoreTr.SetSiblingIndex(baseIndex + 4);
                 starATr.SetSiblingIndex(baseIndex + 5);
-                starBTr.SetSiblingIndex(baseIndex + 6);
+                if (starBTr) starBTr.SetSiblingIndex(baseIndex + 6);
             }
             else if (dim && celebration && dim.GetSiblingIndex() > celebration.GetSiblingIndex())
             {
@@ -436,7 +452,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private IEnumerator PlayRandomCompliment(){ yield return new WaitForSecondsRealtime(0.45f); AudioClip clip = null; if(compliments!=null && compliments.Length>0) clip = compliments[UnityEngine.Random.Range(0, compliments.Length)]; if(clip){ if(clip.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>clip.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(clip); else if(voiceSource) voiceSource.PlayOneShot(clip); } }
         private IEnumerator PlayRandomEncouragement(){ yield return new WaitForSecondsRealtime(0.35f); AudioClip clip = null; if(encouragements!=null && encouragements.Length>0) clip = encouragements[UnityEngine.Random.Range(0, encouragements.Length)]; if(clip){ if(clip.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>clip.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(clip); else if(voiceSource) voiceSource.PlayOneShot(clip); yield break; } if(tryAgain){ if(tryAgain.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>tryAgain.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(tryAgain); else if(voiceSource) voiceSource.PlayOneShot(tryAgain); } }
         private IEnumerator PlayTryAgainDelayed(){ yield return new WaitForSecondsRealtime(0.35f); if(tryAgain){ if(tryAgain.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>tryAgain.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(tryAgain); else if(voiceSource) voiceSource.PlayOneShot(tryAgain); } }
-        private void Update(){if(state.AcceptFinalTap() && (Input.GetMouseButtonDown(0) || Input.touchCount>0))ReturnToLobby();}
+        private void Update() { }
         private void OnApplicationFocus(bool hasFocus)
         {
             if (appAudio != null)
@@ -470,8 +486,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             if(voiceSource)voiceSource.Stop();
             if(appAudio != null)
             {
-                appAudio.StopVoice();
-                appAudio.StopMusic();
+                appAudio.StopVoiceIfPlaying(instruction);
             }
             if(proximityHighlighter) proximityHighlighter.HideImmediate(); else proximity?.gameObject.SetActive(false);
             foreach(var card in draggables) if(card) card.Restore();
@@ -480,7 +495,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         }
         private void ClearCelebrationVisuals(){if(!board)return;for(int i=board.childCount-1;i>=0;i--){Transform child=board.GetChild(i);if(child.name=="ResultCelebration"||child.name=="ResultBackdropDim"||child.name.StartsWith("GreenGlow")||child.name.StartsWith("StarBurst")||child.name.StartsWith("CelebrationStar")||child.name.StartsWith("CurvedStreamer"))RemoveTransient(child.gameObject);}resultBackdropDim=null;celebrationObjects.Clear();}
         private static void RemoveTransient(GameObject gameObject){gameObject.SetActive(false);if(Application.isPlaying)Destroy(gameObject);else DestroyImmediate(gameObject);}
-        private void ReturnToLobby(){if(services!=null)services.GameLauncher.ShowLobby();}
+        private void ReturnToLobby()
+        {
+            if (state.Phase == ShapeAnalogyPhase.Resolving || state.Phase == ShapeAnalogyPhase.Celebrating || state.Phase == ShapeAnalogyPhase.Final) return;
+            if (services != null) services.GameLauncher.ShowLobby();
+        }
 #if UNITY_EDITOR
         public void CaptureInitial() { Cleanup(); ClearCaptureVisuals(); draggables.Clear(); Build(); }
         private DragDropCard CorrectDraggable() { foreach (var d in draggables) if (d.TokenId == ShapeAnalogyRule.CorrectAnswer) return d; return null; }

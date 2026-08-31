@@ -13,6 +13,7 @@ namespace Lbs.MiniGames.Shared.Audio
         bool IsMusicPlaying(AudioClip clip);
         void PlayVoice(AudioClip clip, float volume = 1f);
         void StopVoice();
+        void StopVoiceIfPlaying(AudioClip clip);
         bool IsVoicePlaying(AudioClip clip = null);
         void PlaySfx(AudioClip clip, float volumeScale = 1f);
         void PauseAll();
