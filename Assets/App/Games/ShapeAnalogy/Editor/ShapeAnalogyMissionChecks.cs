@@ -127,12 +127,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 if (child.name.StartsWith("CelebrationStar") || child.name.StartsWith("CurvedStreamer") || child.name.StartsWith("GreenGlow")) return 1;
 
             ParticleSystem[] systems = root.GetComponentsInChildren<ParticleSystem>();
-            if (systems.Length != 5) return 1;
+            if (systems.Length != 7) return 1;
             int maxParticles = 0;
             float starRate = 0f;
             float confettiRate = 0f;
             HashSet<uint> seeds = new();
-            HashSet<string> emitterConfigurations = new();
             foreach (ParticleSystem system in systems)
             {
                 ShapeAnalogyUIParticleRenderer bridge = system.GetComponentInChildren<ShapeAnalogyUIParticleRenderer>();
@@ -140,7 +139,20 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 if (bridge == null || bridge.AssignedSprite == null || renderer == null || renderer.enabled || system.main.loop || system.useAutoRandomSeed || !seeds.Add(system.randomSeed) || !Mathf.Approximately(system.main.duration, ShapeAnalogyCelebrationParticles.Duration) || !system.colorOverLifetime.enabled || !system.sizeOverLifetime.enabled) return 1;
                 if (system.emission.burstCount != 1 || system.shape.shapeType != ParticleSystemShapeType.Rectangle || system.shape.scale.x > .11f || Mathf.Abs(system.shape.position.x) > .001f) return 1;
                 ParticleSystem.VelocityOverLifetimeModule velocity = system.velocityOverLifetime;
-                if (!velocity.enabled || velocity.x.mode != ParticleSystemCurveMode.TwoCurves || velocity.x.mode != velocity.y.mode || velocity.y.mode != velocity.z.mode || velocity.x.curveMax.Evaluate(1f) < 9f || velocity.x.curveMin.Evaluate(1f) > -9f) return 1;
+                bool isCenter = system.name == "Serpentina";
+                if (!velocity.enabled) return 1;
+                if (!isCenter)
+                {
+                    float maxAt1 = velocity.x.mode == ParticleSystemCurveMode.TwoCurves ? velocity.x.curveMax.Evaluate(1f) : velocity.x.curve.Evaluate(1f);
+                    float minAt1 = velocity.x.mode == ParticleSystemCurveMode.TwoCurves ? velocity.x.curveMin.Evaluate(1f) : velocity.x.curve.Evaluate(1f);
+                    if (Mathf.Abs(maxAt1) < 8.5f && Mathf.Abs(minAt1) < 8.5f) return 1;
+                    if (velocity.y.mode != ParticleSystemCurveMode.TwoCurves) return 1;
+                }
+                else
+                {
+                    if (velocity.y.mode != ParticleSystemCurveMode.TwoCurves) return 1;
+                }
+                if (velocity.z.mode != ParticleSystemCurveMode.TwoCurves && velocity.z.mode != ParticleSystemCurveMode.Curve) return 1;
                 maxParticles += system.main.maxParticles;
                 float rate = system.emission.rateOverTime.constant;
                 if (system.transform.parent.name == "Stars")
@@ -151,10 +163,10 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 else
                 {
                     confettiRate += rate;
-                    if (system.main.gravityModifier.constant < .3f || system.main.gravityModifier.constant > .5f || !system.rotationOverLifetime.enabled || (system.name == "Serpentina" && (system.main.startSize.constantMin < .16f || system.main.startLifetime.constantMin < 1.25f || system.emission.GetBurst(0).count.constant < 2))) return 1;
+                    if (system.main.gravityModifier.constant < .3f || system.main.gravityModifier.constant > .6f || !system.rotationOverLifetime.enabled || (system.name == "Serpentina" && (system.main.startSize.constantMin < .16f || system.main.startLifetime.constantMin < 1.25f || system.emission.GetBurst(0).count.constant < 2))) return 1;
                 }
             }
-            return seeds.Count == systems.Length && maxParticles == ShapeAnalogyCelebrationParticles.TotalMaxParticles && starRate >= 3f && starRate <= 6f && confettiRate >= 2f && confettiRate <= 4f ? 0 : 1;
+            return seeds.Count == systems.Length && maxParticles == ShapeAnalogyCelebrationParticles.TotalMaxParticles && starRate >= 5f && starRate <= 7f && confettiRate >= 6f && confettiRate <= 9f ? 0 : 1;
         }
 
         private static int CheckDistinctVisibleOutput(Canvas canvas)
@@ -166,9 +178,9 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 int count = system.GetParticles(particles);
                 if (count == 0) return 1;
                 ParticleSystem.Particle first = particles[0];
-                if (Mathf.Abs(first.position.x) > 1.7f || first.position.y < -1.5f || !particleFields.Add($"{first.randomSeed}")) return 1;
+                if (Mathf.Abs(first.position.x) > 2.2f || first.position.y < -1.6f || !particleFields.Add($"{first.randomSeed}")) return 1;
             }
-            return particleFields.Count == 5 ? 0 : 1;
+            return particleFields.Count == 7 ? 0 : 1;
         }
     }
 }

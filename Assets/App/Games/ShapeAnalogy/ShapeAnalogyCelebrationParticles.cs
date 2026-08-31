@@ -89,8 +89,8 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             main.maxParticles = maxParticles;
             main.startLifetime = new ParticleSystem.MinMaxCurve(2.4f, 2.8f);
             main.startSpeed = 0f;
-            main.startSize = isSerpentina ? new ParticleSystem.MinMaxCurve(.38f, .45f) : isConfetti ? new ParticleSystem.MinMaxCurve(.14f, .20f) : new ParticleSystem.MinMaxCurve(.14f, .28f);
-            main.gravityModifier = isConfetti ? 0.55f : 0.35f;
+            main.startSize = isSerpentina ? new ParticleSystem.MinMaxCurve(.38f, .45f) : isConfetti ? new ParticleSystem.MinMaxCurve(.14f, .20f) : new ParticleSystem.MinMaxCurve(.14f, .22f);
+            main.gravityModifier = isConfetti ? 0.45f : 0f;
 
             ParticleSystem.EmissionModule emission = particleSystem.emission;
             emission.rateOverTime = ratePerSystem;
@@ -106,9 +106,9 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             ParticleSystem.VelocityOverLifetimeModule velocity = particleSystem.velocityOverLifetime;
             velocity.enabled = true;
             velocity.space = ParticleSystemSimulationSpace.Local;
-            // Flujo ordenado: X determinística por sistema → sube hasta arriba → pausa 0.2s → cae vertical
-            AnimationCurve outwardLeft = new(new Keyframe(0f, 0f), new Keyframe(0.32f, 0.5f), new Keyframe(0.55f, -2.2f), new Keyframe(1f, -3.0f));
-            AnimationCurve outwardRight = new(new Keyframe(0f, 0f), new Keyframe(0.32f, -0.5f), new Keyframe(0.55f, 2.2f), new Keyframe(1f, 3.0f));
+            // Organized flow: deterministic X per system, rise, pause for 0.2s, then fall vertically in a center-bottom fan.
+            AnimationCurve outwardLeft = new(new Keyframe(0f, 0f), new Keyframe(0.32f, 1.5f), new Keyframe(0.55f, -6.6f), new Keyframe(1f, -9.0f));
+            AnimationCurve outwardRight = new(new Keyframe(0f, 0f), new Keyframe(0.32f, -1.5f), new Keyframe(0.55f, 6.6f), new Keyframe(1f, 9.0f));
             AnimationCurve upwardSlow = new(new Keyframe(0f, 3.0f), new Keyframe(0.35f, 2.6f), new Keyframe(0.60f, 0.9f), new Keyframe(0.75f, 0.0f), new Keyframe(1f, -1.8f));
             AnimationCurve upwardFast = new(new Keyframe(0f, 3.6f), new Keyframe(0.35f, 3.2f), new Keyframe(0.60f, 1.1f), new Keyframe(0.75f, 0.0f), new Keyframe(1f, -2.0f));
             AnimationCurve zero = new(new Keyframe(0f, 0f), new Keyframe(1f, 0f));
@@ -117,10 +117,10 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             bool isLeft = systemName == "4Star" || systemName == "CircleConfetti" || systemName == "Serpentina2";
             bool isRight = systemName == "5Star" || systemName == "RectangularConfetti" || systemName == "Serpentina3";
             bool isCenter = systemName == "Serpentina";
-            if (isCenter) velocity.x = new ParticleSystem.MinMaxCurve(1f, zero);
-            else if (isLeft) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardLeft);
-            else if (isRight) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardRight);
-            else velocity.x = new ParticleSystem.MinMaxCurve(1f, zero);
+            if (isCenter) velocity.x = new ParticleSystem.MinMaxCurve(1f, zero, zero);
+            else if (isLeft) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardLeft, outwardLeft);
+            else if (isRight) velocity.x = new ParticleSystem.MinMaxCurve(1f, outwardRight, outwardRight);
+            else velocity.x = new ParticleSystem.MinMaxCurve(1f, zero, zero);
             velocity.y = new ParticleSystem.MinMaxCurve(1f, upwardSlow, upwardFast);
             velocity.z = new ParticleSystem.MinMaxCurve(1f, zero, zero);
 

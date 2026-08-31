@@ -27,7 +27,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         [SerializeField] private AudioClip[] encouragements; // Voice/Encouragement/es-MX/*.mp3 (5 es-MX, opcional en/ 16)
         [SerializeField] private Font font;
         [SerializeField] private Font scoreFont; // Nunito-Black para +8 (si null usa font fallback)
-        private AppServices services; private AudioSource audioSource; private AudioSource musicSource; private AudioSource voiceSource; private RectTransform target; private RoundedSurface proximity; private RoundedSurface proximityInner; private Image hongImage; private Image missingImage; private Image resultBackdropDim; private RectTransform board;
+        private AppServices services; private AudioSource audioSource; private AudioSource musicSource; private AudioSource voiceSource; private RectTransform target; private RoundedSurface proximity; private Image hongImage; private Image missingImage; private Image resultBackdropDim; private RectTransform board;
         private readonly ShapeAnalogyState state = new(); private Coroutine playback; private Coroutine resultBackdropFade; private bool finalVisuals; private int activePointer = int.MinValue; private readonly System.Collections.Generic.List<Draggable> draggables = new();
         private const float CardReferenceSize = 295f;
         private const float ProximityFrameSize = 315f;
@@ -47,7 +47,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             CreateCard(board, "PatternStar", starEmpty, FixedCardCenters[2], Vector2.one * CardReferenceSize, false);
             RoundedSurface slot = UiFactory.CreateRoundedSurface(board, "MissingSlot", Color.clear, 28); PixelRect(slot.rectTransform, FixedCardCenters[3], Vector2.one * CardReferenceSize);
             missingImage = UiFactory.CreateImage(slot.rectTransform, "DottedPlaceholder", Color.white); missingImage.sprite = missing; missingImage.preserveAspect = true; AddArtworkShadow(missingImage, 3f, .18f); UiFactory.Stretch(missingImage.rectTransform, 0);
-            target = slot.rectTransform; proximity = UiFactory.CreateRoundedSurface(board, "OrangeProximityFrame", new Color(1f, .38f, .08f, 0f), 28f, false); proximity.raycastTarget = false; PixelRect(proximity.rectTransform, FixedCardCenters[3], Vector2.one * ProximityFrameSize); proximityInner = UiFactory.CreateRoundedSurface(proximity.rectTransform, "InnerCutout", Color.clear, 20f, false); proximityInner.raycastTarget = false; UiFactory.Stretch(proximityInner.rectTransform, 8f); CanvasGroup proximityCg = proximity.gameObject.AddComponent<CanvasGroup>(); proximityCg.alpha = 0f; proximityCg.blocksRaycasts = false; proximityCg.interactable = false; proximity.gameObject.SetActive(false);
+            target = slot.rectTransform; proximity = UiFactory.CreateRoundedSurface(board, "OrangeProximityFrame", new Color(1f, .38f, .08f, 0f), 28f, false); proximity.OutlineThickness = 8f; proximity.raycastTarget = false; PixelRect(proximity.rectTransform, FixedCardCenters[3], Vector2.one * ProximityFrameSize); CanvasGroup proximityCg = proximity.gameObject.AddComponent<CanvasGroup>(); proximityCg.alpha = 0f; proximityCg.blocksRaycasts = false; proximityCg.interactable = false; proximity.gameObject.SetActive(false);
             CreateDraggable(board, "HeartAnswer", heartFull, "filled-heart", origins[0]); CreateDraggable(board, "StarAnswer", starFull, "filled-star", origins[1]); CreateDraggable(board, "CorrectAnswer", heartEmpty, ShapeAnalogyRule.CorrectAnswer, origins[2]);
             RoundedSurface hongSurface = UiFactory.CreateRoundedSurface(board, "Hong", Color.clear, 28); PixelRect(hongSurface.rectTransform, new(175,930), new(220,220)); hongImage = UiFactory.CreateImage(hongSurface.rectTransform, "HongArtwork", Color.white); hongImage.sprite = hongNeutral; hongImage.preserveAspect = true; AddArtworkShadow(hongImage, 2f, .14f); UiFactory.Stretch(hongImage.rectTransform, 0); Button hong = hongSurface.gameObject.AddComponent<Button>(); hong.onClick.AddListener(ToggleInstruction);
             if (!FindFirstObjectByType<AudioListener>()) gameObject.AddComponent<AudioListener>();
@@ -134,12 +134,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 c.r = Orange.r; c.g = Orange.g; c.b = Orange.b;
                 c.a = Mathf.Lerp(0.45f, 1f, t);
                 proximity.color = c;
-                if (proximityInner)
-                {
-                    float border = Mathf.Lerp(8f, 3f, t);
-                    proximityInner.rectTransform.offsetMin = new Vector2(border, border);
-                    proximityInner.rectTransform.offsetMax = new Vector2(-border, -border);
-                }
+                proximity.OutlineThickness = Mathf.Lerp(8f, 3f, t);
                 proximity.rectTransform.localScale = Vector3.Lerp(Vector3.one, Vector3.one * 1.02f, t);
             }
         }
@@ -153,11 +148,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 CanvasGroup cgHide = proximity.GetComponent<CanvasGroup>();
                 if (cgHide) cgHide.alpha = 0f;
                 Color pc = proximity.color; pc.a = 0f; proximity.color = pc;
-                if (proximityInner)
-                {
-                    proximityInner.rectTransform.offsetMin = new Vector2(8f, 8f);
-                    proximityInner.rectTransform.offsetMax = new Vector2(-8f, -8f);
-                }
+                proximity.OutlineThickness = 8f;
                 proximity.rectTransform.localScale = Vector3.one;
                 proximity.gameObject.SetActive(false);
             }
@@ -419,7 +410,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
 #if UNITY_EDITOR
         public void CaptureInitial() { Cleanup(); ClearCaptureVisuals(); draggables.Clear(); Build(); }
         private Draggable CorrectDraggable() { foreach (var d in draggables) if (d.Id == ShapeAnalogyRule.CorrectAnswer) return d; return null; }
-        public void CaptureDragOver() { ResetCaptureScene(); Draggable correct = CorrectDraggable(); if (correct != null) { correct.Lift(); correct.rect.anchoredPosition = target.anchoredPosition + new Vector2(0, 20); } proximity.gameObject.SetActive(true); if (proximity.TryGetComponent<CanvasGroup>(out var cg)) cg.alpha = 0.85f; proximity.color = new Color(1f, .38f, .08f, 1f); if (proximityInner) { proximityInner.rectTransform.offsetMin = new Vector2(3f, 3f); proximityInner.rectTransform.offsetMax = new Vector2(-3f, -3f); } proximity.rectTransform.localScale = Vector3.one * 1.04f; }
+        public void CaptureDragOver() { ResetCaptureScene(); Draggable correct = CorrectDraggable(); if (correct != null) { correct.Lift(); correct.rect.anchoredPosition = target.anchoredPosition + new Vector2(0, 20); } proximity.gameObject.SetActive(true); if (proximity.TryGetComponent<CanvasGroup>(out var cg)) cg.alpha = 0.85f; proximity.color = new Color(1f, .38f, .08f, 1f); proximity.OutlineThickness = 3f; proximity.rectTransform.localScale = Vector3.one * 1.04f; }
         public void CaptureSuccess() { ResetCaptureScene(); Draggable correct = CorrectDraggable(); if (correct != null) { correct.rect.anchoredPosition = target.anchoredPosition; correct.group.blocksRaycasts = false; } HideMissingArtwork(); CreateCelebration(); }
         public void CaptureFinal() { ResetCaptureScene(); Draggable correct = CorrectDraggable(); if (correct != null) { correct.rect.anchoredPosition = target.anchoredPosition; correct.group.blocksRaycasts = false; } HideMissingArtwork(); CreateCelebration(); CreateFinal(); }
         private void ResetCaptureScene() { Cleanup(); ClearCaptureVisuals(); draggables.Clear(); Build(); }

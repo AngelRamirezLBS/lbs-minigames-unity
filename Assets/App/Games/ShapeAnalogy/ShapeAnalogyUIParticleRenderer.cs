@@ -57,7 +57,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 RectTransform rect = images[i].rectTransform;
                 rect.anchoredPosition = new Vector2(particle.position.x * pixelsPerUnit, particle.position.y * pixelsPerUnit);
                 rect.sizeDelta = Vector2.one * particle.GetCurrentSize(particleSystem) * pixelsPerUnit;
-                rect.localRotation = Quaternion.Euler(0f, 0f, particle.rotation);
+                rect.localRotation = Quaternion.Euler(0f, 0f, particle.rotation * Mathf.Rad2Deg);
                 Color color = palette[particle.randomSeed % (uint)palette.Length];
                 color.a *= Mathf.Clamp01(particle.remainingLifetime / particle.startLifetime);
                 images[i].color = color;
