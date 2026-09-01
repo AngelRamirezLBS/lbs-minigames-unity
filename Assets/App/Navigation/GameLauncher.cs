@@ -1,6 +1,7 @@
 using System;
 using Lbs.MiniGames.Catalog;
 using Lbs.MiniGames.Shared;
+using Lbs.MiniGames.Shared.Audio;
 
 namespace Lbs.MiniGames.Navigation
 {
@@ -9,14 +10,16 @@ namespace Lbs.MiniGames.Navigation
         private readonly GameSession session;
         private readonly ISceneLoader sceneLoader;
         private readonly string lobbySceneName;
+        private readonly IAppAudioService audioService;
 
-        public GameLauncher(GameSession session, ISceneLoader sceneLoader, string lobbySceneName)
+        public GameLauncher(GameSession session, ISceneLoader sceneLoader, string lobbySceneName, IAppAudioService audioService = null)
         {
             this.session = session ?? throw new ArgumentNullException(nameof(session));
             this.sceneLoader = sceneLoader ?? throw new ArgumentNullException(nameof(sceneLoader));
             this.lobbySceneName = string.IsNullOrWhiteSpace(lobbySceneName)
                 ? throw new ArgumentException("A lobby scene name is required.", nameof(lobbySceneName))
                 : lobbySceneName;
+            this.audioService = audioService;
         }
 
         public void Launch(GameDefinition game)
@@ -62,6 +65,7 @@ namespace Lbs.MiniGames.Navigation
 
         public void ShowLobby()
         {
+            audioService?.StopMusic();
             sceneLoader.Load(lobbySceneName);
         }
     }

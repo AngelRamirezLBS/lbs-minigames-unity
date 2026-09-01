@@ -65,16 +65,6 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             appAudio = appServices != null ? appServices.Audio : null;
             celebrationPresenter ??= new FinalCelebrationPresenter(this, celebrationConfiguration);
             Build();
-            // ShapeAnalogy owns this music while the level is active; the shared service provides playback and volume handling.
-            if (appAudio != null && bgMusic != null)
-            {
-                appAudio.PlayMusic(bgMusic, true, 0.25f);
-            }
-            else if (appAudio == null && bgMusic != null)
-            {
-                // Transitional fallback when injected service absent (e.g., editor tests without bootstrap)
-                Debug.LogWarning("[ShapeAnalogy] IAppAudioService not injected — level music will not play.", this);
-            }
             if (appServices?.LevelSequence?.IsTransitioning == true) transitionHandoffPending = true;
             else StartInstructionPlayback();
         }
@@ -379,7 +369,6 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private void ReturnToLobby()
         {
             if (state.Phase == ShapeAnalogyPhase.Resolving || state.Phase == ShapeAnalogyPhase.Celebrating || state.Phase == ShapeAnalogyPhase.Final) return;
-            appAudio?.StopMusic();
             if (services != null) services.GameLauncher.ShowLobby();
         }
 #if UNITY_EDITOR

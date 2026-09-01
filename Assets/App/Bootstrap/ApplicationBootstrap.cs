@@ -35,7 +35,7 @@ namespace Lbs.MiniGames.Bootstrap
             GameSession session = new();
             LevelSequenceController sequence = gameObject.GetComponent<LevelSequenceController>();
             if (sequence == null) sequence = gameObject.AddComponent<LevelSequenceController>();
-            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName), audioService, sequence);
+            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName, audioService), audioService, sequence);
             sequence.Configure(services, catalog);
             SceneManager.sceneLoaded += ConfigureLoadedScene;
             SceneManager.sceneUnloaded += ForgetUnloadedScene;
@@ -59,7 +59,7 @@ namespace Lbs.MiniGames.Bootstrap
                 }
             }
             audioService.Initialize(audioConfig);
-            // Feature scenes own music playback; bootstrap only initializes the shared audio service.
+            // Bootstrap owns shared music playback; scenes only receive the shared audio service.
         }
 
         private void Start()
@@ -82,6 +82,20 @@ namespace Lbs.MiniGames.Bootstrap
         private void ConfigureLoadedScene(Scene scene, LoadSceneMode mode)
         {
             sceneConfiguration.Configure(scene, services);
+            if (scene.name == lobbySceneName)
+            {
+                audioService.StopMusic();
+            }
+            else if (LevelSequenceRoute.IsLogicSequenceGame(services.Session.CurrentRequest?.Game?.GameId)
+                     && audioConfig != null
+                     && audioConfig.GlobalMusic != null)
+            {
+                audioService.PlayMusic(audioConfig.GlobalMusic, true, audioConfig.MusicVolume);
+            }
+            else
+            {
+                audioService.StopMusic();
+            }
         }
 
         private void ForgetUnloadedScene(Scene scene) => sceneConfiguration.Forget(scene);

@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: NumberPull
   description: Solve quick sums and differences in a two-player number pull.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

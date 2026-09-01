@@ -25,6 +25,7 @@ namespace Lbs.MiniGames.Shared.Results
 
         public void Initialize(Sprite fourStar, Sprite fiveStar, Sprite circleConfetti, Sprite rectangularConfetti, Sprite serpentina, Sprite serpentina2, Sprite serpentina3)
         {
+            ClearGeneratedGroups();
             RectTransform root = transform as RectTransform;
             CreateGroup(root, "Stars", new[] { fourStar, fiveStar }, new[] { "4Star", "5Star" }, new uint[] { 4103, 5851 }, 3f, 7, StarColors, false);
             CreateGroup(root, "ConfettiStreamers", new[] { circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3 }, new[] { "CircleConfetti", "RectangularConfetti", "Serpentina", "Serpentina2", "Serpentina3" }, new uint[] { 7129, 8641, 9901, 10421, 11833 }, 1.7f, 4, ConfettiColors, true);
@@ -37,6 +38,21 @@ namespace Lbs.MiniGames.Shared.Results
             Transform confetti = transform.Find("ConfettiStreamers");
             if (stars) stars.gameObject.SetActive(false);
             if (confetti) confetti.gameObject.SetActive(false);
+        }
+
+        private void ClearGeneratedGroups()
+        {
+            foreach (ParticleSystem particleSystem in GetComponentsInChildren<ParticleSystem>(true)) particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            for (int index = transform.childCount - 1; index >= 0; index--)
+            {
+                Transform child = transform.GetChild(index);
+                if (child.name != "Stars" && child.name != "ConfettiStreamers") continue;
+
+                child.gameObject.SetActive(false);
+                child.SetParent(null);
+                if (Application.isPlaying) Destroy(child.gameObject);
+                else DestroyImmediate(child.gameObject);
+            }
         }
 
         private static void CreateGroup(RectTransform parent, string groupName, Sprite[] sprites, string[] names, uint[] seeds, float ratePerSystem, int maxParticlesPerSystem, Color[] palette, bool isConfetti)
@@ -61,6 +77,7 @@ namespace Lbs.MiniGames.Shared.Results
                 rect.SetParent(group, false);
                 UiFactory.Stretch(rect, 0);
                 ParticleSystem particleSystem = particleObject.GetComponent<ParticleSystem>();
+                particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 bool isSerpentina = names[i].StartsWith("Serpentina");
                 int effectiveMax = isSerpentina ? 2 : maxParticlesPerSystem; // updated: serpentinas max 2 each (2+2+2=6) avoids culling, was 6 each (18) stacked stretched
                 float effectiveRate = isSerpentina ? 0f : ratePerSystem; // updated: serpentinas rate 0 only burst, avoids burst+rate > max popping, was 1.4f continuous

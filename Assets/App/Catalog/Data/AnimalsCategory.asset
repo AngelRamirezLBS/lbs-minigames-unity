@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: AnimalsCategory
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Catalog.GameCategory
   categoryId: animals
-  displayName: Animales
-  description: Aprende a clasificar animales por su hábitat.
+  displayName: Animals
+  description: Learn how animals belong to different groups.
