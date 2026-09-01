@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.ShapeAnalogy
+namespace Lbs.MiniGames.Shared.Results
 {
-    public sealed class ShapeAnalogyUIParticleRenderer : MonoBehaviour
+    public sealed class FinalCelebrationUIParticleRenderer : MonoBehaviour
     {
         private ParticleSystem particleSystem;
         private Sprite sprite;

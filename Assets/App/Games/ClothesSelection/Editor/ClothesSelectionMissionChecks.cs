@@ -1,7 +1,7 @@
 #if UNITY_EDITOR
 using Lbs.MiniGames.Games.ClothesSelection;
-using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Shared;
+using Lbs.MiniGames.Shared.Results;
 using Lbs.MiniGames.Shared.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -52,7 +52,7 @@ namespace Lbs.MiniGames.Games.ClothesSelection.Editor
                     || game.GetType().GetField("serpentina3", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(game) == null) failures++;
                 System.Reflection.BindingFlags privateInstance = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
                 game.GetType().GetMethod("CreateCelebration", privateInstance)?.Invoke(game, null);
-                if (GameObject.Find("ResultCelebration")?.GetComponent<ShapeAnalogyCelebrationParticles>() == null) failures++;
+                if (GameObject.Find("ResultCelebration")?.GetComponent<FinalCelebrationParticles>() == null) failures++;
                 game.GetType().GetMethod("CreateFinal", privateInstance)?.Invoke(game, null);
                 if (GameObject.Find("ResultBackdropDim") == null
                     || GameObject.Find("FinalHaloBlur")?.GetComponent<EllipseSurface>() == null

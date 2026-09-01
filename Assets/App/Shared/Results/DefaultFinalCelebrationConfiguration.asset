@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e18b796bb1949e3b1a35122b2a5b33c, type: 3}
+  m_Name: DefaultFinalCelebrationConfiguration
+  m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration
+  backdropColor: {r: 0.15, g: 0.08, b: 0.28, a: 0}
+  backdropFinalAlpha: 0.18
+  backdropFadeDuration: 0.18
+  groupCenter: {x: 965, y: 550}
+  haloBlurSize: {x: 600, y: 220}
+  haloSize: {x: 520, y: 180}
+  scoreOffset: {x: -125, y: 3}
+  scoreSize: {x: 200, y: 200}
+  firstStarOffset: {x: 78, y: -22}
+  firstStarSize: {x: 175, y: 175}
+  secondStarOffset: {x: 128, y: 28}
+  secondStarSize: {x: 195, y: 195}
+  haloBlurColor: {r: 0.22, g: 0.7, b: 0.45, a: 0.06}
+  haloColor: {r: 0.22, g: 0.7, b: 0.45, a: 0.12}
+  haloPrimaryShadowColor: {r: 0.18, g: 0.62, b: 0.4, a: 0.14}
+  haloSecondaryShadowColor: {r: 0.18, g: 0.62, b: 0.4, a: 0.08}
+  haloSecondaryShadowOffset: {x: 2, y: -2}
+  scoreFontSize: 165
+  scoreShadowColor: {r: 0, g: 0, b: 0, a: 0.22}
+  scoreShadowOffset: {x: 3, y: -3}
+  starCornerRadius: 28
+  starArtworkShadowColor: {r: 0, g: 0, b: 0, a: 0.18}
+  starArtworkShadowOffset: {x: 3, y: -3}
+  starSurfaceShadowColor: {r: 0, g: 0, b: 0, a: 0.18}
+  starSurfaceShadowOffset: {x: 4, y: -4}
+  presentationDelay: 1
+  entranceDuration: 0.35
+  entranceStartScale: 0.85

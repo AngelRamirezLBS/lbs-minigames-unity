@@ -182,6 +182,7 @@ MonoBehaviour:
   instruction: {fileID: 8300000, guid: 55c4960f674c1374cbb87733dbf7e858, type: 3}
   tryAgain: {fileID: 8300000, guid: 9a80706a9d5e4e84492e92b87bb517a9, type: 3}
   font: {fileID: 12800000, guid: dbefde803f6e494eaa7003061af0e9cf, type: 3}
+  celebrationConfiguration: {fileID: 11400000, guid: 426fc08147e745098ff70ea1cd23b0f6, type: 2}
 --- !u!1 &494356445
 GameObject:
   m_ObjectHideFlags: 0

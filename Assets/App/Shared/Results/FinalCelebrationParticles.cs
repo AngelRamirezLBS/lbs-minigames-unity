@@ -2,9 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using Lbs.MiniGames.Shared;
 
-namespace Lbs.MiniGames.Games.ShapeAnalogy
+namespace Lbs.MiniGames.Shared.Results
 {
-    public sealed class ShapeAnalogyCelebrationParticles : MonoBehaviour
+    public sealed class FinalCelebrationParticles : MonoBehaviour
     {
         public const float Duration = 2.4f;
         public const float PixelsPerUnit = 400f;
@@ -67,11 +67,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 Configure(particleSystem, seeds[i], .025f * i, effectiveRate, effectiveMax, isConfetti, isSerpentina, names[i]);
                 ParticleSystemRenderer renderer = particleSystem.GetComponent<ParticleSystemRenderer>();
                 renderer.enabled = false;
-                GameObject bridgeObject = new("UIRenderer", typeof(RectTransform), typeof(CanvasRenderer), typeof(ShapeAnalogyUIParticleRenderer));
+                GameObject bridgeObject = new("UIRenderer", typeof(RectTransform), typeof(CanvasRenderer), typeof(FinalCelebrationUIParticleRenderer));
                 RectTransform bridgeRect = bridgeObject.GetComponent<RectTransform>();
                 bridgeRect.SetParent(rect, false);
                 UiFactory.Stretch(bridgeRect, 0);
-                bridgeObject.GetComponent<ShapeAnalogyUIParticleRenderer>().Initialize(particleSystem, sprites[i], palette, PixelsPerUnit);
+                bridgeObject.GetComponent<FinalCelebrationUIParticleRenderer>().Initialize(particleSystem, sprites[i], palette, PixelsPerUnit);
                 particleSystem.Play(true);
             }
         }

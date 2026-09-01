@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Lbs.MiniGames.Games.ShapeAnalogy;
+using Lbs.MiniGames.Shared.Results;
 
 namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
 {
@@ -31,7 +32,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
             for (int i = 0; i < outputNames.Length; i++) { if (i == 1) game.CaptureDragOver(); else if (i == 2) { game.CaptureSuccess(); SimulateCelebration(canvas, .7f); } else if (i == 3) { game.CaptureFinal(); SimulateCelebration(canvas, .9f); } Canvas.ForceUpdateCanvases(); LayoutRebuilder.ForceRebuildLayoutImmediate(canvasRect); RenderTexture.active=rt; GL.Clear(true,true,Color.black); camera.Render(); GL.Flush(); RenderTexture.active=rt; image.ReadPixels(new Rect(0,0,1920,1080),0,0); image.Apply(); File.WriteAllBytes(Path.Combine(Folder,outputNames[i]),image.EncodeToPNG()); }
             Object.DestroyImmediate(image); Object.DestroyImmediate(rt); Object.DestroyImmediate(cameraObject); EditorSceneManager.CloseScene(scene,true); Debug.Log("SHAPE_ANALOGY_VISUAL_CAPTURE_SUMMARY files=4 dimensions=1920x1080"); EditorApplication.Exit(0);
         }
-        private static void SimulateCelebration(Canvas canvas, float time) { foreach (ParticleSystem particles in canvas.GetComponentsInChildren<ParticleSystem>()) particles.Simulate(time, true, true, true); foreach (ShapeAnalogyUIParticleRenderer bridge in canvas.GetComponentsInChildren<ShapeAnalogyUIParticleRenderer>()) bridge.Refresh(); }
+        private static void SimulateCelebration(Canvas canvas, float time) { foreach (ParticleSystem particles in canvas.GetComponentsInChildren<ParticleSystem>()) particles.Simulate(time, true, true, true); foreach (FinalCelebrationUIParticleRenderer bridge in canvas.GetComponentsInChildren<FinalCelebrationUIParticleRenderer>()) bridge.Refresh(); }
     }
 }
 #endif

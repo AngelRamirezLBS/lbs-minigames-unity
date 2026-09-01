@@ -187,6 +187,7 @@ MonoBehaviour:
   compliments: []
   encouragements: []
   font: {fileID: 12800000, guid: dbefde803f6e494eaa7003061af0e9cf, type: 3}
+  celebrationConfiguration: {fileID: 11400000, guid: 426fc08147e745098ff70ea1cd23b0f6, type: 2}
 --- !u!1 &763802773
 GameObject:
   m_ObjectHideFlags: 0
