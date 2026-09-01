@@ -20,7 +20,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CienciaCategoryPath = CatalogFolder + "/CienciaCategory.asset";
         private const string DefinitionPath = CatalogFolder + "/ClassificationGame.asset";
         private const string CatalogPath = CatalogFolder + "/MiniGameCatalog.asset";
-        private const string VolteRegularPath = "Assets/App/Theme/Fonts/Volte-Regular.otf";
+        private const string InterfaceFontPath = "Assets/App/Theme/Fonts/Nunito-Black.ttf";
+        private const string CardTitleFontPath = "Assets/App/Theme/Fonts/Nunito-Medium.ttf";
         private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieAvatarPath = "Assets/App/Theme/Brand/WolfieAvatar.png";
         private const string BackgroundFolder = "Assets/App/Theme/Background";
@@ -155,7 +156,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             controllerObject.transform.SetParent(canvas.transform, false);
             LobbyController controller = controllerObject.AddComponent<LobbyController>();
             controller.SetCatalog(catalog);
-            controller.SetInterfaceFont(AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath));
+            controller.SetInterfaceFont(AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath));
+            controller.SetCardTitleFont(AssetDatabase.LoadAssetAtPath<Font>(CardTitleFontPath));
             controller.SetBrandLogo(AssetDatabase.LoadAssetAtPath<Sprite>(BrandLogoPath));
             controller.SetMascotSprite(LoadSprite(WolfieAvatarPath));
             controller.SetBackgroundDecorations(LoadBackgroundDecorations());

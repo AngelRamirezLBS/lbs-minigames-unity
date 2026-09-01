@@ -35,6 +35,10 @@ namespace Lbs.MiniGames.Lobby
         private static readonly Color HeaderOverlay = new(0f, 0f, 0f, 0.38f);
         private static readonly Color Orange = new(1f, 0.718f, 0.251f);
         private static readonly Color DarkInk = new(0.141f, 0.102f, 0.208f);
+        // Game-card title ink: a cool grey (not the near-black violet DarkInk). LogicLike card
+        // labels sit at ~#5B5968 (saturation ~8%) — a soft grey, not black and not purple. We
+        // darken it a touch to #4D4B5C so it stays legible from a distance on tablets/TVs.
+        private static readonly Color CardTitleInk = new(0.302f, 0.294f, 0.361f);
         private static readonly Color Transparent = new(0f, 0f, 0f, 0f);
         private static readonly Color White = Color.white;
         private static readonly Color PalePurple = new(0.927f, 0.875f, 0.992f);
@@ -43,7 +47,10 @@ namespace Lbs.MiniGames.Lobby
         private const float OpeningDelaySeconds = 0.16f;
 
         // Scroll content / section layout (reference 1920x1080).
-        private const float SectionHeaderHeight = 58f;
+        // Nunito-Black's line box at font size 50 is ~68 reference pixels (its hhea
+        // ascent/descent ratio is 1.364). Keep enough room so legacy UGUI Text does not
+        // truncate the entire category label; Volte previously fit only by a narrow margin.
+        private const float SectionHeaderHeight = 72f;
         // Width / height. Tuned so cards read as low and wide like LogicLike (~1.4) rather
         // than tall/square; keeps 3.5 visible and keeps the card from feeling oversized.
         private const float TileAspectRatio = 1.42f;
@@ -67,6 +74,9 @@ namespace Lbs.MiniGames.Lobby
 
         [SerializeField] private GameCatalog catalog;
         [SerializeField] private Font interfaceFont;
+        [Header("Card Title Font")]
+        [Tooltip("Font used for game-card titles. Intentionally lighter than the interface font so cards read as calmer than the section headers.")]
+        [SerializeField] private Font cardTitleFont;
         [SerializeField] private Sprite brandLogo;
         [Header("Wolfie Avatar")]
         [Tooltip("Optional non-interactive Wolfie sprite shown as a round header avatar.")]
@@ -116,6 +126,11 @@ namespace Lbs.MiniGames.Lobby
         public void SetInterfaceFont(Font font)
         {
             interfaceFont = font;
+        }
+
+        public void SetCardTitleFont(Font font)
+        {
+            cardTitleFont = font;
         }
 
         public void SetBrandLogo(Sprite logo)
@@ -326,7 +341,10 @@ namespace Lbs.MiniGames.Lobby
 
             Text title = UiFactory.CreateText(headerRoot, "HubTitle", font, 48, TextAnchor.MiddleLeft, White);
             title.text = "LBS+ Games";
-            UiFactory.ApplySyntheticHeaderStroke(title, White);
+            // Nunito-Black already has enough weight; render it as clean solid white without
+            // the synthetic one-pixel outline. Keep Best Fit off for stable header metrics.
+            title.fontStyle = FontStyle.Normal;
+            title.resizeTextForBestFit = false;
             title.raycastTarget = false;
             float titleLeft = brandLogo != null ? 0.140f : 0.075f;
             UiFactory.Anchor(title.rectTransform, new Vector2(titleLeft, 0.24f), new Vector2(0.40f, 0.76f));
@@ -557,7 +575,12 @@ namespace Lbs.MiniGames.Lobby
             // never collide with the cards. It is left-aligned with a small inner margin.
             Text header = UiFactory.CreateText(section, "SectionTitle", font, 50, TextAnchor.MiddleLeft, White);
             header.text = category.DisplayName;
-            UiFactory.ApplySyntheticHeaderStroke(header, White);
+            // Solid white, no synthetic stroke: the Black weight already gives the section
+            // header enough body. Nunito has a taller line box than Volte, so allow vertical
+            // overflow as a final guard against legacy UGUI truncating the whole line.
+            header.fontStyle = FontStyle.Normal;
+            header.resizeTextForBestFit = false;
+            header.verticalOverflow = VerticalWrapMode.Overflow;
             header.raycastTarget = false;
             UiFactory.Anchor(header.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
             header.rectTransform.pivot = new Vector2(0f, 1f);
@@ -679,25 +702,29 @@ namespace Lbs.MiniGames.Lobby
 
             CreateCardArtwork(cardTransform, game);
 
-            Text title = UiFactory.CreateText(cardTransform, "Title", ResolveInterfaceFont(), 34, TextAnchor.MiddleCenter, DarkInk);
+            Text title = UiFactory.CreateText(cardTransform, "Title", ResolveCardTitleFont(), 34, TextAnchor.MiddleCenter, CardTitleInk);
             title.text = game.VisibleName;
-            // Centered + synthesized weight (single same-color stroke) to match the LogicLike
-            // card label treatment. Best Fit stays off (moves with the scroll, would re-layout
-            // every frame). A hint of extra weight with the existing header-stroke helper.
-            UiFactory.ApplySyntheticHeaderStroke(title, DarkInk);
+            // Card titles use the dedicated lighter weight (Nunito-Medium ~500) so cards read
+            // calmer than the Black section headers. The single same-color stroke adds a hint of
+            // weight, nudging the Medium toward a semibold feel. Best Fit stays off (moves with
+            // the scroll, would re-layout every frame). Ink is a cool grey (CardTitleInk) to match
+            // the LogicLike label tone rather than the near-black violet DarkInk.
+            UiFactory.ApplySyntheticHeaderStroke(title, CardTitleInk);
             title.raycastTarget = false;
             UiFactory.Anchor(title.rectTransform, new Vector2(0.04f, 0.02f), new Vector2(0.96f, 0.24f));
 
             RoundedSurface openingCue = UiFactory.CreateRoundedSurface(cardTransform, "OpeningCue", Orange, 20f, false);
             UiFactory.Anchor(openingCue.rectTransform, new Vector2(0.40f, 0.42f), new Vector2(0.60f, 0.58f));
-            Text openingLabel = UiFactory.CreateText(openingCue.rectTransform, "Label", ResolveInterfaceFont(), 22, TextAnchor.MiddleCenter, DarkInk);
+            Text openingLabel = UiFactory.CreateText(openingCue.rectTransform, "Label", ResolveCardTitleFont(), 22, TextAnchor.MiddleCenter, DarkInk);
             openingLabel.text = "Abriendo...";
             openingLabel.resizeTextForBestFit = false;
             openingLabel.raycastTarget = false;
             UiFactory.Stretch(openingLabel.rectTransform, 4f);
 
             GameCardFeedback feedback = outline.gameObject.AddComponent<GameCardFeedback>();
-            feedback.Configure(outline, openingCue.gameObject, White, PalePurple);
+            // Keep the card surface white while pressed. Selection and the "Abriendo..." cue
+            // remain active; only the temporary purple press tint is removed.
+            feedback.Configure(outline, openingCue.gameObject, White, White);
             feedback.SelectionRequested += card => RequestLaunch(game, card);
         }
 
@@ -773,11 +800,23 @@ namespace Lbs.MiniGames.Lobby
 
             if (!loggedFontFallback)
             {
-                Debug.LogWarning("Volte Regular is not imported or assigned yet. The Lobby is using Unity's built-in fallback font.", this);
+                Debug.LogWarning("The interface font is not imported or assigned yet. The Lobby is using Unity's built-in fallback font.", this);
                 loggedFontFallback = true;
             }
 
             return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
+        private Font ResolveCardTitleFont()
+        {
+            // Dedicated, lighter weight for game-card titles. Falls back to the interface font
+            // (then the builtin) so a missing assignment still renders rather than erroring.
+            if (cardTitleFont != null)
+            {
+                return cardTitleFont;
+            }
+
+            return ResolveInterfaceFont();
         }
     }
 }
