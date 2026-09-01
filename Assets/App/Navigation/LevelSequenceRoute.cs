@@ -5,9 +5,11 @@ namespace Lbs.MiniGames.Navigation
         public const string ShapeAnalogyGameId = "shape.analogy";
         public const string ClothesSelectionGameId = "clothes.selection";
         public const string ObjectSelectionGameId = "object.selection";
+        public const string MakeAnEmojiDragGameId = "make.emoji.drag";
 
         public const string ShapeAnalogySuccessTarget = "clothes.selection";
         public const string ClothesSelectionSuccessTarget = "object.selection";
+        public const string ObjectSelectionSuccessTarget = "make.emoji.drag";
 
         /// <summary>
         /// Explicit membership boundary for games that share the logic-sequence BGM.
@@ -17,7 +19,8 @@ namespace Lbs.MiniGames.Navigation
         {
             return gameId == ShapeAnalogyGameId
                 || gameId == ClothesSelectionGameId
-                || gameId == ObjectSelectionGameId;
+                || gameId == ObjectSelectionGameId
+                || gameId == MakeAnEmojiDragGameId;
         }
     }
 }

@@ -1,6 +1,6 @@
 # Logic-game sequence
 
-This sequence delivers three short logic activities in a fixed order for the landscape, touch-first UI: **Shape Analogy → Clothes Selection → Object Selection → Lobby**. Use this page as the contributor-level map; implementation references are included only where maintenance requires them.
+This sequence delivers four short logic activities in a fixed order for the landscape, touch-first UI: **Shape Analogy → Clothes Selection → Object Selection → Make An Emoji Drag → Lobby**. Use this page as the contributor-level map; implementation references are included only where maintenance requires them.
 
 ## Current sequence
 
@@ -8,14 +8,15 @@ This sequence delivers three short logic activities in a fixed order for the lan
 |---|---|---|---|---|
 | Shape Analogy | `shape.analogy` | Complete a visual analogy. | Drag the object that completes the analogy onto the target; the current correct token is the outlined heart. | Clothes Selection (`clothes.selection`) |
 | Clothes Selection | `clothes.selection` | Choose the item that belongs with the displayed outfit/context. | Tap an answer card; the current implementation marks **gloves** as correct. | Object Selection (`object.selection`) |
-| Object Selection | `object.selection` | Find the object that does not belong. | Tap an answer card; the current round contains a tennis shoe among hats, and the tennis shoe is correct. | Completion, then Lobby |
+| Object Selection | `object.selection` | Find the object that does not belong. | Tap an answer card; the current round contains a tennis shoe among hats, and the tennis shoe is correct. | Make An Emoji Drag (`make.emoji.drag`) |
+| Make An Emoji Drag | `make.emoji.drag` | Build a happy emoji. | Drag the three emoji strips in any order; each left-side slot accepts only its matching strip and correct strips remain placed. | Completion, then Lobby |
 
 ## Shared behavior
 
-- **Landscape and touch:** the games use the shared level chrome and touch-compatible UI; Shape Analogy is drag-and-drop, while the selection games use answer cards.
+- **Landscape and touch:** the games use the shared level chrome and touch-compatible UI; Shape Analogy and Make An Emoji Drag use the shared drag-and-drop kit, while the selection games use answer cards.
 - **Instructions:** each scene starts its spoken instruction after any sequence-transition handoff. The Hong control toggles that instruction while the game is ready; voice playback ducks shared music.
 - **Completion:** a correct answer plays feedback, presents the shared celebration/final result, records completion, and then moves to the next destination.
-- **BGM:** `shape.analogy`, `clothes.selection`, and `object.selection` are the explicit logic-sequence BGM members. See `Assets/App/Navigation/LevelSequenceRoute.cs`.
+- **BGM:** `shape.analogy`, `clothes.selection`, `object.selection`, and `make.emoji.drag` are the explicit logic-sequence BGM members. See `Assets/App/Navigation/LevelSequenceRoute.cs`.
 
 ## Maintenance checklist: add a sequenced game
 
@@ -27,5 +28,5 @@ This sequence delivers three short logic activities in a fixed order for the lan
 ## References
 
 - Routing and BGM membership: `Assets/App/Navigation/LevelSequenceRoute.cs`
-- Game rules: `Assets/App/Games/ShapeAnalogy/Core/ShapeAnalogyRule.cs`, `Assets/App/Games/ClothesSelection/Core/ClothesSelectionRule.cs`, `Assets/App/Games/ObjectSelection/Core/ObjectSelectionRule.cs`
-- Scenes: `Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity`, `Assets/App/Games/ClothesSelection/ClothesSelection.unity`, `Assets/App/Games/ObjectSelection/ObjectSelection.unity`
+- Game rules: `Assets/App/Games/ShapeAnalogy/Core/ShapeAnalogyRule.cs`, `Assets/App/Games/ClothesSelection/Core/ClothesSelectionRule.cs`, `Assets/App/Games/ObjectSelection/Core/ObjectSelectionRule.cs`, `Assets/App/Games/MakeAnEmojiDrag/Core/MakeAnEmojiDragRule.cs`
+- Scenes: `Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity`, `Assets/App/Games/ClothesSelection/ClothesSelection.unity`, `Assets/App/Games/ObjectSelection/ObjectSelection.unity`, `Assets/App/Games/MakeAnEmojiDrag/MakeAnEmojiDrag.unity`

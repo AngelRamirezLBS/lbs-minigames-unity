@@ -146,9 +146,8 @@ namespace Lbs.MiniGames.Games.ObjectSelection
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             CreateFinal();
             state.FinishCelebration();
-            yield return new WaitForSecondsRealtime(.35f);
-            state.EnableFinalInput();
-            SetInteractable(true);
+            yield return new WaitForSecondsRealtime(2f);
+            services?.LevelSequence?.Advance(LevelSequenceRoute.ObjectSelectionSuccessTarget);
             selectionSequence = null;
         }
 

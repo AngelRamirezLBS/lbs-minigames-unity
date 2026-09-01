@@ -5,6 +5,7 @@ using Lbs.MiniGames.Games.Classification;
 using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Games.ClothesSelection;
 using Lbs.MiniGames.Games.ObjectSelection;
+using Lbs.MiniGames.Games.MakeAnEmojiDrag;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -37,6 +38,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string ClothesScenePath = "Assets/App/Games/ClothesSelection/ClothesSelection.unity";
         private const string ObjectSelectionDefinitionPath = CatalogFolder + "/ObjectSelectionGame.asset";
         private const string ObjectSelectionScenePath = "Assets/App/Games/ObjectSelection/ObjectSelection.unity";
+        private const string MakeAnEmojiDragDefinitionPath = CatalogFolder + "/MakeAnEmojiDragGame.asset";
+        private const string MakeAnEmojiDragScenePath = "Assets/App/Games/MakeAnEmojiDrag/MakeAnEmojiDrag.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -49,6 +52,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureFolders();
             ConfigureClothesSprites();
             ConfigureObjectSelectionSprites();
+            ConfigureMakeAnEmojiDragSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -107,6 +111,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             objectSelectionGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ObjectSelection/Art/tenis.png"));
             objectSelectionGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(objectSelectionGame);
+            GameDefinition makeAnEmojiDragGame = CreateOrLoad<GameDefinition>(MakeAnEmojiDragDefinitionPath);
+            makeAnEmojiDragGame.Configure("make.emoji.drag", "Make An Emoji Drag", shapes, "MakeAnEmojiDrag", "Drag the matching strips to make a happy emoji.");
+            makeAnEmojiDragGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/segunda.png"));
+            makeAnEmojiDragGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(makeAnEmojiDragGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -129,6 +138,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(shapeGame);
             EditorUtility.SetDirty(clothesGame);
             EditorUtility.SetDirty(objectSelectionGame);
+            EditorUtility.SetDirty(makeAnEmojiDragGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -151,6 +161,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureBuildScene(ClothesScenePath, true);
             CreateObjectSelectionScene(celebrationConfiguration);
             EnsureBuildScene(ObjectSelectionScenePath, true);
+            CreateMakeAnEmojiDragScene(celebrationConfiguration);
+            EnsureBuildScene(MakeAnEmojiDragScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -284,6 +296,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             }
         }
 
+        private static void ConfigureMakeAnEmojiDragSprites()
+        {
+            string[] names = { "primera.png", "segunda.png", "tercera.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/MakeAnEmojiDrag/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
         private static void CreateClothesSelectionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -360,6 +390,43 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ObjectSelectionScenePath);
+        }
+
+        private static void CreateMakeAnEmojiDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("MakeAnEmojiDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            MakeAnEmojiDragGame game = gameObject.AddComponent<MakeAnEmojiDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/MakeAnEmojiDrag/Instruction.mp3");
+            serialized.FindProperty("topArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/primera.png");
+            serialized.FindProperty("middleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/segunda.png");
+            serialized.FindProperty("bottomArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/tercera.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("MakeAnEmojiDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, MakeAnEmojiDragScenePath);
         }
 
         private static Canvas CreateCanvas()
