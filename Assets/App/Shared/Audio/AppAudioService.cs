@@ -21,6 +21,8 @@ namespace Lbs.MiniGames.Shared.Audio
         private bool isVoiceDucking;
         private bool isApplicationPaused;
         private Coroutine musicPlayback;
+        private Coroutine voicePlayback;
+        private AudioClip pendingVoiceClip;
 
         public void Initialize(AppAudioConfig audioConfig)
         {
@@ -150,10 +152,12 @@ namespace Lbs.MiniGames.Shared.Audio
         {
             if (clip == null) return;
             EnsureSources();
+            CancelPendingVoicePlayback();
             if (clip.loadState == AudioDataLoadState.Loading)
             {
                 // Schedule playback when ready without restarting music.
-                StartCoroutine(PlayVoiceWhenReady(clip, volume));
+                pendingVoiceClip = clip;
+                voicePlayback = StartCoroutine(PlayVoiceWhenReady(clip, volume));
                 return;
             }
 
@@ -170,7 +174,7 @@ namespace Lbs.MiniGames.Shared.Audio
         private System.Collections.IEnumerator PlayVoiceWhenReady(AudioClip clip, float volume)
         {
             while (clip != null && clip.loadState == AudioDataLoadState.Loading) yield return null;
-            if (clip != null && (clip.loadState == AudioDataLoadState.Loaded || clip.loadState == AudioDataLoadState.Unloaded))
+            if (clip == pendingVoiceClip && (clip.loadState == AudioDataLoadState.Loaded || clip.loadState == AudioDataLoadState.Unloaded))
             {
                 voiceSource.Stop();
                 voiceSource.clip = clip;
@@ -181,14 +185,31 @@ namespace Lbs.MiniGames.Shared.Audio
                     ApplyVoiceDuck(true);
                 }
             }
+            pendingVoiceClip = null;
+            voicePlayback = null;
         }
 
         public void StopVoice()
         {
+            CancelPendingVoicePlayback();
             if (voiceSource == null) return;
             voiceSource.Stop();
             voiceSource.clip = null;
             ApplyVoiceDuck(false);
+        }
+
+        public void StopVoiceIfPlaying(AudioClip clip)
+        {
+            if (clip == null) return;
+            if (pendingVoiceClip == clip) CancelPendingVoicePlayback();
+            if (voiceSource != null && voiceSource.clip == clip) StopVoice();
+        }
+
+        private void CancelPendingVoicePlayback()
+        {
+            if (voicePlayback != null) StopCoroutine(voicePlayback);
+            voicePlayback = null;
+            pendingVoiceClip = null;
         }
 
         public void PlaySfx(AudioClip clip, float volumeScale = 1f)
@@ -250,6 +271,7 @@ namespace Lbs.MiniGames.Shared.Audio
             currentMusicClip = null;
             if (musicPlayback != null) StopCoroutine(musicPlayback);
             musicPlayback = null;
+            CancelPendingVoicePlayback();
             isVoiceDucking = false;
             if (voiceSource != null)
             {

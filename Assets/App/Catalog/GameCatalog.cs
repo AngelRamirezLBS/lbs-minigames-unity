@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +11,27 @@ namespace Lbs.MiniGames.Catalog
         [SerializeField] private List<GameDefinition> games = new();
 
         public IReadOnlyList<GameCategory> Categories => categories;
+        public IReadOnlyList<GameDefinition> Games => games != null
+            ? (IReadOnlyList<GameDefinition>)games
+            : Array.Empty<GameDefinition>();
+
+        public GameDefinition FindGameById(string gameId)
+        {
+            if (string.IsNullOrWhiteSpace(gameId) || games == null)
+            {
+                return null;
+            }
+
+            foreach (GameDefinition game in games)
+            {
+                if (game != null && string.Equals(game.GameId, gameId, StringComparison.Ordinal))
+                {
+                    return game;
+                }
+            }
+
+            return null;
+        }
 
         public IEnumerable<GameDefinition> GetGames(GameCategory category)
         {

@@ -2399,7 +2399,7 @@ namespace Lbs.MiniGames.Games.NumberPull
             int correct = result.LeftStats.Correct + result.RightStats.Correct;
             int attempts = result.LeftStats.Attempts + result.RightStats.Attempts;
             int accuracy = attempts == 0 ? 0 : Mathf.RoundToInt(correct * 100f / attempts);
-            MiniGameResult aggregate = new(StableGameId, MiniGameCompletionState.Completed, accuracy, correct, attempts);
+            MiniGameResult aggregate = new(StableGameId, MiniGameCompletionState.Completed, accuracy, correct, attempts, services.Session.SelectedDifficultyId);
             services.GameLauncher.Complete(aggregate);
             Completed?.Invoke(aggregate);
         }
@@ -2416,7 +2416,7 @@ namespace Lbs.MiniGames.Games.NumberPull
                 PlayerStats right = match == null ? default : match.RightStats;
                 int correct = left.Correct + right.Correct;
                 int attempts = left.Attempts + right.Attempts;
-                MiniGameResult abandoned = new(StableGameId, MiniGameCompletionState.Abandoned, 0, correct, attempts);
+                MiniGameResult abandoned = new(StableGameId, MiniGameCompletionState.Abandoned, 0, correct, attempts, services.Session.SelectedDifficultyId);
                 resultReported = true;
                 services.GameLauncher.Complete(abandoned);
                 Completed?.Invoke(abandoned);

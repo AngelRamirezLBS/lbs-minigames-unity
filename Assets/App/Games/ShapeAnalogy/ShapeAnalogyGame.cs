@@ -10,9 +10,11 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+using Lbs.MiniGames.Shared.Results;
+
 namespace Lbs.MiniGames.Games.ShapeAnalogy
 {
-    public sealed class ShapeAnalogyGame : MonoBehaviour, IAppScene
+    public sealed class ShapeAnalogyGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
         private static readonly Color Background = new(1f, .886f, .678f);
         private static readonly Color Orange = new(1f, .38f, .08f);
@@ -31,6 +33,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         [SerializeField] private SharedAudioLibrary sharedLibrary; // optional immutable library; fallback to serialized arrays
         [SerializeField] private Font font;
         [SerializeField] private Font scoreFont;
+        [SerializeField] private FinalCelebrationConfiguration celebrationConfiguration;
         private AppServices services;
         private IAppAudioService appAudio;
         private AudioSource audioSource; // level-scoped voice for instruction (facade separate from SFX)
@@ -41,12 +44,11 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private RoundedSurface proximity;
         private Image hongImage;
         private Image missingImage;
-        private Image resultBackdropDim;
         private RectTransform board;
         private LevelChrome levelChrome;
         private readonly ShapeAnalogyState state = new();
         private Coroutine playback;
-        private Coroutine resultBackdropFade;
+        private bool transitionHandoffPending;
         private int activePointer = int.MinValue;
         private bool wasPausedByFocus;
         private readonly System.Collections.Generic.List<DragDropCard> draggables = new();
@@ -55,12 +57,13 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private static readonly Vector2 RelationshipCenter = new(960, 550);
         private static readonly Vector2[] FixedCardCenters = { new(910, 235), new(1150, 235), new(910, 475), new(1150, 475) };
         private readonly Vector2[] origins = { new(750, 855), new(1020, 855), new(1290, 855) };
-        private readonly System.Collections.Generic.List<GameObject> celebrationObjects = new();
+        private FinalCelebrationPresenter celebrationPresenter;
 
         public void Configure(AppServices appServices)
         {
             services = appServices;
             appAudio = appServices != null ? appServices.Audio : null;
+            celebrationPresenter ??= new FinalCelebrationPresenter(this, celebrationConfiguration);
             Build();
             // ShapeAnalogy owns this music while the level is active; the shared service provides playback and volume handling.
             if (appAudio != null && bgMusic != null)
@@ -72,8 +75,22 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
                 // Transitional fallback when injected service absent (e.g., editor tests without bootstrap)
                 Debug.LogWarning("[ShapeAnalogy] IAppAudioService not injected — level music will not play.", this);
             }
+            if (appServices?.LevelSequence?.IsTransitioning == true) transitionHandoffPending = true;
+            else StartInstructionPlayback();
+        }
+
+        public RectTransform TransitionRoot => board;
+        public void CompleteTransitionHandoff()
+        {
+            if (!transitionHandoffPending) return;
+            transitionHandoffPending = false;
+            StartInstructionPlayback();
+        }
+
+        private void StartInstructionPlayback()
+        {
             PlayInstruction();
-            playback = StartCoroutine(HongPlayback());
+            if (playback == null) playback = StartCoroutine(HongPlayback());
         }
 
         private void Build()
@@ -224,6 +241,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             }
             else if (outcome == ShapeAnalogyDropOutcome.Incorrect)
             {
+                state.RecordMistake();
                 // SFX via dedicated source or global service (does not duck music)
                 if (appAudio != null && failSfx != null) appAudio.PlaySfx(failSfx);
                 else if (failSfx && sfxSource) sfxSource.PlayOneShot(failSfx);
@@ -258,130 +276,14 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
 
         private void HideMissingArtwork() { if (missingImage) missingImage.gameObject.SetActive(false); }
         private IEnumerator ResolveIncorrect(DragDropCard card){ yield return CardAnimator.ShakeBoard(board); foreach(var c in draggables) c.Restore(); state.FinishResolve(); }
-        private IEnumerator Celebrate(){CreateCelebration(); yield return new WaitForSecondsRealtime(1f); CreateFinal(); state.FinishCelebration(); yield return new WaitForSecondsRealtime(1f); state.ArmFinal();}
+        private IEnumerator Celebrate(){CreateCelebration(); yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay); CreateFinal(); state.FinishCelebration(); yield return new WaitForSecondsRealtime(2f); services?.GameLauncher.Complete(new MiniGameResult("shape.analogy", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId)); services?.LevelSequence?.Advance(LevelSequenceRoute.ShapeAnalogySuccessTarget);}
+        private FinalCelebrationInput CelebrationInput() => new(state.Score, state.StarCount, scoreFont ? scoreFont : font, finalStar, celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3);
         private void CreateCelebration()
         {
-            ClearCelebrationVisuals();
-            resultBackdropDim = UiFactory.CreateImage(board, "ResultBackdropDim", new Color(.15f, .08f, .28f, 0f));
-            resultBackdropDim.raycastTarget = false;
-            UiFactory.Stretch(resultBackdropDim.rectTransform, 0);
-            resultBackdropDim.transform.SetAsLastSibling();
-
-            GameObject rootObject = new("ResultCelebration", typeof(RectTransform), typeof(ShapeAnalogyCelebrationParticles));
-            RectTransform root = rootObject.GetComponent<RectTransform>();
-            root.SetParent(board, false);
-            UiFactory.Stretch(root, 0);
-            rootObject.GetComponent<ShapeAnalogyCelebrationParticles>().Initialize(celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3);
-            celebrationObjects.Add(rootObject);
-            root.transform.SetAsLastSibling();
-            StartResultBackdropFade();
+            celebrationPresenter ??= new FinalCelebrationPresenter(this, celebrationConfiguration);
+            celebrationPresenter.ShowCelebration(board, CelebrationInput());
         }
-        private void CreateFinal()
-        {
-            Vector2 groupCenter = new Vector2(965f, 550f);
-            GameObject haloBlurObject = new GameObject("FinalHaloBlur", typeof(RectTransform), typeof(CanvasRenderer), typeof(EllipseSurface));
-            EllipseSurface haloBlur = haloBlurObject.GetComponent<EllipseSurface>();
-            haloBlur.color = new Color(0.22f, 0.70f, 0.45f, 0.06f);
-            haloBlur.raycastTarget = false;
-            haloBlur.transform.SetParent(board, false);
-            PixelRect(haloBlur.rectTransform, groupCenter, new Vector2(600, 220));
-            GameObject haloObject = new GameObject("FinalHalo", typeof(RectTransform), typeof(CanvasRenderer), typeof(EllipseSurface));
-            EllipseSurface halo = haloObject.GetComponent<EllipseSurface>();
-            halo.color = new Color(0.22f, 0.70f, 0.45f, 0.12f);
-            halo.raycastTarget = false;
-            halo.transform.SetParent(board, false);
-            PixelRect(halo.rectTransform, groupCenter, new Vector2(520, 180));
-            Shadow haloShadow = halo.gameObject.AddComponent<Shadow>();
-            haloShadow.effectColor = new Color(0.18f, 0.62f, 0.40f, 0.14f);
-            haloShadow.effectDistance = new Vector2(0f, 0f);
-            haloShadow.useGraphicAlpha = true;
-            Shadow haloShadow2 = halo.gameObject.AddComponent<Shadow>();
-            haloShadow2.effectColor = new Color(0.18f, 0.62f, 0.40f, 0.08f);
-            haloShadow2.effectDistance = new Vector2(2f, -2f);
-            haloShadow2.useGraphicAlpha = true;
-            Font sFont = scoreFont ? scoreFont : font;
-            Text score = UiFactory.CreateText(board, "FinalScore", sFont, 165, TextAnchor.MiddleCenter, Color.white);
-            score.text = "+8";
-            PixelRect(score.rectTransform, groupCenter + new Vector2(-125f, 3f), new Vector2(200, 200));
-            Shadow scoreShadow = score.gameObject.AddComponent<Shadow>();
-            scoreShadow.effectColor = new Color(0, 0, 0, 0.22f);
-            scoreShadow.effectDistance = new Vector2(3f, -3f);
-            scoreShadow.useGraphicAlpha = true;
-            CreateCard(board, "FinalStarA", finalStar, groupCenter + new Vector2(78f, -22f), new Vector2(175, 175), false);
-            CreateCard(board, "FinalStarB", finalStar, groupCenter + new Vector2(128f, 28f), new Vector2(195, 195), false);
-            Transform starA = board.Find("FinalStarA");
-            if (starA)
-            {
-                if (!starA.GetComponent<Shadow>())
-                {
-                    Shadow sh = starA.gameObject.AddComponent<Shadow>();
-                    sh.effectColor = new Color(0, 0, 0, 0.18f);
-                    sh.effectDistance = new Vector2(4f, -4f);
-                    sh.useGraphicAlpha = true;
-                }
-                Transform artworkA = starA.Find("Artwork");
-                Image imgA = artworkA ? artworkA.GetComponent<Image>() : null;
-                Shadow sA = imgA ? imgA.GetComponent<Shadow>() : null;
-                if (sA) sA.effectDistance = new Vector2(3f, -3f);
-            }
-            Transform starB = board.Find("FinalStarB");
-            if (starB)
-            {
-                if (!starB.GetComponent<Shadow>())
-                {
-                    Shadow sh = starB.gameObject.AddComponent<Shadow>();
-                    sh.effectColor = new Color(0, 0, 0, 0.18f);
-                    sh.effectDistance = new Vector2(4f, -4f);
-                    sh.useGraphicAlpha = true;
-                }
-                Transform artworkB = starB.Find("Artwork");
-                Image imgB = artworkB ? artworkB.GetComponent<Image>() : null;
-                Shadow sB = imgB ? imgB.GetComponent<Shadow>() : null;
-                if (sB) sB.effectDistance = new Vector2(3f, -3f);
-            }
-            score.canvasRenderer.SetAlpha(0f);
-            score.rectTransform.localScale = Vector3.one * 0.85f;
-            StartCoroutine(CardAnimator.FadeScaleIn(score.rectTransform, 0.35f));
-            if (starA)
-            {
-                CanvasGroup cgA = starA.gameObject.GetComponent<CanvasGroup>();
-                if (!cgA) cgA = starA.gameObject.AddComponent<CanvasGroup>();
-                cgA.alpha = 0f;
-                starA.GetComponent<RectTransform>().localScale = Vector3.one * 0.85f;
-                StartCoroutine(CardAnimator.FadeScaleIn(starA.GetComponent<RectTransform>(), 0.35f));
-            }
-            if (starB)
-            {
-                CanvasGroup cgB = starB.gameObject.GetComponent<CanvasGroup>();
-                if (!cgB) cgB = starB.gameObject.AddComponent<CanvasGroup>();
-                cgB.alpha = 0f;
-                starB.GetComponent<RectTransform>().localScale = Vector3.one * 0.85f;
-                StartCoroutine(CardAnimator.FadeScaleIn(starB.GetComponent<RectTransform>(), 0.35f));
-            }
-            Transform dim = resultBackdropDim ? resultBackdropDim.transform : null;
-            Transform celebration = board.Find("ResultCelebration");
-            Transform haloBlurTr = board.Find("FinalHaloBlur");
-            Transform haloTr = board.Find("FinalHalo");
-            Transform scoreTr = board.Find("FinalScore");
-            Transform starATr = board.Find("FinalStarA");
-            Transform starBTr = board.Find("FinalStarB");
-            if (dim && haloBlurTr && haloTr && celebration && scoreTr && starATr && starBTr)
-            {
-                if (dim.GetSiblingIndex() > haloBlurTr.GetSiblingIndex()) dim.SetSiblingIndex(haloBlurTr.GetSiblingIndex());
-                int baseIndex = Mathf.Min(dim.GetSiblingIndex(), haloBlurTr.GetSiblingIndex(), haloTr.GetSiblingIndex(), celebration.GetSiblingIndex(), scoreTr.GetSiblingIndex(), starATr.GetSiblingIndex(), starBTr.GetSiblingIndex());
-                dim.SetSiblingIndex(baseIndex);
-                haloBlurTr.SetSiblingIndex(baseIndex + 1);
-                haloTr.SetSiblingIndex(baseIndex + 2);
-                celebration.SetSiblingIndex(baseIndex + 3);
-                scoreTr.SetSiblingIndex(baseIndex + 4);
-                starATr.SetSiblingIndex(baseIndex + 5);
-                starBTr.SetSiblingIndex(baseIndex + 6);
-            }
-            else if (dim && celebration && dim.GetSiblingIndex() > celebration.GetSiblingIndex())
-            {
-                dim.SetSiblingIndex(celebration.GetSiblingIndex());
-            }
-        }
+        private void CreateFinal() => celebrationPresenter.ShowFinal(CelebrationInput());
         private void AddStarNumber(RectTransform starRoot, string number, int fontSize)
         {
             if (!starRoot || !font) return;
@@ -399,9 +301,6 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
             t.rectTransform.sizeDelta = new Vector2(80, 80);
             t.raycastTarget = false;
         }
-        private void StartResultBackdropFade(){if(!resultBackdropDim)return;if(resultBackdropFade!=null)StopCoroutine(resultBackdropFade);if(!Application.isPlaying){SetResultBackdropDim(.13f);return;}resultBackdropFade=StartCoroutine(FadeResultBackdrop());}
-        private IEnumerator FadeResultBackdrop(){const float duration=.18f;float elapsed=0f;while(elapsed<duration){elapsed+=Time.unscaledDeltaTime;SetResultBackdropDim(Mathf.Lerp(0f,.13f,Mathf.Clamp01(elapsed/duration)));yield return null;}SetResultBackdropDim(.13f);resultBackdropFade=null;}
-        private void SetResultBackdropDim(float alpha){if(!resultBackdropDim)return;Color color=resultBackdropDim.color;color.a=alpha;resultBackdropDim.color=color;}
         private Coroutine instructionPlayback; // local fallback only (when appAudio == null)
         private void PlayInstruction()
         {
@@ -436,7 +335,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private IEnumerator PlayRandomCompliment(){ yield return new WaitForSecondsRealtime(0.45f); AudioClip clip = null; if(compliments!=null && compliments.Length>0) clip = compliments[UnityEngine.Random.Range(0, compliments.Length)]; if(clip){ if(clip.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>clip.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(clip); else if(voiceSource) voiceSource.PlayOneShot(clip); } }
         private IEnumerator PlayRandomEncouragement(){ yield return new WaitForSecondsRealtime(0.35f); AudioClip clip = null; if(encouragements!=null && encouragements.Length>0) clip = encouragements[UnityEngine.Random.Range(0, encouragements.Length)]; if(clip){ if(clip.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>clip.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(clip); else if(voiceSource) voiceSource.PlayOneShot(clip); yield break; } if(tryAgain){ if(tryAgain.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>tryAgain.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(tryAgain); else if(voiceSource) voiceSource.PlayOneShot(tryAgain); } }
         private IEnumerator PlayTryAgainDelayed(){ yield return new WaitForSecondsRealtime(0.35f); if(tryAgain){ if(tryAgain.loadState==AudioDataLoadState.Loading) yield return new WaitUntil(()=>tryAgain.loadState!=AudioDataLoadState.Loading); if(appAudio!=null) appAudio.PlayVoice(tryAgain); else if(voiceSource) voiceSource.PlayOneShot(tryAgain); } }
-        private void Update(){if(state.AcceptFinalTap() && (Input.GetMouseButtonDown(0) || Input.touchCount>0))ReturnToLobby();}
+        private void Update() { }
         private void OnApplicationFocus(bool hasFocus)
         {
             if (appAudio != null)
@@ -463,24 +362,26 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         private void Cleanup()
         {
             if(playback!=null)StopCoroutine(playback); playback=null;
-            if(resultBackdropFade!=null)StopCoroutine(resultBackdropFade); resultBackdropFade=null;
             if(instructionPlayback!=null)StopCoroutine(instructionPlayback); instructionPlayback=null;
             if(audioSource)audioSource.Stop();
             if(sfxSource) sfxSource.Stop();
             if(voiceSource)voiceSource.Stop();
             if(appAudio != null)
             {
-                appAudio.StopVoice();
-                appAudio.StopMusic();
+                appAudio.StopVoiceIfPlaying(instruction);
             }
             if(proximityHighlighter) proximityHighlighter.HideImmediate(); else proximity?.gameObject.SetActive(false);
             foreach(var card in draggables) if(card) card.Restore();
-            if(board){board.anchoredPosition=Vector2.zero;ClearCelebrationVisuals();foreach(Transform child in board)if(child.name.StartsWith("Final"))RemoveTransient(child.gameObject);}
-            celebrationObjects.Clear(); activePointer=int.MinValue; state.Reset();
+            if(board){board.anchoredPosition=Vector2.zero;celebrationPresenter?.Clear();}
+            activePointer=int.MinValue; state.Reset();
         }
-        private void ClearCelebrationVisuals(){if(!board)return;for(int i=board.childCount-1;i>=0;i--){Transform child=board.GetChild(i);if(child.name=="ResultCelebration"||child.name=="ResultBackdropDim"||child.name.StartsWith("GreenGlow")||child.name.StartsWith("StarBurst")||child.name.StartsWith("CelebrationStar")||child.name.StartsWith("CurvedStreamer"))RemoveTransient(child.gameObject);}resultBackdropDim=null;celebrationObjects.Clear();}
         private static void RemoveTransient(GameObject gameObject){gameObject.SetActive(false);if(Application.isPlaying)Destroy(gameObject);else DestroyImmediate(gameObject);}
-        private void ReturnToLobby(){if(services!=null)services.GameLauncher.ShowLobby();}
+        private void ReturnToLobby()
+        {
+            if (state.Phase == ShapeAnalogyPhase.Resolving || state.Phase == ShapeAnalogyPhase.Celebrating || state.Phase == ShapeAnalogyPhase.Final) return;
+            appAudio?.StopMusic();
+            if (services != null) services.GameLauncher.ShowLobby();
+        }
 #if UNITY_EDITOR
         public void CaptureInitial() { Cleanup(); ClearCaptureVisuals(); draggables.Clear(); Build(); }
         private DragDropCard CorrectDraggable() { foreach (var d in draggables) if (d.TokenId == ShapeAnalogyRule.CorrectAnswer) return d; return null; }
@@ -488,7 +389,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy
         public void CaptureSuccess() { ResetCaptureScene(); DragDropCard correct = CorrectDraggable(); if (correct != null) { ((RectTransform)correct.transform).anchoredPosition = target.anchoredPosition; var cg = correct.GetComponent<CanvasGroup>(); if(cg) cg.blocksRaycasts = false; } HideMissingArtwork(); CreateCelebration(); }
         public void CaptureFinal() { ResetCaptureScene(); DragDropCard correct = CorrectDraggable(); if (correct != null) { ((RectTransform)correct.transform).anchoredPosition = target.anchoredPosition; var cg = correct.GetComponent<CanvasGroup>(); if(cg) cg.blocksRaycasts = false; } HideMissingArtwork(); CreateCelebration(); CreateFinal(); }
         private void ResetCaptureScene() { Cleanup(); ClearCaptureVisuals(); draggables.Clear(); Build(); }
-        private void ClearCaptureVisuals() { if (!board) return; for (int i = board.childCount - 1; i >= 0; i--) DestroyImmediate(board.GetChild(i).gameObject); celebrationObjects.Clear(); }
+        private void ClearCaptureVisuals() { if (!board) return; for (int i = board.childCount - 1; i >= 0; i--) DestroyImmediate(board.GetChild(i).gameObject); }
 #endif
     }
 }

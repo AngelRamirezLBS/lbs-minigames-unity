@@ -18,3 +18,8 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: ShapeAnalogy
   description: Look at the relationship and drag the correct card into the empty space.
+  supportedDifficulties:
+  - {fileID: 11400000, guid: 938eec21ce2baa347b1ebf0eed1c274a, type: 2}
+  - {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
+  - {fileID: 11400000, guid: a2261b7d548af084bb9f537581337446, type: 2}
+  defaultDifficulty: {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}

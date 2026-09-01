@@ -14,6 +14,7 @@ namespace Lbs.MiniGames.Bootstrap
 
         private AppServices services;
         private AppAudioService audioService;
+        private readonly AppSceneConfigurationGate sceneConfiguration = new();
 
         public void SetCatalog(GameCatalog gameCatalog)
         {
@@ -32,8 +33,12 @@ namespace Lbs.MiniGames.Bootstrap
 
             EnsureAudioService();
             GameSession session = new();
-            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName), audioService);
+            LevelSequenceController sequence = gameObject.GetComponent<LevelSequenceController>();
+            if (sequence == null) sequence = gameObject.AddComponent<LevelSequenceController>();
+            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName), audioService, sequence);
+            sequence.Configure(services, catalog);
             SceneManager.sceneLoaded += ConfigureLoadedScene;
+            SceneManager.sceneUnloaded += ForgetUnloadedScene;
         }
 
         private void EnsureAudioService()
@@ -71,20 +76,14 @@ namespace Lbs.MiniGames.Bootstrap
         private void OnDestroy()
         {
             SceneManager.sceneLoaded -= ConfigureLoadedScene;
+            SceneManager.sceneUnloaded -= ForgetUnloadedScene;
         }
 
         private void ConfigureLoadedScene(Scene scene, LoadSceneMode mode)
         {
-            foreach (GameObject root in scene.GetRootGameObjects())
-            {
-                foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
-                {
-                    if (behaviour is IAppScene appScene)
-                    {
-                        appScene.Configure(services);
-                    }
-                }
-            }
+            sceneConfiguration.Configure(scene, services);
         }
+
+        private void ForgetUnloadedScene(Scene scene) => sceneConfiguration.Forget(scene);
     }
 }

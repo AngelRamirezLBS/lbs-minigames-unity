@@ -8,6 +8,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Shared.UI;
+using Lbs.MiniGames.Shared.Results;
 
 namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
 {
@@ -43,7 +44,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                 failures += CheckResultPresentationOrder();
                 Canvas canvas = UnityEngine.Object.FindFirstObjectByType<Canvas>();
                 foreach (ParticleSystem particles in canvas.GetComponentsInChildren<ParticleSystem>()) { particles.Simulate(.1f, true, true, true); particles.Simulate(.6f, true, false, true); if (particles.particleCount == 0) failures++; }
-                foreach (ShapeAnalogyUIParticleRenderer bridge in canvas.GetComponentsInChildren<ShapeAnalogyUIParticleRenderer>()) { bridge.Refresh(); if (bridge.transform.parent.parent.name == "Stars" && (bridge.LastRenderedParticleCount == 0 || bridge.ActiveImageCount == 0)) failures++; }
+                foreach (FinalCelebrationUIParticleRenderer bridge in canvas.GetComponentsInChildren<FinalCelebrationUIParticleRenderer>()) { bridge.Refresh(); if (bridge.transform.parent.parent.name == "Stars" && (bridge.LastRenderedParticleCount == 0 || bridge.ActiveImageCount == 0)) failures++; }
                 failures += CheckDistinctVisibleOutput(canvas);
                 game.CaptureFinal();
                 failures += CheckResultPresentationOrder();
@@ -169,9 +170,9 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
             HashSet<uint> seeds = new();
             foreach (ParticleSystem system in systems)
             {
-                ShapeAnalogyUIParticleRenderer bridge = system.GetComponentInChildren<ShapeAnalogyUIParticleRenderer>();
+                FinalCelebrationUIParticleRenderer bridge = system.GetComponentInChildren<FinalCelebrationUIParticleRenderer>();
                 ParticleSystemRenderer renderer = system.GetComponent<ParticleSystemRenderer>();
-                if (bridge == null || bridge.AssignedSprite == null || renderer == null || renderer.enabled || system.main.loop || system.useAutoRandomSeed || !seeds.Add(system.randomSeed) || !Mathf.Approximately(system.main.duration, ShapeAnalogyCelebrationParticles.Duration) || !system.colorOverLifetime.enabled || !system.sizeOverLifetime.enabled) return 1;
+                if (bridge == null || bridge.AssignedSprite == null || renderer == null || renderer.enabled || system.main.loop || system.useAutoRandomSeed || !seeds.Add(system.randomSeed) || !Mathf.Approximately(system.main.duration, FinalCelebrationParticles.Duration) || !system.colorOverLifetime.enabled || !system.sizeOverLifetime.enabled) return 1;
                 if (system.emission.burstCount != 1 || system.shape.shapeType != ParticleSystemShapeType.Rectangle || system.shape.scale.x > .11f || Mathf.Abs(system.shape.position.x) > .001f) return 1;
                 ParticleSystem.VelocityOverLifetimeModule velocity = system.velocityOverLifetime;
                 bool isCenter = system.name == "Serpentina";
@@ -233,7 +234,7 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
                     }
                 }
             }
-            return seeds.Count == systems.Length && maxParticles == ShapeAnalogyCelebrationParticles.TotalMaxParticles && starRate >= 5f && starRate <= 7f && confettiRate >= 3f && confettiRate <= 5f ? 0 : 1; // updated: TotalMaxParticles 28 (was 40), confettiRate 3-5 (was 6-9) because serpentinas now rate 0 burst-only to avoid stacking
+            return seeds.Count == systems.Length && maxParticles == FinalCelebrationParticles.TotalMaxParticles && starRate >= 5f && starRate <= 7f && confettiRate >= 3f && confettiRate <= 5f ? 0 : 1; // updated: TotalMaxParticles 28 (was 40), confettiRate 3-5 (was 6-9) because serpentinas now rate 0 burst-only to avoid stacking
         }
 
         private static int CheckDistinctVisibleOutput(Canvas canvas)
