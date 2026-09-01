@@ -33,7 +33,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             AddRoundedFill(vertexHelper, rect, Mathf.Min(CornerRadius, rect.width * .5f, rect.height * .5f));
             AddDashedRoundedOutline(vertexHelper, rect);
 
-            float dividerOffset = rect.height * (127.5f / 660f);
+            float dividerOffset = rect.height / 6f;
             float inset = BorderThickness * .5f;
             AddDashedLine(vertexHelper, new Vector2(rect.xMin + inset, dividerOffset), new Vector2(rect.xMax - inset, dividerOffset));
             AddDashedLine(vertexHelper, new Vector2(rect.xMin + inset, -dividerOffset), new Vector2(rect.xMax - inset, -dividerOffset));

@@ -21,10 +21,11 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
         private static readonly Color Success = new(0.09f, 0.48f, 0.29f);
         private static readonly Vector2 DestinationPanelCenter = new(575, 540);
         private static readonly Vector2 DestinationPanelSize = new(620, 660);
-        private static readonly Vector2[] SlotCenters = { new(575, 285), new(575, 540), new(575, 795) };
+        private static readonly Vector2[] SlotCenters = { new(575, 320), new(575, 540), new(575, 760) };
         private static readonly Vector2 SlotSize = new(550, 180);
         private static readonly Vector2[] PieceCenters = { new(1275, 285), new(1275, 540), new(1275, 795) };
         private static readonly Vector2 PieceSize = new(650, 190);
+        private const float BottomArtworkVisualScale = 0.8755f;
 
         [SerializeField] private Sprite topArtwork, middleArtwork, bottomArtwork;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
@@ -119,6 +120,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             image.sprite = artwork;
             image.preserveAspect = true;
             UiFactory.Stretch(image.rectTransform, 0);
+            if (id == MakeAnEmojiDragRule.BottomPiece) image.rectTransform.localScale = Vector3.one * BottomArtworkVisualScale;
             DragDropCard card = surface.gameObject.AddComponent<DragDropCard>();
             card.Setup(id, group, surface.rectTransform.anchoredPosition);
             card.DragStarted += HandleDragStarted;
