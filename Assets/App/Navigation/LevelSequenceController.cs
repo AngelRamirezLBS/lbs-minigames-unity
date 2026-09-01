@@ -19,6 +19,7 @@ namespace Lbs.MiniGames.Navigation
         {
             GameDefinition next = catalog.FindGameById(nextGameId);
             if (next == null) yield break; transitioning = true;
+            services?.Session.SelectRequest(new GameLaunchRequest(next, next.GetDefaultDifficulty()));
             Scene outgoing = SceneManager.GetActiveScene(); AsyncOperation load = SceneManager.LoadSceneAsync(next.SceneName, LoadSceneMode.Additive); yield return load;
             Scene incoming = SceneManager.GetSceneByName(next.SceneName); SceneManager.SetActiveScene(incoming);
             Canvas.ForceUpdateCanvases();

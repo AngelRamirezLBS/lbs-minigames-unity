@@ -122,6 +122,7 @@ namespace Lbs.MiniGames.Games.ClothesSelection
             state.FinishCelebration();
             yield return new WaitForSecondsRealtime(.35f);
             state.EnableFinalInput();
+            SetInteractable(true);
             selectionSequence = null;
         }
         private FinalCelebrationInput CelebrationInput() => new(state.Score, state.StarCount, scoreFont ? scoreFont : font, finalStar, celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3);
