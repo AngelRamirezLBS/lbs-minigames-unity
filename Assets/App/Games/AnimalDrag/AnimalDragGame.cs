@@ -11,23 +11,33 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
+namespace Lbs.MiniGames.Games.AnimalDrag
 {
-    public sealed class MakeAnEmojiDragGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
+    public sealed class AnimalDragGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
         private static readonly Color Background = new(0.969f, 0.961f, 0.98f);
-        private static readonly Color SlotBorder = new(0.78f, 0.82f, 0.95f);
+        private static readonly Color SlotBaseColor = Color.clear;
+        private static readonly Color HoverOrange = new(1f, 0.7176f, 0.251f); // #FFB740
         private static readonly Color Error = new(0.702f, 0.149f, 0.118f);
         private static readonly Color Success = new(0.09f, 0.48f, 0.29f);
-        private static readonly Vector2 DestinationPanelCenter = new(575, 540);
-        private static readonly Vector2 DestinationPanelSize = new(620, 660);
-        private static readonly Vector2[] SlotCenters = { new(575, 320), new(575, 540), new(575, 760) };
-        private static readonly Vector2 SlotSize = new(550, 180);
-        private static readonly Vector2[] PieceCenters = { new(1275, 285), new(1275, 540), new(1275, 795) };
-        private static readonly Vector2 PieceSize = new(650, 190);
-        private const float BottomArtworkVisualScale = 0.8755f;
 
-        [SerializeField] private Sprite topArtwork, middleArtwork, bottomArtwork;
+        // Destination panel: background houses image fills the panel.
+        private static readonly Vector2 DestinationPanelCenter = new(560, 540);
+        private static readonly Vector2 DestinationPanelSize = new(880, 620);
+
+        // Two hitboxes transparent over casitas.png — dotted interior only (left = green house, right = yellow house).
+        private static readonly Vector2 GreenSlotCenter = new(447, 557);
+        private static readonly Vector2 YellowSlotCenter = new(740, 509);
+        private static readonly Vector2 SlotSize = new(300, 320);
+
+        // Two pieces on the right side.
+        private static readonly Vector2 CatPieceCenter = new(1320, 360);
+        private static readonly Vector2 PigPieceCenter = new(1320, 720);
+        private static readonly Vector2 PieceSize = new(260, 260);
+
+        [SerializeField] private Sprite casitasBackground;
+        [SerializeField] private Sprite catArtwork;
+        [SerializeField] private Sprite pigArtwork;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, successSfx, failSfx;
@@ -36,7 +46,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
         [SerializeField] private Font font, scoreFont;
         [SerializeField] private FinalCelebrationConfiguration celebrationConfiguration;
 
-        private readonly MakeAnEmojiDragState state = new();
+        private readonly AnimalDragState state = new();
         private readonly List<DragDropCard> pieces = new();
         private readonly Dictionary<string, RectTransform> slots = new();
         private readonly Dictionary<string, RoundedSurface> slotSurfaces = new();
@@ -50,6 +60,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
         private FinalCelebrationPresenter celebrationPresenter;
         private int activePointer = int.MinValue;
         private bool transitionHandoffPending;
+        private string hoveredSlotId;
 
         public RectTransform TransitionRoot => board;
 
@@ -76,34 +87,38 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             Canvas canvas = GetComponentInParent<Canvas>();
             if (!canvas || board != null) return;
 
-            board = new GameObject("MakeAnEmojiDragBoard", typeof(RectTransform)).GetComponent<RectTransform>();
+            board = new GameObject("AnimalDragBoard", typeof(RectTransform)).GetComponent<RectTransform>();
             board.SetParent(canvas.transform, false);
             UiFactory.Stretch(board, 0);
             UiFactory.Stretch(UiFactory.CreateImage(board, "Background", Background).rectTransform, 0);
             levelChrome = LevelChromeFactory.Build(board, font, exitIcon, hongNeutral, ReturnToLobby, ToggleInstruction);
             hongImage = levelChrome.HongImage;
 
-            CreateDestinationPanel();
-            CreateSlot(MakeAnEmojiDragRule.TopSlot, SlotCenters[0]);
-            CreateSlot(MakeAnEmojiDragRule.MiddleSlot, SlotCenters[1]);
-            CreateSlot(MakeAnEmojiDragRule.BottomSlot, SlotCenters[2]);
-            CreatePiece("TopPiece", MakeAnEmojiDragRule.TopPiece, topArtwork, PieceCenters[0]);
-            CreatePiece("BottomPiece", MakeAnEmojiDragRule.BottomPiece, bottomArtwork, PieceCenters[1]);
-            CreatePiece("MiddlePiece", MakeAnEmojiDragRule.MiddlePiece, middleArtwork, PieceCenters[2]);
+            CreateDestinationBackground();
+            CreateSlot(AnimalDragRule.YellowHouseSlot, YellowSlotCenter);
+            CreateSlot(AnimalDragRule.GreenHouseSlot, GreenSlotCenter);
+            CreatePiece("CatPiece", AnimalDragRule.CatPiece, catArtwork, CatPieceCenter);
+            CreatePiece("PigPiece", AnimalDragRule.PigPiece, pigArtwork, PigPieceCenter);
             EnsureScoreFont();
         }
 
-        private void CreateDestinationPanel()
+        private void CreateDestinationBackground()
         {
-            MakeAnEmojiDragDashedFrame frame = new GameObject("DestinationPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(MakeAnEmojiDragDashedFrame)).GetComponent<MakeAnEmojiDragDashedFrame>();
-            frame.transform.SetParent(board, false);
-            Pixel(frame.rectTransform, DestinationPanelCenter, DestinationPanelSize);
-            frame.raycastTarget = false;
+            // Single background image with both houses (casitas.png). Transparent slots overlay on dotted interior.
+            RoundedSurface bgSurface = UiFactory.CreateRoundedSurface(board, "DestinationBackground", Color.clear, 34f);
+            Pixel(bgSurface.rectTransform, DestinationPanelCenter, DestinationPanelSize);
+            bgSurface.OutlineThickness = 0f;
+            bgSurface.raycastTarget = false;
+            Image bgImage = UiFactory.CreateImage(bgSurface.rectTransform, "Casitas", Color.white);
+            bgImage.sprite = casitasBackground;
+            bgImage.preserveAspect = true;
+            UiFactory.Stretch(bgImage.rectTransform, 6f);
+            bgImage.raycastTarget = false;
         }
 
         private void CreateSlot(string id, Vector2 center)
         {
-            RoundedSurface surface = UiFactory.CreateRoundedSurface(board, id, Color.clear, 34f);
+            RoundedSurface surface = UiFactory.CreateRoundedSurface(board, id, SlotBaseColor, 34f);
             Pixel(surface.rectTransform, center, SlotSize);
             surface.OutlineThickness = 7f;
             surface.raycastTarget = false;
@@ -120,7 +135,6 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             image.sprite = artwork;
             image.preserveAspect = true;
             UiFactory.Stretch(image.rectTransform, 0);
-            if (id == MakeAnEmojiDragRule.BottomPiece) image.rectTransform.localScale = Vector3.one * BottomArtworkVisualScale;
             DragDropCard card = surface.gameObject.AddComponent<DragDropCard>();
             card.Setup(id, group, surface.rectTransform.anchoredPosition);
             card.DragStarted += HandleDragStarted;
@@ -131,7 +145,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
 
         private void HandleDragStarted(DragDropCard card, PointerEventData eventData)
         {
-            if (state.Phase != MakeAnEmojiDragPhase.Ready || activePointer != int.MinValue) return;
+            if (state.Phase != AnimalDragPhase.Ready || activePointer != int.MinValue) return;
             activePointer = eventData.pointerId;
             StopInstruction();
             card.Lift();
@@ -142,25 +156,63 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             if (eventData.pointerId != activePointer) return;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(board, eventData.position, eventData.pressEventCamera, out Vector2 point);
             ((RectTransform)card.transform).anchoredPosition = point;
+            UpdateHoverHighlight(eventData);
         }
 
         private void HandleDragEnded(DragDropCard card, PointerEventData eventData)
         {
             if (eventData.pointerId != activePointer) return;
             activePointer = int.MinValue;
+            ClearHoverHighlight();
             string slotId = FindSlot(eventData);
-            MakeAnEmojiDragDropOutcome outcome = state.Drop(card.TokenId, slotId, slotId != null);
-            if (outcome == MakeAnEmojiDragDropOutcome.Correct)
+            AnimalDragDropOutcome outcome = state.Drop(card.TokenId, slotId, slotId != null);
+            if (outcome == AnimalDragDropOutcome.Correct)
             {
                 StartCoroutine(ResolveCorrect(card, slotId));
             }
-            else if (outcome == MakeAnEmojiDragDropOutcome.Incorrect)
+            else if (outcome == AnimalDragDropOutcome.Incorrect)
             {
                 resolutionSequence = StartCoroutine(ResolveIncorrect(card, slotId));
             }
             else
             {
                 card.Restore();
+            }
+        }
+
+        private void UpdateHoverHighlight(PointerEventData eventData)
+        {
+            string hovered = FindSlot(eventData);
+            if (hovered == hoveredSlotId) return;
+            ClearHoverHighlight();
+            hoveredSlotId = hovered;
+            if (hoveredSlotId != null && slotSurfaces.TryGetValue(hoveredSlotId, out RoundedSurface surface))
+            {
+                surface.color = HoverOrange;
+                surface.OutlineThickness = 7f;
+            }
+        }
+
+        private void ClearHoverHighlight()
+        {
+            if (hoveredSlotId != null && slotSurfaces.TryGetValue(hoveredSlotId, out RoundedSurface surface))
+            {
+                // Only clear if not already marked success/error.
+                if (surface.color != Success && surface.color != Error)
+                {
+                    surface.color = SlotBaseColor;
+                    surface.OutlineThickness = 7f;
+                }
+            }
+            hoveredSlotId = null;
+            // Also clear any hover orange that might remain on non-hovered slots.
+            foreach (KeyValuePair<string, RoundedSurface> kv in slotSurfaces)
+            {
+                if (kv.Key == hoveredSlotId) continue;
+                if (kv.Value.color == HoverOrange)
+                {
+                    kv.Value.color = SlotBaseColor;
+                }
             }
         }
 
@@ -180,7 +232,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             yield return CardAnimator.PunchPlace((RectTransform)card.transform);
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
-            if (state.Phase == MakeAnEmojiDragPhase.Celebrating) yield return Celebrate();
+            if (state.Phase == AnimalDragPhase.Celebrating) yield return Celebrate();
         }
 
         private IEnumerator ResolveIncorrect(DragDropCard card, string slotId)
@@ -201,9 +253,8 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             celebrationPresenter.ShowFinal(CelebrationInput());
             state.FinishCelebration();
-            services?.GameLauncher.Complete(new MiniGameResult("make.emoji.drag", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
+            services?.GameLauncher.Complete(new MiniGameResult("animal.drag", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
             yield return new WaitForSecondsRealtime(.35f);
-            services?.LevelSequence?.Advance(LevelSequenceRoute.MakeAnEmojiDragSuccessTarget);
             state.EnableFinalInput();
         }
 
@@ -233,12 +284,12 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
         private void CreateCelebration() => celebrationPresenter.ShowCelebration(board, CelebrationInput());
         private void PlayInstruction() { if (instruction) audio?.PlayVoice(instruction); }
         private void StopInstruction() { audio?.StopVoiceIfPlaying(instruction); }
-        private void ToggleInstruction() { if (state.Phase != MakeAnEmojiDragPhase.Ready) return; if (audio != null && audio.IsVoicePlaying(instruction)) audio.StopVoiceIfPlaying(instruction); else PlayInstruction(); }
+        private void ToggleInstruction() { if (state.Phase != AnimalDragPhase.Ready) return; if (audio != null && audio.IsVoicePlaying(instruction)) audio.StopVoiceIfPlaying(instruction); else PlayInstruction(); }
         private void PlayRandom(AudioClip[] clips) { if (clips != null && clips.Length > 0) audio?.PlayVoice(clips[Random.Range(0, clips.Length)]); }
         private static AudioClip[] CopyClips(System.Collections.Generic.IReadOnlyList<AudioClip> clips) { AudioClip[] copy = new AudioClip[clips.Count]; for (int i = 0; i < copy.Length; i++) copy[i] = clips[i]; return copy; }
         private IEnumerator AnimateHong() { int[] frames = { 1, 2, 3, 2, 1 }; int index = 0; while (true) { bool playing = audio != null && audio.IsVoicePlaying(instruction); if (hongImage) hongImage.sprite = playing ? (frames[index++ % frames.Length] == 1 ? hong1 : frames[(index - 1 + frames.Length) % frames.Length] == 2 ? hong2 : hong3) : hongNeutral; yield return new WaitForSecondsRealtime(.18f); } }
         private void Update() { if (state.AcceptFinalInput() && (Input.GetMouseButtonDown(0) || Input.touchCount > 0)) ReturnToLobby(); }
-        private void ReturnToLobby() { if (state.Phase == MakeAnEmojiDragPhase.ResolvingIncorrect || state.Phase == MakeAnEmojiDragPhase.Celebrating || (state.Phase == MakeAnEmojiDragPhase.Final && !state.FinalInputEnabled)) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
+        private void ReturnToLobby() { if (state.Phase == AnimalDragPhase.ResolvingIncorrect || state.Phase == AnimalDragPhase.Celebrating || (state.Phase == AnimalDragPhase.Final && !state.FinalInputEnabled)) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
         private static void Pixel(RectTransform rect, Vector2 topOriginCenter, Vector2 size) { rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f); rect.pivot = new Vector2(.5f, .5f); rect.anchoredPosition = LevelChromeLayout.ToAnchoredPosition(topOriginCenter); rect.sizeDelta = size; }
 
         private void OnDisable()
@@ -247,6 +298,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             if (hongPlayback != null) StopCoroutine(hongPlayback);
             hongPlayback = null;
             activePointer = int.MinValue;
+            ClearHoverHighlight();
         }
 
         private void OnDestroy()
@@ -260,5 +312,4 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             }
         }
     }
-
 }

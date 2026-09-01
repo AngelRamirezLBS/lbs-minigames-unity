@@ -3,6 +3,7 @@ using Lbs.MiniGames.Bootstrap;
 using Lbs.MiniGames.Catalog;
 using Lbs.MiniGames.Games.Classification;
 using Lbs.MiniGames.Games.ShapeAnalogy;
+using Lbs.MiniGames.Games.AnimalDrag;
 using Lbs.MiniGames.Games.ClothesSelection;
 using Lbs.MiniGames.Games.ObjectSelection;
 using Lbs.MiniGames.Games.MakeAnEmojiDrag;
@@ -40,6 +41,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string ObjectSelectionScenePath = "Assets/App/Games/ObjectSelection/ObjectSelection.unity";
         private const string MakeAnEmojiDragDefinitionPath = CatalogFolder + "/MakeAnEmojiDragGame.asset";
         private const string MakeAnEmojiDragScenePath = "Assets/App/Games/MakeAnEmojiDrag/MakeAnEmojiDrag.unity";
+        private const string AnimalDragDefinitionPath = CatalogFolder + "/AnimalDragGame.asset";
+        private const string AnimalDragScenePath = "Assets/App/Games/AnimalDrag/AnimalDrag.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -116,6 +119,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             makeAnEmojiDragGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/segunda.png"));
             makeAnEmojiDragGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(makeAnEmojiDragGame);
+            GameDefinition animalDragGame = CreateOrLoad<GameDefinition>(AnimalDragDefinitionPath);
+            animalDragGame.Configure("animal.drag", "Animal Drag", shapes, "AnimalDrag", "Help the animals get to their homes.");
+            animalDragGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/casitas.png"));
+            animalDragGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(animalDragGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -139,6 +147,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(clothesGame);
             EditorUtility.SetDirty(objectSelectionGame);
             EditorUtility.SetDirty(makeAnEmojiDragGame);
+            EditorUtility.SetDirty(animalDragGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -163,6 +172,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureBuildScene(ObjectSelectionScenePath, true);
             CreateMakeAnEmojiDragScene(celebrationConfiguration);
             EnsureBuildScene(MakeAnEmojiDragScenePath, true);
+            ConfigureAnimalDragSprites();
+            CreateAnimalDragScene(celebrationConfiguration);
+            EnsureBuildScene(AnimalDragScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -314,6 +326,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             }
         }
 
+        private static void ConfigureAnimalDragSprites()
+        {
+            string[] names = { "casitas.png", "gato.png", "cerdo.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/AnimalDrag/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
         private static void CreateClothesSelectionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -427,6 +457,43 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, MakeAnEmojiDragScenePath);
+        }
+
+        private static void CreateAnimalDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("AnimalDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            AnimalDragGame game = gameObject.AddComponent<AnimalDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/AnimalDrag/Instruction.mp3");
+            serialized.FindProperty("casitasBackground").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/casitas.png");
+            serialized.FindProperty("catArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/gato.png");
+            serialized.FindProperty("pigArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/cerdo.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("AnimalDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, AnimalDragScenePath);
         }
 
         private static Canvas CreateCanvas()
