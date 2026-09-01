@@ -19,7 +19,7 @@ namespace Lbs.MiniGames.Bootstrap
 
         private void Awake()
         {
-            Application.targetFrameRate = 60;
+            Application.targetFrameRate = 90;
             DontDestroyOnLoad(gameObject);
 
             GameSession session = new();
