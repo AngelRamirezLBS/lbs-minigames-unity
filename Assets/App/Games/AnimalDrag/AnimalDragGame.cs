@@ -26,14 +26,15 @@ namespace Lbs.MiniGames.Games.AnimalDrag
         private static readonly Vector2 DestinationPanelSize = new(880, 620);
 
         // Two hitboxes transparent over casitas.png — dotted interior only (left = green house, right = yellow house).
-        private static readonly Vector2 GreenSlotCenter = new(447, 557);
+        private static readonly Vector2 GreenSlotCenter = new(475, 557);
         private static readonly Vector2 YellowSlotCenter = new(740, 509);
         private static readonly Vector2 SlotSize = new(300, 320);
 
         // Two pieces on the right side.
         private static readonly Vector2 CatPieceCenter = new(1320, 360);
         private static readonly Vector2 PigPieceCenter = new(1320, 720);
-        private static readonly Vector2 PieceSize = new(260, 260);
+        private static readonly Vector2 PieceSize = new(285, 285);
+        private static readonly Vector2 AcceptedOffset = new(0, -38);
 
         [SerializeField] private Sprite casitasBackground;
         [SerializeField] private Sprite catArtwork;
@@ -197,8 +198,7 @@ namespace Lbs.MiniGames.Games.AnimalDrag
         {
             if (hoveredSlotId != null && slotSurfaces.TryGetValue(hoveredSlotId, out RoundedSurface surface))
             {
-                // Only clear if not already marked success/error.
-                if (surface.color != Success && surface.color != Error)
+                if (surface.color == HoverOrange)
                 {
                     surface.color = SlotBaseColor;
                     surface.OutlineThickness = 7f;
@@ -228,7 +228,8 @@ namespace Lbs.MiniGames.Games.AnimalDrag
         private IEnumerator ResolveCorrect(DragDropCard card, string slotId)
         {
             card.Accept(slots[slotId]);
-            slotSurfaces[slotId].color = Success;
+            ((RectTransform)card.transform).anchoredPosition += AcceptedOffset;
+            slotSurfaces[slotId].color = SlotBaseColor;
             yield return CardAnimator.PunchPlace((RectTransform)card.transform);
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
