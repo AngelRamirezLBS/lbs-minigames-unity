@@ -17,7 +17,7 @@ namespace Lbs.MiniGames.Navigation
         public void Advance(string nextGameId) { if (!transitioning) StartCoroutine(SlideTo(nextGameId)); }
         private IEnumerator SlideTo(string nextGameId)
         {
-            GameDefinition next = null; foreach (GameCategory category in catalog.Categories) foreach (GameDefinition game in catalog.GetGames(category)) if (game.GameId == nextGameId) next = game;
+            GameDefinition next = catalog.FindGameById(nextGameId);
             if (next == null) yield break; transitioning = true;
             Scene outgoing = SceneManager.GetActiveScene(); AsyncOperation load = SceneManager.LoadSceneAsync(next.SceneName, LoadSceneMode.Additive); yield return load;
             Scene incoming = SceneManager.GetSceneByName(next.SceneName); SceneManager.SetActiveScene(incoming);

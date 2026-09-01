@@ -134,6 +134,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureBuildScene(ClothesScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+            Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
         }
 
         private static void ConfigureOrientation()
