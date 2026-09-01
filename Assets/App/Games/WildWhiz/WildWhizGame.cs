@@ -349,7 +349,7 @@ namespace Lbs.MiniGames.Games.WildWhiz
 
             resultReported = true;
             audioPresenter?.StopAll();
-            MiniGameResult result = new(Id, MiniGameCompletionState.Completed, 100, coordinator.TotalCount, coordinator.Attempts);
+            MiniGameResult result = new(Id, MiniGameCompletionState.Completed, 100, coordinator.TotalCount, coordinator.Attempts, services.Session.SelectedDifficultyId);
             services?.GameLauncher.Complete(result);
             Completed?.Invoke(result);
         }
@@ -365,7 +365,7 @@ namespace Lbs.MiniGames.Games.WildWhiz
             audioPresenter?.StopAll();
             int correct = coordinator != null ? coordinator.ResolvedCount : 0;
             int attempts = coordinator != null ? coordinator.Attempts : 0;
-            MiniGameResult result = new(Id, MiniGameCompletionState.Abandoned, 0, correct, attempts);
+            MiniGameResult result = new(Id, MiniGameCompletionState.Abandoned, 0, correct, attempts, services.Session.SelectedDifficultyId);
             services?.GameLauncher.Complete(result);
             Completed?.Invoke(result);
         }

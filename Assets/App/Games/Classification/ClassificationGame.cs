@@ -385,7 +385,7 @@ namespace Lbs.MiniGames.Games.Classification
             }
 
             resultReported = true;
-            MiniGameResult result = new(Id, MiniGameCompletionState.Completed, 100, round.TotalCount, round.Attempts);
+            MiniGameResult result = new(Id, MiniGameCompletionState.Completed, 100, round.TotalCount, round.Attempts, services.Session.SelectedDifficultyId);
             services.GameLauncher.Complete(result);
             Completed?.Invoke(result);
         }
@@ -394,7 +394,7 @@ namespace Lbs.MiniGames.Games.Classification
         {
             if (!resultReported)
             {
-                MiniGameResult result = new(Id, MiniGameCompletionState.Abandoned, 0, round.ResolvedCount, round.Attempts);
+                MiniGameResult result = new(Id, MiniGameCompletionState.Abandoned, 0, round.ResolvedCount, round.Attempts, services.Session.SelectedDifficultyId);
                 services.GameLauncher.Complete(result);
                 Completed?.Invoke(result);
             }
