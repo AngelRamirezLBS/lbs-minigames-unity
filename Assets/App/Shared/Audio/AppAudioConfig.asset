@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6c72efcad79c0c4abb102a449fac00e, type: 3}
   m_Name: AppAudioConfig
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Shared.Audio.AppAudioConfig
-  globalMusic: {fileID: 8300000, guid: ab25178bd0a1b6848b7b4b079c7c7faa, type: 3}
+  globalMusic: {fileID: 8300000, guid: fc11c0abaa560a04fba7a7ddbdd87452, type: 3}
   musicVolume: 0.25
   duckedMusicVolume: 0.125
   voiceVolume: 1

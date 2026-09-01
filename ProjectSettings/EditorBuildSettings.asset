@@ -26,4 +26,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/ClothesSelection/ClothesSelection.unity
     guid: 6ad2df9add32e5245a41d41ca281f4f8
+  - enabled: 1
+    path: Assets/App/Games/ObjectSelection/ObjectSelection.unity
+    guid: 918c4c8b9d4d45c8a2b5a517432f9e10
   m_configObjects: {}

@@ -105,6 +105,10 @@ namespace Lbs.MiniGames.Shared.Results
         private RectTransform CreateFinalStar(string name, Sprite sprite, Vector2 center, Vector2 size)
         {
             RoundedSurface surface = UiFactory.CreateRoundedSurface(board, name, Color.clear, configuration.StarCornerRadius);
+            CanvasGroup canvasGroup = surface.gameObject.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
             Pixel(surface.rectTransform, center, size);
             Image artwork = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
             artwork.sprite = sprite;
@@ -152,6 +156,8 @@ namespace Lbs.MiniGames.Shared.Results
             if (!target) return;
             CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>() ?? target.gameObject.AddComponent<CanvasGroup>();
             canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
             target.localScale = Vector3.one * configuration.EntranceStartScale;
             coroutineOwner.StartCoroutine(CardAnimator.FadeScaleIn(target, configuration.EntranceDuration));
         }
