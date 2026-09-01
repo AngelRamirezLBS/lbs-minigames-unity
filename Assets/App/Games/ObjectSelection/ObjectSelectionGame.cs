@@ -103,6 +103,8 @@ namespace Lbs.MiniGames.Games.ObjectSelection
             RoundedSurface surface = UiFactory.CreateRoundedSurface(board, id + "Card", NormalBorder, 26f);
             Pixel(surface.rectTransform, center, new Vector2(420, 320));
             surface.OutlineThickness = 5f;
+            RoundedSurface cardFill = UiFactory.CreateRoundedSurface(surface.rectTransform, "CardFill", Color.white, 21f, false);
+            UiFactory.Stretch(cardFill.rectTransform, surface.OutlineThickness);
             Image image = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
             image.sprite = artwork;
             image.preserveAspect = true;
