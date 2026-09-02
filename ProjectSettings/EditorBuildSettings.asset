@@ -35,4 +35,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/AnimalDrag/AnimalDrag.unity
     guid: 7e89e88ca19841d5b26e626eba430ec4
+  - enabled: 1
+    path: Assets/App/Games/TrianglesCount/TrianglesCount.unity
+    guid: 1c706f830e8048a88116b0a18ded1caa
   m_configObjects: {}
