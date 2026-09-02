@@ -88,7 +88,7 @@ namespace Lbs.MiniGames.Games.KitchenMathLogic
 
             // Principal white rounded card with equation
             principalCard = UiFactory.CreateRoundedSurface(board, "PrincipalCard", Color.white, 24f).rectTransform;
-            Pixel(principalCard, new Vector2(960, 430), new Vector2(1350, 300));
+            Pixel(principalCard, new Vector2(960, 430), new Vector2(1550, 380));
             RoundedSurface cardSurface = principalCard.GetComponent<RoundedSurface>();
             cardSurface.OutlineThickness = 4f;
             cardSurface.color = NormalBorder;

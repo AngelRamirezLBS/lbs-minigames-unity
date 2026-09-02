@@ -349,7 +349,7 @@ MonoBehaviour:
   serpentina: {fileID: 21300000, guid: ad40c9d7f8c1a034aa703e2fffc02c03, type: 3}
   serpentina2: {fileID: 21300000, guid: 0ed20a0a21944d86871ce62fb71fee94, type: 3}
   serpentina3: {fileID: 21300000, guid: 150c83a7361f402191c5f4bea519dd3a, type: 3}
-  instruction: {fileID: 8300000, guid: 9f20e4bc32b4409da40a89b7419d412a, type: 3}
+  instruction: {fileID: 8300000, guid: 5f2efec4b7654a319146948e39733d36, type: 3}
   successSfx: {fileID: 0}
   failSfx: {fileID: 0}
   compliments: []
