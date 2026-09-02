@@ -44,4 +44,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/CandiesLogic/CandiesLogic.unity
     guid: a7c314e489dd475fbe6e83d43c300af1
+  - enabled: 1
+    path: Assets/App/Games/SquaresSuccession/SquaresSuccession.unity
+    guid: 03cda03961514ecea7fa72ec0bd2a207
   m_configObjects: {}

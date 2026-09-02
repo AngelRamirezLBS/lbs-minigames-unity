@@ -10,6 +10,7 @@ namespace Lbs.MiniGames.Navigation
         public const string TrianglesCountGameId = "triangles.count";
         public const string CubePlatformGameId = "cube.platform";
         public const string CandiesLogicGameId = "candies.logic";
+        public const string SquaresSuccessionGameId = "squares.succession";
 
         public const string ShapeAnalogySuccessTarget = "clothes.selection";
         public const string ClothesSelectionSuccessTarget = "object.selection";
@@ -18,7 +19,8 @@ namespace Lbs.MiniGames.Navigation
         public const string AnimalDragSuccessTarget = "triangles.count";
         public const string TrianglesCountSuccessTarget = "cube.platform";
         public const string CubePlatformSuccessTarget = "candies.logic";
-        public const string CandiesLogicSuccessTarget = "candies.logic";
+        public const string CandiesLogicSuccessTarget = "squares.succession";
+        public const string SquaresSuccessionSuccessTarget = "squares.succession";
 
         /// <summary>
         /// Explicit membership boundary for games that share the logic-sequence BGM.
@@ -33,7 +35,8 @@ namespace Lbs.MiniGames.Navigation
                 || gameId == AnimalDragGameId
                 || gameId == TrianglesCountGameId
                 || gameId == CubePlatformGameId
-                || gameId == CandiesLogicGameId;
+                || gameId == CandiesLogicGameId
+                || gameId == SquaresSuccessionGameId;
         }
     }
 }
