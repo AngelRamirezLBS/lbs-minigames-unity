@@ -77,10 +77,10 @@ namespace Lbs.MiniGames.Bootstrap.Editor
 
             // --- Hub categories (new design) ---
             GameCategory logica = CreateOrLoad<GameCategory>(LogicaCategoryPath);
-            logica.Configure("logica", "Lógica", "Ejercita el pensamiento deductivo, la memoria y la resolución de problemas.");
+            logica.Configure("logica", "Lógica, matemáticas, lenguaje", "Ejercita el pensamiento deductivo, la memoria y la resolución de problemas.");
 
             GameCategory matematicas = CreateOrLoad<GameCategory>(MatematicasCategoryPath);
-            matematicas.Configure("matematicas", "Matemáticas", "Refuerza operaciones y conceptos numéricos de primaria.");
+            matematicas.Configure("matematicas", "Juega y Aprende", "Refuerza operaciones y conceptos numéricos de primaria.");
 
             GameCategory ciencia = CreateOrLoad<GameCategory>(CienciaCategoryPath);
             ciencia.Configure("ciencia", "Ciencia", "Descubre el cuerpo humano, la naturaleza y el planeta que habitamos.");
