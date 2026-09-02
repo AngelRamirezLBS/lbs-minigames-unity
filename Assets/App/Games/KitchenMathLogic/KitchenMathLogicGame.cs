@@ -1,8 +1,6 @@
 using System.Collections;
 using Lbs.MiniGames.Bootstrap;
-using Lbs.MiniGames.GameKits.DragDrop;
 using Lbs.MiniGames.GameKits.Selection;
-using Lbs.MiniGames.Navigation;
 using Lbs.MiniGames.Shared;
 using Lbs.MiniGames.Shared.Audio;
 using Lbs.MiniGames.Shared.Results;
@@ -10,20 +8,20 @@ using Lbs.MiniGames.Shared.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.SquaresSuccession
+namespace Lbs.MiniGames.Games.KitchenMathLogic
 {
-    public sealed class SquaresSuccessionGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
+    public sealed class KitchenMathLogicGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
-        private static readonly Color Background = new(0.9686f, 0.9608f, 0.9804f, 1f); // #F7F5FA
+        private static readonly Color Background = new(0.992f, 0.894f, 0.722f, 1f); // #FDE4B8 beige from Referencia.jpg
         private static readonly Color NormalBorder = new(.78f, .78f, .78f, 1f);
         private static readonly Color Error = new(.70f, .15f, .12f);
         private static readonly Color Success = new(.09f, .48f, .29f);
 
         [SerializeField] private Sprite principalSprite;
-        [SerializeField] private Sprite revealSprite;
         [SerializeField] private Sprite option1Sprite;
         [SerializeField] private Sprite option2Sprite;
         [SerializeField] private Sprite option3Sprite;
+        [SerializeField] private Sprite option4Sprite;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, successSfx, failSfx;
@@ -44,9 +42,7 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
         private FinalCelebrationPresenter celebrationPresenter;
         private bool transitionHandoffPending;
 
-        private RectTransform principalRoot;
-        private RectTransform optionsRoot;
-        private Image revealImage;
+        private RectTransform principalCard;
 
         public RectTransform TransitionRoot => board;
 
@@ -79,7 +75,7 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
             Canvas canvas = GetComponentInParent<Canvas>();
             if (!canvas || board != null) return;
 
-            board = new GameObject("SquaresSuccessionBoard", typeof(RectTransform)).GetComponent<RectTransform>();
+            board = new GameObject("KitchenMathLogicBoard", typeof(RectTransform)).GetComponent<RectTransform>();
             board.SetParent(canvas.transform, false);
             UiFactory.Stretch(board, 0);
 
@@ -88,33 +84,26 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
             levelChrome = LevelChromeFactory.Build(board, font, exitIcon, hongNeutral, ReturnToLobby, ToggleInstruction);
             hongImage = levelChrome.HongImage;
 
-            principalRoot = new GameObject("PrincipalRoot", typeof(RectTransform)).GetComponent<RectTransform>();
-            principalRoot.SetParent(board, false);
-            Pixel(principalRoot, new Vector2(960, 430), new Vector2(1250, 650));
-            Image principal = UiFactory.CreateImage(principalRoot, "Principal", Color.white);
+            // Principal white rounded card with equation
+            principalCard = UiFactory.CreateRoundedSurface(board, "PrincipalCard", Color.white, 24f).rectTransform;
+            Pixel(principalCard, new Vector2(960, 430), new Vector2(1350, 300));
+            RoundedSurface cardSurface = principalCard.GetComponent<RoundedSurface>();
+            cardSurface.OutlineThickness = 4f;
+            cardSurface.color = NormalBorder;
+            RoundedSurface inner = UiFactory.CreateRoundedSurface(principalCard, "Fill", Color.white, 20f, false);
+            UiFactory.Stretch(inner.rectTransform, cardSurface.OutlineThickness);
+
+            Image principal = UiFactory.CreateImage(principalCard, "Principal", Color.white);
             principal.sprite = principalSprite;
             principal.preserveAspect = true;
             principal.raycastTarget = false;
-            UiFactory.Stretch(principal.rectTransform, 0);
+            UiFactory.Stretch(principal.rectTransform, 20);
 
-            GameObject revealRootObj = new("RevealRoot", typeof(RectTransform));
-            RectTransform revealRoot = revealRootObj.GetComponent<RectTransform>();
-            revealRoot.SetParent(board, false);
-            Pixel(revealRoot, new Vector2(960, 430), new Vector2(1350, 500));
-            revealImage = UiFactory.CreateImage(revealRoot, "Reveal", Color.white);
-            revealImage.sprite = revealSprite;
-            revealImage.preserveAspect = true;
-            revealImage.raycastTarget = false;
-            UiFactory.Stretch(revealImage.rectTransform, 0);
-            revealRootObj.SetActive(false);
-            revealImage.gameObject.SetActive(false);
-
-            optionsRoot = new GameObject("OptionsRoot", typeof(RectTransform)).GetComponent<RectTransform>();
-            optionsRoot.SetParent(board, false);
-            UiFactory.Stretch(optionsRoot, 0);
-            CreateOption("option1", option1Sprite, new Vector2(560, 860));
-            CreateOption("option2", option2Sprite, new Vector2(960, 860));
-            CreateOption("option3", option3Sprite, new Vector2(1360, 860));
+            // Options: 4 white square buttons 260x260 at y 380
+            CreateOption("option1", option1Sprite, new Vector2(520, 860));
+            CreateOption("option2", option2Sprite, new Vector2(820, 860));
+            CreateOption("option3", option3Sprite, new Vector2(1120, 860));
+            CreateOption("option4", option4Sprite, new Vector2(1420, 860));
 
             EnsureScoreFont();
         }
@@ -129,8 +118,8 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
 
         private void CreateOption(string id, Sprite artwork, Vector2 center)
         {
-            RoundedSurface surface = UiFactory.CreateRoundedSurface(optionsRoot, id + "Card", Color.white, 22f);
-            Pixel(surface.rectTransform, center, new Vector2(340, 150));
+            RoundedSurface surface = UiFactory.CreateRoundedSurface(board, id + "Card", Color.white, 22f);
+            Pixel(surface.rectTransform, center, new Vector2(260, 260));
             surface.OutlineThickness = 4f;
             surface.color = NormalBorder;
             RoundedSurface inner = UiFactory.CreateRoundedSurface(surface.rectTransform, "Fill", Color.white, 18f, false);
@@ -140,7 +129,7 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
             image.sprite = artwork;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            UiFactory.Stretch(image.rectTransform, 10);
+            UiFactory.Stretch(image.rectTransform, 12);
 
             surface.raycastTarget = true;
             inner.raycastTarget = false;
@@ -156,7 +145,7 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
             if (state.Phase != SelectionPhase.Ready) return;
             StopInstruction();
             SetInteractable(false);
-            bool correct = state.Select(id, SquaresSuccessionRule.CorrectAnswer);
+            bool correct = state.Select(id, KitchenMathLogicRule.CorrectAnswer);
             selectionSequence = StartCoroutine(correct ? ResolveCorrect(surface) : ResolveIncorrect(surface));
         }
 
@@ -178,23 +167,12 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
 
-            if (principalRoot) principalRoot.gameObject.SetActive(false);
-            if (optionsRoot) optionsRoot.gameObject.SetActive(false);
-            if (revealImage)
-            {
-                revealImage.transform.parent.gameObject.SetActive(true);
-                revealImage.gameObject.SetActive(true);
-                yield return CardAnimator.PunchPlace(revealImage.rectTransform);
-            }
-
-            yield return new WaitForSecondsRealtime(0.5f);
-
             CreateCelebration();
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             CreateFinal();
             state.FinishCelebration();
-            yield return new WaitForSecondsRealtime(2f);
-            services?.LevelSequence?.Advance(LevelSequenceRoute.SquaresSuccessionSuccessTarget);
+            yield return new WaitForSecondsRealtime(0.35f);
+            state.EnableFinalInput();
             selectionSequence = null;
         }
 
@@ -203,7 +181,7 @@ namespace Lbs.MiniGames.Games.SquaresSuccession
         private void CreateFinal()
         {
             celebrationPresenter.ShowFinal(CelebrationInput());
-            services?.GameLauncher.Complete(new MiniGameResult("squares.succession", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
+            services?.GameLauncher.Complete(new MiniGameResult("kitchen.math.logic", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
         }
 
         private void SetInteractable(bool value)
