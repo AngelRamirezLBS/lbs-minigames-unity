@@ -1,5 +1,6 @@
 using System.Collections;
 using Lbs.MiniGames.Bootstrap;
+using Lbs.MiniGames.GameKits.DragDrop;
 using Lbs.MiniGames.GameKits.Selection;
 using Lbs.MiniGames.Navigation;
 using Lbs.MiniGames.Shared;
