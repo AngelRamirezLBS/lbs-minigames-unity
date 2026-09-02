@@ -19,7 +19,9 @@ namespace Lbs.MiniGames.Shared.Results
         public FinalCelebrationPresenter(MonoBehaviour coroutineOwner, FinalCelebrationConfiguration configuration)
         {
             this.coroutineOwner = coroutineOwner;
-            this.configuration = configuration;
+            this.configuration = configuration != null
+                ? configuration
+                : ScriptableObject.CreateInstance<FinalCelebrationConfiguration>();
         }
 
         public float PresentationDelay => configuration.PresentationDelay;

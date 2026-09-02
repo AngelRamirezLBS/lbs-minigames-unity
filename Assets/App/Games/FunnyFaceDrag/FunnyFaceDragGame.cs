@@ -30,9 +30,9 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
         private static readonly Vector2 DestinationPanelCenter = new(1030, 500);
         private static readonly Vector2 DestinationPanelSize = new(960, 560);
 
-        // Slots fine-tuned - Top (purple) higher, Bottom (green) slightly up to sit above dashed line, precise 240 gap
-        private static readonly Vector2 TopSlotCenter = new(1170, 340);
-        private static readonly Vector2 BottomSlotCenter = new(1170, 580);
+        // Align the snap centers with the two dashed targets baked into Principal2.
+        private static readonly Vector2 TopSlotCenter = new(1150, 375);
+        private static readonly Vector2 BottomSlotCenter = new(1150, 635);
 
         // Three draggable pieces at bottom (as in Image2)
         private static readonly Vector2 YellowPieceCenter = new(620, 900);
@@ -176,6 +176,16 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
             Pixel(surface.rectTransform, center, PieceSize);
             surface.OutlineThickness = 0f;
             CanvasGroup group = surface.gameObject.AddComponent<CanvasGroup>();
+
+            if (id == FunnyFaceRule.GreenPiece)
+            {
+                RoundedSurface whiteBacking = UiFactory.CreateRoundedSurface(surface.rectTransform, "OpaqueWhiteBacking", Color.white, 22f, false);
+                whiteBacking.OutlineThickness = 0f;
+                whiteBacking.rectTransform.anchorMin = whiteBacking.rectTransform.anchorMax = new Vector2(.5f, .5f);
+                whiteBacking.rectTransform.anchoredPosition = new Vector2(0f, 9f);
+                whiteBacking.rectTransform.sizeDelta = new Vector2(222f, 212f);
+            }
+
             Image image = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
             image.sprite = artwork;
             image.preserveAspect = true;
