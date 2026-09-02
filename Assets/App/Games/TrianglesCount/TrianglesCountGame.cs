@@ -209,7 +209,7 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             state.FinishCelebration();
             // keep reveal visible during celebration - do not clear. FinalCelebrationPresenter overlays on top.
             yield return new WaitForSecondsRealtime(0.35f);
-            state.EnableFinalInput();
+            services?.LevelSequence?.Advance(LevelSequenceRoute.TrianglesCountSuccessTarget);
             selectionSequence = null;
         }
 

@@ -101,10 +101,10 @@ namespace Lbs.MiniGames.Games.CubePlatform
             optionsRoot = new GameObject("OptionsRoot", typeof(RectTransform)).GetComponent<RectTransform>();
             optionsRoot.SetParent(board, false);
             UiFactory.Stretch(optionsRoot, 0);
-            // gap 40: width 280, centers diff 320 -> 640/960/1280
-            CreateOption("box1", box1Sprite, new Vector2(640, 860));
+            // enlarged for tablet/TV: 360x180, centers diff 380 -> 580/960/1340 gap 20
+            CreateOption("box1", box1Sprite, new Vector2(580, 860));
             CreateOption("box2", box2Sprite, new Vector2(960, 860));
-            CreateOption("box3", box3Sprite, new Vector2(1280, 860));
+            CreateOption("box3", box3Sprite, new Vector2(1340, 860));
 
             EnsureScoreFont();
         }
@@ -120,7 +120,7 @@ namespace Lbs.MiniGames.Games.CubePlatform
         private void CreateOption(string id, Sprite artwork, Vector2 center)
         {
             RoundedSurface surface = UiFactory.CreateRoundedSurface(optionsRoot, id + "Card", Color.white, 22f);
-            Pixel(surface.rectTransform, center, new Vector2(300, 155));
+            Pixel(surface.rectTransform, center, new Vector2(360, 180));
             surface.OutlineThickness = 4f;
             surface.color = NormalBorder;
             RoundedSurface inner = UiFactory.CreateRoundedSurface(surface.rectTransform, "Fill", Color.white, 18f, false);
