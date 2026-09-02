@@ -9,6 +9,7 @@ using Lbs.MiniGames.Games.ObjectSelection;
 using Lbs.MiniGames.Games.MakeAnEmojiDrag;
 using Lbs.MiniGames.Games.TrianglesCount;
 using Lbs.MiniGames.Games.CubePlatform;
+using Lbs.MiniGames.Games.CandiesLogic;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -49,6 +50,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string TrianglesCountScenePath = "Assets/App/Games/TrianglesCount/TrianglesCount.unity";
         private const string CubePlatformDefinitionPath = CatalogFolder + "/CubePlatformGame.asset";
         private const string CubePlatformScenePath = "Assets/App/Games/CubePlatform/CubePlatform.unity";
+        private const string CandiesLogicDefinitionPath = CatalogFolder + "/CandiesLogicGame.asset";
+        private const string CandiesLogicScenePath = "Assets/App/Games/CandiesLogic/CandiesLogic.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -64,6 +67,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureMakeAnEmojiDragSprites();
             ConfigureTrianglesCountSprites();
             ConfigureCubePlatformSprites();
+            ConfigureCandiesLogicSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -142,6 +146,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             cubePlatformGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CubePlatform/Art/Box3.png"));
             cubePlatformGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(cubePlatformGame);
+            GameDefinition candiesLogicGame = CreateOrLoad<GameDefinition>(CandiesLogicDefinitionPath);
+            candiesLogicGame.Configure("candies.logic", "Candies Logic", shapes, "CandiesLogic", "What is the big circle?");
+            candiesLogicGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CandiesLogic/Art/CandiesandSweets.png"));
+            candiesLogicGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(candiesLogicGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -168,6 +177,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(animalDragGame);
             EditorUtility.SetDirty(trianglesCountGame);
             EditorUtility.SetDirty(cubePlatformGame);
+            EditorUtility.SetDirty(candiesLogicGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -201,6 +211,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureCubePlatformSprites();
             CreateCubePlatformScene(celebrationConfiguration);
             EnsureBuildScene(CubePlatformScenePath, true);
+            ConfigureCandiesLogicSprites();
+            CreateCandiesLogicScene(celebrationConfiguration);
+            EnsureBuildScene(CandiesLogicScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -394,6 +407,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/CubePlatform/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureCandiesLogicSprites()
+        {
+            string[] names = { "CandiesandSweets.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/CandiesLogic/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -630,6 +661,41 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, TrianglesCountScenePath);
+        }
+
+        private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("CandiesLogicGame"); gameObject.transform.SetParent(canvas.transform, false);
+            CandiesLogicGame game = gameObject.AddComponent<CandiesLogicGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/CandiesLogic/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CandiesLogic/Art/CandiesandSweets.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("CandiesLogicGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, CandiesLogicScenePath);
         }
 
         private static Canvas CreateCanvas()

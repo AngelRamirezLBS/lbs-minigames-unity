@@ -172,8 +172,8 @@ namespace Lbs.MiniGames.Games.CubePlatform
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             CreateFinal();
             state.FinishCelebration();
-            yield return new WaitForSecondsRealtime(0.35f);
-            state.EnableFinalInput();
+            yield return new WaitForSecondsRealtime(2f);
+            services?.LevelSequence?.Advance(LevelSequenceRoute.CubePlatformSuccessTarget);
             selectionSequence = null;
         }
 
