@@ -95,6 +95,22 @@ namespace Lbs.MiniGames.Tests
         }
 
         [Test]
+        public void GameLauncher_DoesNotExitToLobby_DuringLevelTransition()
+        {
+            var session = new GameSession();
+            var loader = new FakeLoader();
+            var sequence = new FakeLevelSequence { IsTransitioning = true };
+            var launcher = new GameLauncher(session, loader, "Lobby", levelSequence: sequence);
+
+            launcher.ShowLobby();
+
+            Assert.IsNull(loader.LastScene);
+            sequence.IsTransitioning = false;
+            launcher.ShowLobby();
+            Assert.AreEqual("Lobby", loader.LastScene);
+        }
+
+        [Test]
         public void MiniGameResult_Preserves_Compatibility_And_Difficulty()
         {
             var r1 = new MiniGameResult("game.id", MiniGameCompletionState.Completed, 10, 1, 1);
@@ -108,6 +124,12 @@ namespace Lbs.MiniGames.Tests
         {
             public string LastScene;
             public void Load(string sceneName) { LastScene = sceneName; }
+        }
+
+        private sealed class FakeLevelSequence : ILevelSequence
+        {
+            public bool IsTransitioning { get; set; }
+            public void Advance(string nextGameId) { }
         }
     }
 }

@@ -306,6 +306,11 @@ namespace Lbs.MiniGames.Games.WildWhiz
 
         private void HandleClose()
         {
+            if (celebrationActive || finalCompletionActive || coordinator?.IsLevelCompleted == true)
+            {
+                return;
+            }
+
             audioPresenter?.StopAll();
             ReportAbandoned();
             services?.GameLauncher.ShowLobby();
