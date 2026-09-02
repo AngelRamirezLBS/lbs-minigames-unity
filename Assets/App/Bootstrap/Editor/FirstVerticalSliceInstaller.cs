@@ -11,6 +11,7 @@ using Lbs.MiniGames.Games.TrianglesCount;
 using Lbs.MiniGames.Games.CubePlatform;
 using Lbs.MiniGames.Games.CandiesLogic;
 using Lbs.MiniGames.Games.KitchenMathLogic;
+using Lbs.MiniGames.Games.FunnyFaceDrag;
 using Lbs.MiniGames.Games.SquaresSuccession;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
@@ -58,6 +59,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string SquaresSuccessionScenePath = "Assets/App/Games/SquaresSuccession/SquaresSuccession.unity";
         private const string KitchenMathLogicDefinitionPath = CatalogFolder + "/KitchenMathLogicGame.asset";
         private const string KitchenMathLogicScenePath = "Assets/App/Games/KitchenMathLogic/KitchenMathLogic.unity";
+        private const string FunnyFaceDragDefinitionPath = CatalogFolder + "/FunnyFaceDragGame.asset";
+        private const string FunnyFaceDragScenePath = "Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -76,6 +79,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureCandiesLogicSprites();
             ConfigureSquaresSuccessionSprites();
             ConfigureKitchenMathLogicSprites();
+            ConfigureFunnyFaceDragSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -171,6 +175,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             kitchenMathLogicGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Option4.png"));
             kitchenMathLogicGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(kitchenMathLogicGame);
+            GameDefinition funnyFaceDragGame = CreateOrLoad<GameDefinition>(FunnyFaceDragDefinitionPath);
+            funnyFaceDragGame.Configure("funnyface.drag", "Funny Face Drag", shapes, "FunnyFaceDrag", "Complete the funny face");
+            Sprite funnyThumb = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag3.png");
+            if (funnyThumb == null) funnyThumb = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Principal1.png");
+            funnyFaceDragGame.SetThumbnail(funnyThumb);
+            funnyFaceDragGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(funnyFaceDragGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -200,6 +211,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(candiesLogicGame);
             EditorUtility.SetDirty(squaresSuccessionGame);
             EditorUtility.SetDirty(kitchenMathLogicGame);
+            EditorUtility.SetDirty(funnyFaceDragGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -242,6 +254,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureKitchenMathLogicSprites();
             CreateKitchenMathLogicScene(celebrationConfiguration);
             EnsureBuildScene(KitchenMathLogicScenePath, true);
+            ConfigureFunnyFaceDragSprites();
+            CreateFunnyFaceDragScene(celebrationConfiguration);
+            EnsureBuildScene(FunnyFaceDragScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -471,6 +486,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/SquaresSuccession/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureFunnyFaceDragSprites()
+        {
+            string[] names = { "Background.png", "Principal1.png", "Principal2.png", "Drag1.png", "Drag2.png", "Drag3.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/FunnyFaceDrag/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -803,6 +836,46 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, KitchenMathLogicScenePath);
+        }
+
+        private static void CreateFunnyFaceDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("FunnyFaceDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            FunnyFaceDragGame game = gameObject.AddComponent<FunnyFaceDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/FunnyFaceDrag/Instruction.mp3");
+            serialized.FindProperty("backgroundSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Background.png");
+            serialized.FindProperty("principal1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Principal1.png");
+            serialized.FindProperty("principal2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Principal2.png");
+            serialized.FindProperty("drag1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag1.png");
+            serialized.FindProperty("drag2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag2.png");
+            serialized.FindProperty("drag3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("FunnyFaceDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, FunnyFaceDragScenePath);
         }
 
         private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)

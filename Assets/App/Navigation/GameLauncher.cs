@@ -11,8 +11,9 @@ namespace Lbs.MiniGames.Navigation
         private readonly ISceneLoader sceneLoader;
         private readonly string lobbySceneName;
         private readonly IAppAudioService audioService;
+        private readonly ILevelSequence levelSequence;
 
-        public GameLauncher(GameSession session, ISceneLoader sceneLoader, string lobbySceneName, IAppAudioService audioService = null)
+        public GameLauncher(GameSession session, ISceneLoader sceneLoader, string lobbySceneName, IAppAudioService audioService = null, ILevelSequence levelSequence = null)
         {
             this.session = session ?? throw new ArgumentNullException(nameof(session));
             this.sceneLoader = sceneLoader ?? throw new ArgumentNullException(nameof(sceneLoader));
@@ -20,6 +21,7 @@ namespace Lbs.MiniGames.Navigation
                 ? throw new ArgumentException("A lobby scene name is required.", nameof(lobbySceneName))
                 : lobbySceneName;
             this.audioService = audioService;
+            this.levelSequence = levelSequence;
         }
 
         public void Launch(GameDefinition game)
@@ -65,6 +67,11 @@ namespace Lbs.MiniGames.Navigation
 
         public void ShowLobby()
         {
+            if (levelSequence?.IsTransitioning == true)
+            {
+                return;
+            }
+
             audioService?.StopMusic();
             sceneLoader.Load(lobbySceneName);
         }
