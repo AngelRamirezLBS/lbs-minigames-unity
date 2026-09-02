@@ -1,6 +1,7 @@
 using System.Collections;
 using Lbs.MiniGames.Bootstrap;
 using Lbs.MiniGames.GameKits.Selection;
+using Lbs.MiniGames.Navigation;
 using Lbs.MiniGames.Shared;
 using Lbs.MiniGames.Shared.Audio;
 using Lbs.MiniGames.Shared.Results;
