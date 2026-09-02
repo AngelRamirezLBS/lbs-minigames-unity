@@ -41,4 +41,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/CubePlatform/CubePlatform.unity
     guid: 291bc48f7f9b4d2d847115ba819e67ce
+  - enabled: 1
+    path: Assets/App/Games/CandiesLogic/CandiesLogic.unity
+    guid: a7c314e489dd475fbe6e83d43c300af1
   m_configObjects: {}

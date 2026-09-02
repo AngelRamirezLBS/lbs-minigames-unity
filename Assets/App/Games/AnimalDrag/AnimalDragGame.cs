@@ -257,7 +257,7 @@ namespace Lbs.MiniGames.Games.AnimalDrag
             string resultGameId = services?.Session?.CurrentRequest?.Game?.GameId ?? "animal.drag";
             string difficultyId = services?.Session?.SelectedDifficultyId;
             services?.GameLauncher.Complete(new MiniGameResult(resultGameId, MiniGameCompletionState.Completed, state.Score, 1, 1, difficultyId));
-            yield return new WaitForSecondsRealtime(.35f);
+            yield return new WaitForSecondsRealtime(2f);
             services?.LevelSequence?.Advance(LevelSequenceRoute.AnimalDragSuccessTarget);
             state.EnableFinalInput();
         }

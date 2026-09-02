@@ -202,7 +202,7 @@ namespace Lbs.MiniGames.Games.MakeAnEmojiDrag
             celebrationPresenter.ShowFinal(CelebrationInput());
             state.FinishCelebration();
             services?.GameLauncher.Complete(new MiniGameResult("make.emoji.drag", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
-            yield return new WaitForSecondsRealtime(.35f);
+            yield return new WaitForSecondsRealtime(2f);
             services?.LevelSequence?.Advance(LevelSequenceRoute.MakeAnEmojiDragSuccessTarget);
             state.EnableFinalInput();
         }
