@@ -10,9 +10,9 @@ using Lbs.MiniGames.Shared.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.TrianglesCount
+namespace Lbs.MiniGames.Games.CubePlatform
 {
-    public sealed class TrianglesCountGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
+    public sealed class CubePlatformGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
         private static readonly Color Background = new(0.9686f, 0.9608f, 0.9804f, 1f); // #F7F5FA
         private static readonly Color NormalBorder = new(.78f, .78f, .78f, 1f);
@@ -20,8 +20,10 @@ namespace Lbs.MiniGames.Games.TrianglesCount
         private static readonly Color Success = new(.09f, .48f, .29f);
         private static readonly Color Ink = new(.14f, .10f, .21f);
 
-        [SerializeField] private Sprite principalSprite;
-        [SerializeField] private Sprite revealSprite;
+        [SerializeField] private Sprite platformSprite;
+        [SerializeField] private Sprite box1Sprite;
+        [SerializeField] private Sprite box2Sprite;
+        [SerializeField] private Sprite box3Sprite;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, successSfx, failSfx;
@@ -44,7 +46,6 @@ namespace Lbs.MiniGames.Games.TrianglesCount
 
         private RectTransform principalRoot;
         private RectTransform optionsRoot;
-        private Image revealImage;
 
         public RectTransform TransitionRoot => board;
 
@@ -77,7 +78,7 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             Canvas canvas = GetComponentInParent<Canvas>();
             if (!canvas || board != null) return;
 
-            board = new GameObject("TrianglesCountBoard", typeof(RectTransform)).GetComponent<RectTransform>();
+            board = new GameObject("CubePlatformBoard", typeof(RectTransform)).GetComponent<RectTransform>();
             board.SetParent(canvas.transform, false);
             UiFactory.Stretch(board, 0);
 
@@ -86,39 +87,24 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             levelChrome = LevelChromeFactory.Build(board, font, exitIcon, hongNeutral, ReturnToLobby, ToggleInstruction);
             hongImage = levelChrome.HongImage;
 
-            // Principal image container centered large
+            // Principal image container centered large on light #F7F5FA
             principalRoot = new GameObject("PrincipalRoot", typeof(RectTransform)).GetComponent<RectTransform>();
             principalRoot.SetParent(board, false);
-            Pixel(principalRoot, new Vector2(960, 430), new Vector2(980, 540));
+            Pixel(principalRoot, new Vector2(960, 430), new Vector2(1250, 650));
             Image principal = UiFactory.CreateImage(principalRoot, "Principal", Color.white);
-            principal.sprite = principalSprite;
+            principal.sprite = platformSprite;
             principal.preserveAspect = true;
             principal.raycastTarget = false;
             UiFactory.Stretch(principal.rectTransform, 0);
 
-            // Reveal image initially inactive, same center but larger
-            GameObject revealRootObj = new("RevealRoot", typeof(RectTransform));
-            RectTransform revealRoot = revealRootObj.GetComponent<RectTransform>();
-            revealRoot.SetParent(board, false);
-            Pixel(revealRoot, new Vector2(960, 430), new Vector2(1180, 560));
-            revealImage = UiFactory.CreateImage(revealRoot, "Reveal", Color.white);
-            revealImage.sprite = revealSprite;
-            revealImage.preserveAspect = true;
-            revealImage.raycastTarget = false;
-            UiFactory.Stretch(revealImage.rectTransform, 0);
-            revealRootObj.SetActive(false);
-            // keep reference to root via revealImage.transform.parent
-            revealImage.gameObject.SetActive(false);
-
-            // Options grid bottom row
+            // Options grid bottom row - 3 white rounded buttons with isolated boxes
             optionsRoot = new GameObject("OptionsRoot", typeof(RectTransform)).GetComponent<RectTransform>();
             optionsRoot.SetParent(board, false);
             UiFactory.Stretch(optionsRoot, 0);
-            // Create 4 option buttons: 4, 2, 3, 1  correct is 3 — enlarged for tablet/TV touch targets
-            CreateOption("4", new Vector2(510, 860));
-            CreateOption("2", new Vector2(850, 860));
-            CreateOption("3", new Vector2(1190, 860));
-            CreateOption("1", new Vector2(1530, 860));
+            // enlarged for tablet/TV: 360x180, centers diff 380 -> 580/960/1340 gap 20
+            CreateOption("box1", box1Sprite, new Vector2(580, 860));
+            CreateOption("box2", box2Sprite, new Vector2(960, 860));
+            CreateOption("box3", box3Sprite, new Vector2(1340, 860));
 
             EnsureScoreFont();
         }
@@ -131,28 +117,21 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             if (!scoreFont) scoreFont = font;
         }
 
-        private void CreateOption(string id, Vector2 center)
+        private void CreateOption(string id, Sprite artwork, Vector2 center)
         {
             RoundedSurface surface = UiFactory.CreateRoundedSurface(optionsRoot, id + "Card", Color.white, 22f);
-            Pixel(surface.rectTransform, center, new Vector2(320, 145));
+            Pixel(surface.rectTransform, center, new Vector2(360, 180));
             surface.OutlineThickness = 4f;
-            // border color is NormalBorder via surface.color? Actually RoundedSurface color is fill; outline is same color with thickness.
-            // Use surface.color = white fill, but we need border. The pattern in ObjectSelection uses NormalBorder as color with outline thickness.
-            // For white card with gray border, set color to NormalBorder and inner fill white. Simpler: set color = NormalBorder and add inner white.
-            // However to keep consistent with spec (white rounded buttons), use white fill with gray outline via OutlineThickness.
-            // RoundedSurface draws outline using same color; so to have gray border we set color = NormalBorder and create inner.
-            // Let's create inner fill to mimic ObjectSelection pattern.
             surface.color = NormalBorder;
             RoundedSurface inner = UiFactory.CreateRoundedSurface(surface.rectTransform, "Fill", Color.white, 18f, false);
             UiFactory.Stretch(inner.rectTransform, surface.OutlineThickness);
 
-            Text label = UiFactory.CreateText(surface.rectTransform, "Label", font, 62, TextAnchor.MiddleCenter, Ink);
-            label.text = id;
-            label.raycastTarget = false;
-            label.fontStyle = FontStyle.Bold;
-            UiFactory.Stretch(label.rectTransform, 0);
+            Image image = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
+            image.sprite = artwork;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            UiFactory.Stretch(image.rectTransform, 12);
 
-            // Ensure surface is raycast target
             surface.raycastTarget = true;
             inner.raycastTarget = false;
 
@@ -167,14 +146,13 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             if (state.Phase != SelectionPhase.Ready) return;
             StopInstruction();
             SetInteractable(false);
-            bool correct = state.Select(id, TrianglesCountRule.CorrectAnswer);
+            bool correct = state.Select(id, CubePlatformRule.CorrectAnswer);
             selectionSequence = StartCoroutine(correct ? ResolveCorrect(surface) : ResolveIncorrect(surface));
         }
 
         private IEnumerator ResolveIncorrect(RoundedSurface surface)
         {
             surface.color = Error;
-            // keep inner fill white, only border signals error
             if (failSfx) audio?.PlaySfx(failSfx);
             PlayRandom(encouragements);
             yield return CardAnimator.ShakeBoard(board);
@@ -190,26 +168,12 @@ namespace Lbs.MiniGames.Games.TrianglesCount
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
 
-            // Hide principal + options, show reveal, wait 0.5s, then celebration keeping reveal in bg
-            if (principalRoot) principalRoot.gameObject.SetActive(false);
-            if (optionsRoot) optionsRoot.gameObject.SetActive(false);
-            if (revealImage)
-            {
-                revealImage.transform.parent.gameObject.SetActive(true);
-                revealImage.gameObject.SetActive(true);
-                // punch reveal slightly for delight
-                yield return CardAnimator.PunchPlace(revealImage.rectTransform);
-            }
-
-            yield return new WaitForSecondsRealtime(0.5f);
-
             CreateCelebration();
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             CreateFinal();
             state.FinishCelebration();
-            // keep reveal visible during celebration - do not clear. FinalCelebrationPresenter overlays on top.
             yield return new WaitForSecondsRealtime(0.35f);
-            services?.LevelSequence?.Advance(LevelSequenceRoute.TrianglesCountSuccessTarget);
+            state.EnableFinalInput();
             selectionSequence = null;
         }
 
@@ -218,7 +182,7 @@ namespace Lbs.MiniGames.Games.TrianglesCount
         private void CreateFinal()
         {
             celebrationPresenter.ShowFinal(CelebrationInput());
-            services?.GameLauncher.Complete(new MiniGameResult("triangles.count", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
+            services?.GameLauncher.Complete(new MiniGameResult("cube.platform", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
         }
 
         private void SetInteractable(bool value)
