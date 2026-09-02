@@ -10,17 +10,20 @@ using Lbs.MiniGames.Shared.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.CandiesLogic
+namespace Lbs.MiniGames.Games.SquaresSuccession
 {
-    public sealed class CandiesLogicGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
+    public sealed class SquaresSuccessionGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
         private static readonly Color Background = new(0.9686f, 0.9608f, 0.9804f, 1f); // #F7F5FA
         private static readonly Color NormalBorder = new(.78f, .78f, .78f, 1f);
         private static readonly Color Error = new(.70f, .15f, .12f);
         private static readonly Color Success = new(.09f, .48f, .29f);
-        private static readonly Color Ink = new(.14f, .10f, .21f);
 
         [SerializeField] private Sprite principalSprite;
+        [SerializeField] private Sprite revealSprite;
+        [SerializeField] private Sprite option1Sprite;
+        [SerializeField] private Sprite option2Sprite;
+        [SerializeField] private Sprite option3Sprite;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, successSfx, failSfx;
@@ -43,6 +46,7 @@ namespace Lbs.MiniGames.Games.CandiesLogic
 
         private RectTransform principalRoot;
         private RectTransform optionsRoot;
+        private Image revealImage;
 
         public RectTransform TransitionRoot => board;
 
@@ -75,7 +79,7 @@ namespace Lbs.MiniGames.Games.CandiesLogic
             Canvas canvas = GetComponentInParent<Canvas>();
             if (!canvas || board != null) return;
 
-            board = new GameObject("CandiesLogicBoard", typeof(RectTransform)).GetComponent<RectTransform>();
+            board = new GameObject("SquaresSuccessionBoard", typeof(RectTransform)).GetComponent<RectTransform>();
             board.SetParent(canvas.transform, false);
             UiFactory.Stretch(board, 0);
 
@@ -93,12 +97,24 @@ namespace Lbs.MiniGames.Games.CandiesLogic
             principal.raycastTarget = false;
             UiFactory.Stretch(principal.rectTransform, 0);
 
+            GameObject revealRootObj = new("RevealRoot", typeof(RectTransform));
+            RectTransform revealRoot = revealRootObj.GetComponent<RectTransform>();
+            revealRoot.SetParent(board, false);
+            Pixel(revealRoot, new Vector2(960, 430), new Vector2(1350, 500));
+            revealImage = UiFactory.CreateImage(revealRoot, "Reveal", Color.white);
+            revealImage.sprite = revealSprite;
+            revealImage.preserveAspect = true;
+            revealImage.raycastTarget = false;
+            UiFactory.Stretch(revealImage.rectTransform, 0);
+            revealRootObj.SetActive(false);
+            revealImage.gameObject.SetActive(false);
+
             optionsRoot = new GameObject("OptionsRoot", typeof(RectTransform)).GetComponent<RectTransform>();
             optionsRoot.SetParent(board, false);
             UiFactory.Stretch(optionsRoot, 0);
-            // Two large text buttons for tablet/TV: 480x140, centers 680 and 1240
-            CreateOption("sweets", "sweets", new Vector2(680, 860));
-            CreateOption("candies", "candies", new Vector2(1240, 860));
+            CreateOption("option1", option1Sprite, new Vector2(560, 860));
+            CreateOption("option2", option2Sprite, new Vector2(960, 860));
+            CreateOption("option3", option3Sprite, new Vector2(1360, 860));
 
             EnsureScoreFont();
         }
@@ -111,20 +127,20 @@ namespace Lbs.MiniGames.Games.CandiesLogic
             if (!scoreFont) scoreFont = font;
         }
 
-        private void CreateOption(string id, string displayText, Vector2 center)
+        private void CreateOption(string id, Sprite artwork, Vector2 center)
         {
             RoundedSurface surface = UiFactory.CreateRoundedSurface(optionsRoot, id + "Card", Color.white, 22f);
-            Pixel(surface.rectTransform, center, new Vector2(480, 140));
+            Pixel(surface.rectTransform, center, new Vector2(340, 150));
             surface.OutlineThickness = 4f;
             surface.color = NormalBorder;
             RoundedSurface inner = UiFactory.CreateRoundedSurface(surface.rectTransform, "Fill", Color.white, 18f, false);
             UiFactory.Stretch(inner.rectTransform, surface.OutlineThickness);
 
-            Text label = UiFactory.CreateText(surface.rectTransform, "Label", font, 42, TextAnchor.MiddleCenter, Ink);
-            label.text = displayText;
-            label.raycastTarget = false;
-            label.fontStyle = FontStyle.Bold;
-            UiFactory.Stretch(label.rectTransform, 0);
+            Image image = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
+            image.sprite = artwork;
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            UiFactory.Stretch(image.rectTransform, 10);
 
             surface.raycastTarget = true;
             inner.raycastTarget = false;
@@ -140,23 +156,17 @@ namespace Lbs.MiniGames.Games.CandiesLogic
             if (state.Phase != SelectionPhase.Ready) return;
             StopInstruction();
             SetInteractable(false);
-            bool correct = state.Select(id, CandiesLogicRule.CorrectAnswer);
+            bool correct = state.Select(id, SquaresSuccessionRule.CorrectAnswer);
             selectionSequence = StartCoroutine(correct ? ResolveCorrect(surface) : ResolveIncorrect(surface));
         }
 
         private IEnumerator ResolveIncorrect(RoundedSurface surface)
         {
-            RoundedSurface inner = surface.transform.Find("Fill")?.GetComponent<RoundedSurface>();
-            Text label = surface.transform.Find("Label")?.GetComponent<Text>();
             surface.color = Error;
-            if (inner) inner.color = Error;
-            if (label) label.color = Color.white;
             if (failSfx) audio?.PlaySfx(failSfx);
             PlayRandom(encouragements);
             yield return CardAnimator.ShakeBoard(board);
             surface.color = NormalBorder;
-            if (inner) inner.color = Color.white;
-            if (label) label.color = Ink;
             state.FinishIncorrect();
             SetInteractable(true);
         }
@@ -164,20 +174,27 @@ namespace Lbs.MiniGames.Games.CandiesLogic
         private IEnumerator ResolveCorrect(RoundedSurface surface)
         {
             yield return CardAnimator.PunchPlace(surface.rectTransform);
-            RoundedSurface inner = surface.transform.Find("Fill")?.GetComponent<RoundedSurface>();
-            Text label = surface.transform.Find("Label")?.GetComponent<Text>();
             surface.color = Success;
-            if (inner) inner.color = Success;
-            if (label) label.color = Color.white;
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
+
+            if (principalRoot) principalRoot.gameObject.SetActive(false);
+            if (optionsRoot) optionsRoot.gameObject.SetActive(false);
+            if (revealImage)
+            {
+                revealImage.transform.parent.gameObject.SetActive(true);
+                revealImage.gameObject.SetActive(true);
+                yield return CardAnimator.PunchPlace(revealImage.rectTransform);
+            }
+
+            yield return new WaitForSecondsRealtime(0.5f);
 
             CreateCelebration();
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
             CreateFinal();
             state.FinishCelebration();
-            yield return new WaitForSecondsRealtime(2f);
-            services?.LevelSequence?.Advance(LevelSequenceRoute.CandiesLogicSuccessTarget);
+            yield return new WaitForSecondsRealtime(0.35f);
+            state.EnableFinalInput();
             selectionSequence = null;
         }
 
@@ -186,7 +203,7 @@ namespace Lbs.MiniGames.Games.CandiesLogic
         private void CreateFinal()
         {
             celebrationPresenter.ShowFinal(CelebrationInput());
-            services?.GameLauncher.Complete(new MiniGameResult("candies.logic", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
+            services?.GameLauncher.Complete(new MiniGameResult("squares.succession", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
         }
 
         private void SetInteractable(bool value)

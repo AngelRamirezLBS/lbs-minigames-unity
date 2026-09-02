@@ -10,6 +10,7 @@ using Lbs.MiniGames.Games.MakeAnEmojiDrag;
 using Lbs.MiniGames.Games.TrianglesCount;
 using Lbs.MiniGames.Games.CubePlatform;
 using Lbs.MiniGames.Games.CandiesLogic;
+using Lbs.MiniGames.Games.SquaresSuccession;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -52,6 +53,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CubePlatformScenePath = "Assets/App/Games/CubePlatform/CubePlatform.unity";
         private const string CandiesLogicDefinitionPath = CatalogFolder + "/CandiesLogicGame.asset";
         private const string CandiesLogicScenePath = "Assets/App/Games/CandiesLogic/CandiesLogic.unity";
+        private const string SquaresSuccessionDefinitionPath = CatalogFolder + "/SquaresSuccessionGame.asset";
+        private const string SquaresSuccessionScenePath = "Assets/App/Games/SquaresSuccession/SquaresSuccession.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -68,6 +71,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureTrianglesCountSprites();
             ConfigureCubePlatformSprites();
             ConfigureCandiesLogicSprites();
+            ConfigureSquaresSuccessionSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -151,6 +155,13 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             candiesLogicGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CandiesLogic/Art/CandiesandSweets.png"));
             candiesLogicGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(candiesLogicGame);
+            GameDefinition squaresSuccessionGame = CreateOrLoad<GameDefinition>(SquaresSuccessionDefinitionPath);
+            squaresSuccessionGame.Configure("squares.succession", "Squares Succession", shapes, "SquaresSuccession", "What comes next?");
+            Sprite squaresThumb = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Result.png");
+            if (squaresThumb == null) squaresThumb = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/SecuenceSquares.png");
+            squaresSuccessionGame.SetThumbnail(squaresThumb);
+            squaresSuccessionGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(squaresSuccessionGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -178,6 +189,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(trianglesCountGame);
             EditorUtility.SetDirty(cubePlatformGame);
             EditorUtility.SetDirty(candiesLogicGame);
+            EditorUtility.SetDirty(squaresSuccessionGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -214,6 +226,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureCandiesLogicSprites();
             CreateCandiesLogicScene(celebrationConfiguration);
             EnsureBuildScene(CandiesLogicScenePath, true);
+            ConfigureSquaresSuccessionSprites();
+            CreateSquaresSuccessionScene(celebrationConfiguration);
+            EnsureBuildScene(SquaresSuccessionScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -425,6 +440,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/CandiesLogic/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureSquaresSuccessionSprites()
+        {
+            string[] names = { "SecuenceSquares.png", "Option1.png", "Option2.png", "Option3.png", "Result.png", "Reveal.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/SquaresSuccession/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -661,6 +694,45 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, TrianglesCountScenePath);
+        }
+
+        private static void CreateSquaresSuccessionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("SquaresSuccessionGame"); gameObject.transform.SetParent(canvas.transform, false);
+            SquaresSuccessionGame game = gameObject.AddComponent<SquaresSuccessionGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/SquaresSuccession/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/SecuenceSquares.png");
+            serialized.FindProperty("revealSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Result.png");
+            serialized.FindProperty("option1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option1.png");
+            serialized.FindProperty("option2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option2.png");
+            serialized.FindProperty("option3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("SquaresSuccessionGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, SquaresSuccessionScenePath);
         }
 
         private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
