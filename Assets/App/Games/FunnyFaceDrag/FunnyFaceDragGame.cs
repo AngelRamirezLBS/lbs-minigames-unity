@@ -22,17 +22,17 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
         private static readonly Vector2 PieceSize = new(280, 280);
         private static readonly Vector2 SlotSize = new(280, 280);
 
-        // Principal1 and Principal2 at same height, both more to the right as in Image3
-        private static readonly Vector2 Principal1Center = new(480, 500);
+        // Principals more to the right as requested, at same height
+        private static readonly Vector2 Principal1Center = new(560, 500);
         private static readonly Vector2 Principal1Size = new(380, 380);
 
-        // Destination panel shifted right, as requested
-        private static readonly Vector2 DestinationPanelCenter = new(950, 500);
+        // Destination panel further right
+        private static readonly Vector2 DestinationPanelCenter = new(1030, 500);
         private static readonly Vector2 DestinationPanelSize = new(960, 560);
 
-        // Slots precisely on the dashed squares - Top (purple) higher (smaller y), Bottom (green) lower (larger y), no overlap
-        private static readonly Vector2 TopSlotCenter = new(1090, 380);
-        private static readonly Vector2 BottomSlotCenter = new(1090, 620);
+        // Slots fine-tuned - Top (purple) higher, Bottom (green) slightly up to sit above dashed line, precise 240 gap
+        private static readonly Vector2 TopSlotCenter = new(1170, 340);
+        private static readonly Vector2 BottomSlotCenter = new(1170, 580);
 
         // Three draggable pieces at bottom (as in Image2)
         private static readonly Vector2 YellowPieceCenter = new(620, 900);
