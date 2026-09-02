@@ -22,22 +22,22 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
         private static readonly Vector2 PieceSize = new(280, 280);
         private static readonly Vector2 SlotSize = new(280, 280);
 
-        // Principal1 reference paper top-left
-        private static readonly Vector2 Principal1Center = new(380, 820);
+        // Principal1 reference paper top-left (as in Image2)
+        private static readonly Vector2 Principal1Center = new(380, 200);
         private static readonly Vector2 Principal1Size = new(380, 380);
 
         // Destination panel containing Principal2 artwork (left assembled + right dashed squares)
-        private static readonly Vector2 DestinationPanelCenter = new(800, 560);
+        private static readonly Vector2 DestinationPanelCenter = new(750, 500);
         private static readonly Vector2 DestinationPanelSize = new(960, 560);
 
         // Slots overlaying dashed squares inside Principal2
-        private static readonly Vector2 TopSlotCenter = new(960, 640);
-        private static readonly Vector2 BottomSlotCenter = new(960, 460);
+        private static readonly Vector2 TopSlotCenter = new(920, 600);
+        private static readonly Vector2 BottomSlotCenter = new(920, 420);
 
-        // Three draggable pieces at bottom
-        private static readonly Vector2 YellowPieceCenter = new(620, 210);
-        private static readonly Vector2 GreenPieceCenter = new(960, 210);
-        private static readonly Vector2 PurplePieceCenter = new(1300, 210);
+        // Three draggable pieces at bottom (as in Image2)
+        private static readonly Vector2 YellowPieceCenter = new(620, 900);
+        private static readonly Vector2 GreenPieceCenter = new(960, 900);
+        private static readonly Vector2 PurplePieceCenter = new(1300, 900);
 
         [SerializeField] private Sprite backgroundSprite;
         [SerializeField] private Sprite principal1Sprite;
