@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: "Completa la cuadr\xEDcula sin repetir n\xFAmeros."
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

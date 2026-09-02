@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: Practica las tablas de multiplicar a tu ritmo.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

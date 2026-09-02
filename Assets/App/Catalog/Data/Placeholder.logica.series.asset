@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: "Completa las secuencias l\xF3gicas y descubre el patr\xF3n oculto."
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

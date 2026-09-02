@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: Encuentra las parejas y entrena tu memoria.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

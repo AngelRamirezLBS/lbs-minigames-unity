@@ -93,8 +93,6 @@ namespace Lbs.MiniGames.Shared
             }
 
             bool isPressed = activePointers.Count > 0;
-            // No scale-down on press: cards keep their size when tapped (LogicLike-style).
-            // Only the outline color shifts as the press feedback.
             outline.color = isPressed ? pressedOutline : defaultOutline;
         }
     }

@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: "Reconoce figuras, \xE1ngulos y per\xEDmetros."
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

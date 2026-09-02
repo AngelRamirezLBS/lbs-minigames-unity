@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: Viaja por el sistema solar y conoce los planetas.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

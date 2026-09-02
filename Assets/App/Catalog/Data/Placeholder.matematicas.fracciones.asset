@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: Compara y combina fracciones sencillas.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

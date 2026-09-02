@@ -18,3 +18,8 @@ MonoBehaviour:
   thumbnail: {fileID: 21300000, guid: 2f4af02d64e743c397b6c8862b00473a, type: 3}
   sceneName: Classification
   description: "Clasifica los animales seg\xFAn el grupo al que pertenecen."
+  supportedDifficulties:
+  - {fileID: 11400000, guid: 938eec21ce2baa347b1ebf0eed1c274a, type: 2}
+  - {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
+  - {fileID: 11400000, guid: a2261b7d548af084bb9f537581337446, type: 2}
+  defaultDifficulty: {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}

@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: "Aprende las partes y \xF3rganos del cuerpo humano."
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

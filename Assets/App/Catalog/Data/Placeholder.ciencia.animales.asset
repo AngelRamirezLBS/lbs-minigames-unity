@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: "Descubre h\xE1bitats, alimentaci\xF3n y curiosidades."
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}

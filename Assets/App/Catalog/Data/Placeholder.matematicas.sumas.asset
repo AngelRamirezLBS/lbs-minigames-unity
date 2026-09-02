@@ -18,3 +18,5 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: 
   description: Resuelve sumas y restas de manera divertida.
+  supportedDifficulties: []
+  defaultDifficulty: {fileID: 0}
