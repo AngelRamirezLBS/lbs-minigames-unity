@@ -64,10 +64,16 @@ namespace Lbs.MiniGames.Lobby
         // Inner margin from the screen edge for section labels and the first/last cards in
         // each horizontal row. Sized for comfortable tablet/TV breathing room (not cramped).
         private const float ContentInnerMargin = 40f;
+        // Left margin for section labels and the first card, aligned with the header logo
+        // (logo anchors at x=0.075 of the 1920 reference canvas -> 144px). Keeping this larger
+        // than the right margin lines the category titles and the first card up with the logo,
+        // at the cost of slightly narrower tiles (the 3.5-card carousel is preserved).
+        private const float ContentLeftMargin = 144f;
         private const float MaxTileWidth = 620f;
         // Top inset so the first section starts clear of the translucent header band
-        // (header is y>=0.86 -> ~151 reference px) with breathing room for the tiles.
-        private const float ScrollTopPadding = 200f;
+        // (header is y>=0.84 -> ~173 reference px) with breathing room for the tiles.
+        // Kept ~49px clear of the (now taller) header bottom edge.
+        private const float ScrollTopPadding = 222f;
         // Card drop shadow: offset (down, in ref px) + low-opacity dark color.
         private const float ShadowOffsetY = 14f;
         private static readonly Color CardShadow = new(0.141f, 0.102f, 0.208f, 0.55f);
@@ -210,13 +216,13 @@ namespace Lbs.MiniGames.Lobby
             //    Its raycastTarget blocks scroll-drag from starting on the fixed header;
             //    the difficulty pill and its dropdown are later siblings and stay clickable.
             Image headerBand = UiFactory.CreateImage(root, "HubHeaderBand", HeaderOverlay);
-            UiFactory.Anchor(headerBand.rectTransform, new Vector2(0f, 0.86f), new Vector2(1f, 1f));
+            UiFactory.Anchor(headerBand.rectTransform, new Vector2(0f, 0.84f), new Vector2(1f, 1f));
             headerBand.raycastTarget = true;
 
             GameObject headerObject = new("HubHeader", typeof(RectTransform));
             headerObject.transform.SetParent(root, false);
             RectTransform headerRoot = headerObject.GetComponent<RectTransform>();
-            UiFactory.Anchor(headerRoot, new Vector2(0f, 0.86f), new Vector2(1f, 1f));
+            UiFactory.Anchor(headerRoot, new Vector2(0f, 0.84f), new Vector2(1f, 1f));
             headerRoot.transform.SetAsLastSibling();
             CreateHeaderContent(headerRoot, font);
 
@@ -526,7 +532,8 @@ namespace Lbs.MiniGames.Lobby
                 List<GameDefinition> sectionGames = new();
                 foreach (GameDefinition game in catalog.GetGames(category))
                 {
-                    if (game != null)
+                    // Hide test/legacy games from the Hub without removing their assets.
+                    if (game != null && game.VisibleInHub)
                     {
                         sectionGames.Add(game);
                     }
@@ -553,7 +560,7 @@ namespace Lbs.MiniGames.Lobby
             // tileHeight derives from ratio, so the aspect ratio is preserved automatically.
             const float visibleColumns = 3.5f;
             float rowWidth = viewportWidth;
-            float contentLeft = ContentInnerMargin;
+            float contentLeft = ContentLeftMargin;
             // Solve: contentLeft + visibleColumns*tileWidth + (visibleColumns-1)*gap == rowWidth.
             float tileWidth = (rowWidth - contentLeft - ((visibleColumns - 1f) * TileHorizontalGap)) / visibleColumns;
             tileWidth = Mathf.Min(tileWidth, MaxTileWidth);
@@ -584,8 +591,10 @@ namespace Lbs.MiniGames.Lobby
             header.raycastTarget = false;
             UiFactory.Anchor(header.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f));
             header.rectTransform.pivot = new Vector2(0f, 1f);
-            header.rectTransform.anchoredPosition = new Vector2(ContentInnerMargin, 0f);
-            header.rectTransform.sizeDelta = new Vector2(-(ContentInnerMargin * 2f), SectionHeaderHeight);
+            // Align the category title's left edge with the logo/left margin (ContentLeftMargin)
+            // while keeping the right inset at the smaller ContentInnerMargin.
+            header.rectTransform.anchoredPosition = new Vector2(ContentLeftMargin, 0f);
+            header.rectTransform.sizeDelta = new Vector2(-(ContentLeftMargin + ContentInnerMargin), SectionHeaderHeight);
 
             if (count == 0)
             {
@@ -742,9 +751,12 @@ namespace Lbs.MiniGames.Lobby
                 Image thumbnail = UiFactory.CreateImage(artBackground.rectTransform, "Thumbnail", Color.white);
                 thumbnail.sprite = game.Thumbnail;
                 thumbnail.raycastTarget = false;
-                AspectRatioFitter thumbnailFit = thumbnail.gameObject.AddComponent<AspectRatioFitter>();
-                thumbnailFit.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
-                thumbnailFit.aspectRatio = thumbnail.sprite.rect.width / thumbnail.sprite.rect.height;
+                // preserveAspect (same pattern the game cards use) scales the sprite to fit the
+                // artwork area without cropping or stretching, and centers it automatically.
+                // The previous EnvelopeParent + AspectRatioFitter cropped wide illustrations and,
+                // when re-anchored, left the letterboxed image pinned to one side instead of
+                // centered. preserveAspect alone avoids both problems.
+                thumbnail.preserveAspect = true;
                 UiFactory.Stretch(thumbnail.rectTransform, 0f);
                 return;
             }

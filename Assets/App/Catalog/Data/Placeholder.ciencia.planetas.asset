@@ -20,3 +20,4 @@ MonoBehaviour:
   description: Viaja por el sistema solar y conoce los planetas.
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
+  visibleInHub: 1

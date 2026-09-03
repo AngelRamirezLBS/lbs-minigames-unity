@@ -15,8 +15,9 @@ MonoBehaviour:
   gameId: logica.memoria
   visibleName: "Memoria L\xF3gica"
   category: {fileID: 11400000, guid: 883620bcff84447a797cc002b7934e11, type: 2}
-  thumbnail: {fileID: 0}
+  thumbnail: {fileID: 21300000, guid: 7e265a18e9f0e4cd3bf3ad0a60a3b93c, type: 3}
   sceneName: 
   description: Encuentra las parejas y entrena tu memoria.
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
+  visibleInHub: 1

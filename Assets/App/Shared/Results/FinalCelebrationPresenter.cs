@@ -19,22 +19,12 @@ namespace Lbs.MiniGames.Shared.Results
         public FinalCelebrationPresenter(MonoBehaviour coroutineOwner, FinalCelebrationConfiguration configuration)
         {
             this.coroutineOwner = coroutineOwner;
-            // A missing/invalid configuration asset (celebrationConfiguration fileID 0)
-            // must never crash the celebration and stall the game mid-sequence. Fall
-            // back to a runtime-safe inline config so the celebration renders and the
-            // level chain keeps advancing.
-            this.configuration = configuration != null ? configuration : CreateRuntimeFallback();
+            this.configuration = configuration != null
+                ? configuration
+                : ScriptableObject.CreateInstance<FinalCelebrationConfiguration>();
         }
 
         public float PresentationDelay => configuration.PresentationDelay;
-
-        private static FinalCelebrationConfiguration CreateRuntimeFallback()
-        {
-            // Mirrors the values in DefaultFinalCelebrationConfiguration.asset so a
-            // scene that lost its reference still renders the approved celebration.
-            FinalCelebrationConfiguration fallback = ScriptableObject.CreateInstance<FinalCelebrationConfiguration>();
-            return fallback;
-        }
 
         public void ShowCelebration(RectTransform presentationBoard, FinalCelebrationInput input)
         {

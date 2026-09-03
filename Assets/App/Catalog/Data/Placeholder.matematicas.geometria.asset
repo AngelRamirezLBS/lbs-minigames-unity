@@ -20,3 +20,4 @@ MonoBehaviour:
   description: "Reconoce figuras, \xE1ngulos y per\xEDmetros."
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
+  visibleInHub: 1

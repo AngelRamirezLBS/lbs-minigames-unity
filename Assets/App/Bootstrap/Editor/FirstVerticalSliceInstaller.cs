@@ -5,6 +5,16 @@ using Lbs.MiniGames.Games.Classification;
 using Lbs.MiniGames.Games.ShapeAnalogy;
 using Lbs.MiniGames.Games.ClothesSelection;
 using Lbs.MiniGames.Games.ObjectSelection;
+using Lbs.MiniGames.Games.MakeAnEmojiDrag;
+using Lbs.MiniGames.Games.AnimalDrag;
+using Lbs.MiniGames.Games.TrianglesCount;
+using Lbs.MiniGames.Games.CubePlatform;
+using Lbs.MiniGames.Games.CandiesLogic;
+using Lbs.MiniGames.Games.KitchenMathLogic;
+using Lbs.MiniGames.Games.FunnyFaceDrag;
+using Lbs.MiniGames.Games.SquaresSuccession;
+using Lbs.MiniGames.Games.ChemistrySelection;
+using Lbs.MiniGames.Games.TrianglesShapeLogic;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -49,6 +59,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             BackgroundFolder + "/bg_cloud.png",
             BackgroundFolder + "/bg_blobs_small.png"
         };
+        private const string ThumbnailsFolder = "Assets/App/Theme/Thumbnails";
+        private const string SeriesThumbnailPath = ThumbnailsFolder + "/series_patrones.png";
+        private const string MemoriaThumbnailPath = ThumbnailsFolder + "/memoria_logica.png";
+        private const string LaberintosThumbnailPath = ThumbnailsFolder + "/laberintos.png";
+        private const string MosaicoThumbnailPath = ThumbnailsFolder + "/mosaico_colores.png";
         private const string ClassificationThumbnailPath = "Assets/App/Games/Classification/ClassificationThumbnail.png";
 
         // Real games (from integration/games), wired into the Lógica category.
@@ -61,6 +76,27 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         // Real math game (from integration/games), wired into the Matemáticas category.
         private const string NumberPullDefinitionPath = CatalogFolder + "/NumberPullGame.asset";
         private const string NumberPullScenePath = "Assets/App/Games/NumberPull/NumberPull.unity";
+        // New logic-sequence games (from integration/games), wired into the Lógica category.
+        private const string MakeAnEmojiDragDefinitionPath = CatalogFolder + "/MakeAnEmojiDragGame.asset";
+        private const string MakeAnEmojiDragScenePath = "Assets/App/Games/MakeAnEmojiDrag/MakeAnEmojiDrag.unity";
+        private const string AnimalDragDefinitionPath = CatalogFolder + "/AnimalDragGame.asset";
+        private const string AnimalDragScenePath = "Assets/App/Games/AnimalDrag/AnimalDrag.unity";
+        private const string TrianglesCountDefinitionPath = CatalogFolder + "/TrianglesCountGame.asset";
+        private const string TrianglesCountScenePath = "Assets/App/Games/TrianglesCount/TrianglesCount.unity";
+        private const string CubePlatformDefinitionPath = CatalogFolder + "/CubePlatformGame.asset";
+        private const string CubePlatformScenePath = "Assets/App/Games/CubePlatform/CubePlatform.unity";
+        private const string CandiesLogicDefinitionPath = CatalogFolder + "/CandiesLogicGame.asset";
+        private const string CandiesLogicScenePath = "Assets/App/Games/CandiesLogic/CandiesLogic.unity";
+        private const string SquaresSuccessionDefinitionPath = CatalogFolder + "/SquaresSuccessionGame.asset";
+        private const string SquaresSuccessionScenePath = "Assets/App/Games/SquaresSuccession/SquaresSuccession.unity";
+        private const string KitchenMathLogicDefinitionPath = CatalogFolder + "/KitchenMathLogicGame.asset";
+        private const string KitchenMathLogicScenePath = "Assets/App/Games/KitchenMathLogic/KitchenMathLogic.unity";
+        private const string FunnyFaceDragDefinitionPath = CatalogFolder + "/FunnyFaceDragGame.asset";
+        private const string FunnyFaceDragScenePath = "Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity";
+        private const string ChemistrySelectionDefinitionPath = CatalogFolder + "/ChemistrySelectionGame.asset";
+        private const string ChemistrySelectionScenePath = "Assets/App/Games/ChemistrySelection/ChemistrySelection.unity";
+        private const string TrianglesShapeLogicDefinitionPath = CatalogFolder + "/TrianglesShapeLogicGame.asset";
+        private const string TrianglesShapeLogicScenePath = "Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -73,6 +109,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureFolders();
             ConfigureClothesSprites();
             ConfigureObjectSelectionSprites();
+            ConfigureThumbnails();
             ConfigureOrientation();
 
             // --- Hub categories (new design) ---
@@ -104,6 +141,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Clasifica los animales según el grupo al que pertenecen.");
             classification.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(ClassificationThumbnailPath));
             classification.ConfigureDifficulties(allDifficulties, medium);
+            // Classification was a test game; keep its assets but hide it from the Hub.
+            classification.SetVisibleInHub(false);
 
             // --- Real games: Shape Analogy -> Clothes Selection -> Object Selection (Lógica) ---
             GameDefinition shapeGame = CreateOrLoad<GameDefinition>(ShapeDefinitionPath);
@@ -126,18 +165,69 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             numberPullGame.Configure("math.number-pull", "Number Pull", matematicas, "NumberPull", "Resuelve sumas y restas rápidas en un tira y afloja de dos jugadores.");
             numberPullGame.ConfigureDifficulties(allDifficulties, medium);
 
+            // --- New logic-sequence games (integration/games), wired into the Lógica category ---
+            GameDefinition makeAnEmojiDragGame = CreateOrLoad<GameDefinition>(MakeAnEmojiDragDefinitionPath);
+            makeAnEmojiDragGame.Configure("make.emoji.drag", "Make An Emoji Drag", logica, "MakeAnEmojiDrag", "Arrastra las tiras para formar una carita feliz.");
+            makeAnEmojiDragGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition animalDragGame = CreateOrLoad<GameDefinition>(AnimalDragDefinitionPath);
+            animalDragGame.Configure("animal.drag", "Animal Drag", logica, "AnimalDrag", "Ayuda a los animales a llegar a sus casas.");
+            animalDragGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition trianglesCountGame = CreateOrLoad<GameDefinition>(TrianglesCountDefinitionPath);
+            trianglesCountGame.Configure("triangles.count", "Triangles Count", logica, "TrianglesCount", "Cuenta los triángulos.");
+            trianglesCountGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition cubePlatformGame = CreateOrLoad<GameDefinition>(CubePlatformDefinitionPath);
+            cubePlatformGame.Configure("cube.platform", "Cube Platform", logica, "CubePlatform", "¿Cuál caja es la más liviana?");
+            cubePlatformGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition candiesLogicGame = CreateOrLoad<GameDefinition>(CandiesLogicDefinitionPath);
+            candiesLogicGame.Configure("candies.logic", "Candies Logic", logica, "CandiesLogic", "¿Qué es el círculo grande?");
+            candiesLogicGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition squaresSuccessionGame = CreateOrLoad<GameDefinition>(SquaresSuccessionDefinitionPath);
+            squaresSuccessionGame.Configure("squares.succession", "Squares Succession", logica, "SquaresSuccession", "¿Qué viene después?");
+            squaresSuccessionGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition kitchenMathLogicGame = CreateOrLoad<GameDefinition>(KitchenMathLogicDefinitionPath);
+            kitchenMathLogicGame.Configure("kitchen.math.logic", "Kitchen Math Logic", logica, "KitchenMathLogic", "¿Cuál es el resultado? Toast + queso + cuchillo =");
+            kitchenMathLogicGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition funnyFaceDragGame = CreateOrLoad<GameDefinition>(FunnyFaceDragDefinitionPath);
+            funnyFaceDragGame.Configure("funnyface.drag", "Funny Face Drag", logica, "FunnyFaceDrag", "Completa la cara graciosa");
+            funnyFaceDragGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition chemistrySelectionGame = CreateOrLoad<GameDefinition>(ChemistrySelectionDefinitionPath);
+            chemistrySelectionGame.Configure("chemistry.selection", "Chemistry Selection", logica, "ChemistrySelection", "Elige la relación química correcta.");
+            chemistrySelectionGame.ConfigureDifficulties(allDifficulties, medium);
+
+            GameDefinition trianglesShapeLogicGame = CreateOrLoad<GameDefinition>(TrianglesShapeLogicDefinitionPath);
+            trianglesShapeLogicGame.Configure("triangles.shape.logic", "Triangles Shape Logic", logica, "TrianglesShapeLogic", "Completa la tabla. Usa los triángulos de color correctos.");
+            trianglesShapeLogicGame.ConfigureDifficulties(allDifficulties, medium);
+
             List<GameDefinition> definitions = new()
             {
                 classification,
                 shapeGame,
                 clothesGame,
                 objectSelectionGame,
+                makeAnEmojiDragGame,
+                animalDragGame,
+                trianglesCountGame,
+                cubePlatformGame,
+                candiesLogicGame,
+                squaresSuccessionGame,
+                kitchenMathLogicGame,
+                funnyFaceDragGame,
+                chemistrySelectionGame,
+                trianglesShapeLogicGame,
                 numberPullGame,
                 // --- Mock placeholders (no scene -> never launch) ---
-                CreatePlaceholderDefinition("logica.series", "Series y Patrones", logica, "Completa las secuencias lógicas y descubre el patrón oculto."),
-                CreatePlaceholderDefinition("logica.memoria", "Memoria Lógica", logica, "Encuentra las parejas y entrena tu memoria."),
-                CreatePlaceholderDefinition("logica.laberintos", "Laberintos", logica, "Guía al personaje a través de laberintos y sortea los obstáculos."),
-                CreatePlaceholderDefinition("logica.sudoku", "Sudoku Lógico", logica, "Completa la cuadrícula sin repetir números."),
+                CreatePlaceholderDefinition("logica.series", "Series y Patrones", logica, "Completa las secuencias lógicas y descubre el patrón oculto.", SeriesThumbnailPath),
+                CreatePlaceholderDefinition("logica.memoria", "Memoria Lógica", logica, "Encuentra las parejas y entrena tu memoria.", MemoriaThumbnailPath),
+                CreatePlaceholderDefinition("logica.laberintos", "Laberintos", logica, "Guía al personaje a través de laberintos y sortea los obstáculos.", LaberintosThumbnailPath),
+                CreatePlaceholderDefinition("logica.sudoku", "Mosaico de colores", logica, "Completa el mosaico y descubre los patrones de color.", MosaicoThumbnailPath),
                 CreatePlaceholderDefinition("matematicas.sumas", "Sumas y Restas", matematicas, "Resuelve sumas y restas de manera divertida."),
                 CreatePlaceholderDefinition("matematicas.multiplicaciones", "Multiplicaciones", matematicas, "Practica las tablas de multiplicar a tu ritmo."),
                 CreatePlaceholderDefinition("matematicas.fracciones", "Fracciones", matematicas, "Compara y combina fracciones sencillas."),
@@ -195,6 +285,16 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             CreateShapeAnalogyScene(celebrationConfiguration);
             CreateClothesSelectionScene(celebrationConfiguration);
             CreateObjectSelectionScene(celebrationConfiguration);
+            CreateMakeAnEmojiDragScene(celebrationConfiguration);
+            CreateAnimalDragScene(celebrationConfiguration);
+            CreateTrianglesCountScene(celebrationConfiguration);
+            CreateCubePlatformScene(celebrationConfiguration);
+            CreateCandiesLogicScene(celebrationConfiguration);
+            CreateSquaresSuccessionScene(celebrationConfiguration);
+            CreateKitchenMathLogicScene(celebrationConfiguration);
+            CreateFunnyFaceDragScene(celebrationConfiguration);
+            CreateChemistrySelectionScene(celebrationConfiguration);
+            CreateTrianglesShapeLogicScene(celebrationConfiguration);
 
             EditorBuildSettings.scenes = new[]
             {
@@ -204,7 +304,17 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 new EditorBuildSettingsScene(ShapeScenePath, true),
                 new EditorBuildSettingsScene(ClothesScenePath, true),
                 new EditorBuildSettingsScene(ObjectSelectionScenePath, true),
-                new EditorBuildSettingsScene(NumberPullScenePath, true)
+                new EditorBuildSettingsScene(NumberPullScenePath, true),
+                new EditorBuildSettingsScene(MakeAnEmojiDragScenePath, true),
+                new EditorBuildSettingsScene(AnimalDragScenePath, true),
+                new EditorBuildSettingsScene(TrianglesCountScenePath, true),
+                new EditorBuildSettingsScene(CubePlatformScenePath, true),
+                new EditorBuildSettingsScene(CandiesLogicScenePath, true),
+                new EditorBuildSettingsScene(SquaresSuccessionScenePath, true),
+                new EditorBuildSettingsScene(KitchenMathLogicScenePath, true),
+                new EditorBuildSettingsScene(FunnyFaceDragScenePath, true),
+                new EditorBuildSettingsScene(ChemistrySelectionScenePath, true),
+                new EditorBuildSettingsScene(TrianglesShapeLogicScenePath, true)
             };
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
@@ -215,13 +325,19 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             string id,
             string name,
             GameCategory category,
-            string description)
+            string description,
+            string thumbnailPath = null)
         {
             // Preview placeholders deliberately ship with no scene so IsValid() is
             // false and they never launch. File names derive from the id.
             string path = $"{CatalogFolder}/Placeholder.{id}.asset";
             GameDefinition definition = CreateOrLoad<GameDefinition>(path);
             definition.Configure(id, name, category, string.Empty, description);
+            if (!string.IsNullOrWhiteSpace(thumbnailPath))
+            {
+                definition.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>(thumbnailPath));
+            }
+
             return definition;
         }
 
@@ -355,6 +471,23 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             }
         }
 
+        private static void ConfigureThumbnails()
+        {
+            foreach (string path in new[] { SeriesThumbnailPath, MemoriaThumbnailPath, LaberintosThumbnailPath, MosaicoThumbnailPath })
+            {
+                TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
         private static void CreateClothesSelectionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -433,6 +566,376 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(game);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ObjectSelectionScenePath);
+        }
+
+        private static void CreateMakeAnEmojiDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("MakeAnEmojiDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            MakeAnEmojiDragGame game = gameObject.AddComponent<MakeAnEmojiDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/MakeAnEmojiDrag/Instruction.mp3");
+            serialized.FindProperty("topArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/primera.png");
+            serialized.FindProperty("middleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/segunda.png");
+            serialized.FindProperty("bottomArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/MakeAnEmojiDrag/Art/tercera.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("MakeAnEmojiDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, MakeAnEmojiDragScenePath);
+        }
+
+        private static void CreateAnimalDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("AnimalDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            AnimalDragGame game = gameObject.AddComponent<AnimalDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/AnimalDrag/Instruction.mp3");
+            serialized.FindProperty("casitasBackground").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/casitas.png");
+            serialized.FindProperty("catArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/gato.png");
+            serialized.FindProperty("pigArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/AnimalDrag/Art/cerdo.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("AnimalDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, AnimalDragScenePath);
+        }
+
+        private static void CreateTrianglesCountScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("TrianglesCountGame"); gameObject.transform.SetParent(canvas.transform, false);
+            TrianglesCountGame game = gameObject.AddComponent<TrianglesCountGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/TrianglesCount/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesCount/Art/Triangle_Principal.png");
+            serialized.FindProperty("revealSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesCount/Art/Reveal.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("TrianglesCountGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, TrianglesCountScenePath);
+        }
+
+        private static void CreateCubePlatformScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("CubePlatformGame"); gameObject.transform.SetParent(canvas.transform, false);
+            CubePlatformGame game = gameObject.AddComponent<CubePlatformGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/CubePlatform/Instruction.mp3");
+            serialized.FindProperty("platformSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CubePlatform/Art/PlatformWBoxes.png");
+            serialized.FindProperty("box1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CubePlatform/Art/Box1.png");
+            serialized.FindProperty("box2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CubePlatform/Art/Box2.png");
+            serialized.FindProperty("box3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CubePlatform/Art/Box3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("CubePlatformGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, CubePlatformScenePath);
+        }
+
+        private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("CandiesLogicGame"); gameObject.transform.SetParent(canvas.transform, false);
+            CandiesLogicGame game = gameObject.AddComponent<CandiesLogicGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/CandiesLogic/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CandiesLogic/Art/CandiesandSweets.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("CandiesLogicGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, CandiesLogicScenePath);
+        }
+
+        private static void CreateSquaresSuccessionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("SquaresSuccessionGame"); gameObject.transform.SetParent(canvas.transform, false);
+            SquaresSuccessionGame game = gameObject.AddComponent<SquaresSuccessionGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/SquaresSuccession/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/SecuenceSquares.png");
+            serialized.FindProperty("revealSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Result.png");
+            serialized.FindProperty("option1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option1.png");
+            serialized.FindProperty("option2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option2.png");
+            serialized.FindProperty("option3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/SquaresSuccession/Art/Option3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("SquaresSuccessionGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, SquaresSuccessionScenePath);
+        }
+
+        private static void CreateKitchenMathLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("KitchenMathLogicGame"); gameObject.transform.SetParent(canvas.transform, false);
+            KitchenMathLogicGame game = gameObject.AddComponent<KitchenMathLogicGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/KitchenMathLogic/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Principal.png");
+            serialized.FindProperty("option1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Option1.png");
+            serialized.FindProperty("option2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Option2.png");
+            serialized.FindProperty("option3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Option3.png");
+            serialized.FindProperty("option4Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/KitchenMathLogic/Art/Option4.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("KitchenMathLogicGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, KitchenMathLogicScenePath);
+        }
+
+        private static void CreateFunnyFaceDragScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("FunnyFaceDragGame"); gameObject.transform.SetParent(canvas.transform, false);
+            FunnyFaceDragGame game = gameObject.AddComponent<FunnyFaceDragGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/FunnyFaceDrag/Instruction.mp3");
+            serialized.FindProperty("backgroundSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Background.png");
+            serialized.FindProperty("principal1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Principal1.png");
+            serialized.FindProperty("principal2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Principal2.png");
+            serialized.FindProperty("drag1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag1.png");
+            serialized.FindProperty("drag2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag2.png");
+            serialized.FindProperty("drag3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/FunnyFaceDrag/Art/Drag3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null)
+            {
+                throw new System.InvalidOperationException("FunnyFaceDragGame is missing the celebrationConfiguration serialized property.");
+            }
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, FunnyFaceDragScenePath);
+        }
+
+        private static void CreateChemistrySelectionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("ChemistrySelectionGame"); gameObject.transform.SetParent(canvas.transform, false);
+            ChemistrySelectionGame game = gameObject.AddComponent<ChemistrySelectionGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ChemistrySelection/Instruction.mp3");
+            serialized.FindProperty("principalArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Principal.png");
+            serialized.FindProperty("option1Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option1.png");
+            serialized.FindProperty("option2Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option2.png");
+            serialized.FindProperty("option3Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("ChemistrySelectionGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ChemistrySelectionScenePath);
+        }
+
+        private static void CreateTrianglesShapeLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("TrianglesShapeLogicGame"); gameObject.transform.SetParent(canvas.transform, false);
+            TrianglesShapeLogicGame game = gameObject.AddComponent<TrianglesShapeLogicGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/TrianglesShapeLogic/Instruction.mp3");
+            serialized.FindProperty("principalArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Principal.png");
+            serialized.FindProperty("redTriangleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Triangle1Drag1Drop2.png");
+            serialized.FindProperty("blueTriangleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Triangle2Drag2Drop1.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("TrianglesShapeLogicGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, TrianglesShapeLogicScenePath);
         }
 
         private static Canvas CreateCanvas()
@@ -542,10 +1045,21 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/NumberPull/Resources/Characters",
                 "Assets/App/Games/NumberPull/Resources/Particles",
                 "Assets/App/Games/NumberPull/Resources/UI",
+                "Assets/App/Games/MakeAnEmojiDrag",
+                "Assets/App/Games/AnimalDrag",
+                "Assets/App/Games/TrianglesCount",
+                "Assets/App/Games/CubePlatform",
+                "Assets/App/Games/CandiesLogic",
+                "Assets/App/Games/SquaresSuccession",
+                "Assets/App/Games/KitchenMathLogic",
+                "Assets/App/Games/FunnyFaceDrag",
+                "Assets/App/Games/ChemistrySelection",
+                "Assets/App/Games/TrianglesShapeLogic",
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching",
                 "Assets/App/Theme",
-                BackgroundFolder
+                BackgroundFolder,
+                ThumbnailsFolder
             };
 
             foreach (string folder in folders)

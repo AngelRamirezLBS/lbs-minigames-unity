@@ -18,6 +18,13 @@ namespace Lbs.MiniGames.Shared
         private Color defaultOutline;
         private Color pressedOutline;
         private bool isOpening;
+        // Absorbs the "ghost tap" that can leak from the previous scene into the Hub the
+        // same frame it loads: when a game returns to the Hub, the pointer-up that confirmed
+        // the return is still active and, if it lands on a newly-created card, would launch
+        // that game. Lock input for the first frame(s) after the card is built so that tap is
+        // dropped instead of selecting a card under the finger. A frame counter (not a bool)
+        // covers the order-of-Update race with the EventSystem.
+        private int inputLockFrames;
 
         public event Action<GameCardFeedback> SelectionRequested;
 
@@ -33,6 +40,17 @@ namespace Lbs.MiniGames.Shared
             pressedOutline = activeOutline;
             openingCue.SetActive(false);
             outline.color = defaultOutline;
+            // Drop any in-flight pointer event for this frame so returning to the Hub does
+            // not launch a card under the finger. Release after a couple of frames.
+            inputLockFrames = 2;
+        }
+
+        private void Update()
+        {
+            if (inputLockFrames > 0)
+            {
+                inputLockFrames--;
+            }
         }
 
         public void MarkOpening()
@@ -56,7 +74,7 @@ namespace Lbs.MiniGames.Shared
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (isOpening)
+            if (isOpening || inputLockFrames > 0)
             {
                 return;
             }
@@ -79,7 +97,8 @@ namespace Lbs.MiniGames.Shared
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!isOpening)
+            // The ghost tap from the returning scene must not select a card under the finger.
+            if (!isOpening && inputLockFrames <= 0)
             {
                 SelectionRequested?.Invoke(this);
             }

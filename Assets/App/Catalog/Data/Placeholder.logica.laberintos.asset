@@ -15,8 +15,9 @@ MonoBehaviour:
   gameId: logica.laberintos
   visibleName: Laberintos
   category: {fileID: 11400000, guid: 883620bcff84447a797cc002b7934e11, type: 2}
-  thumbnail: {fileID: 0}
+  thumbnail: {fileID: 21300000, guid: d34c96451091f4874badda63f1fe0eb2, type: 3}
   sceneName: 
   description: "Gu\xEDa al personaje a trav\xE9s de laberintos y sortea los obst\xE1culos."
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
+  visibleInHub: 1

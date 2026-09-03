@@ -35,7 +35,7 @@ namespace Lbs.MiniGames.Bootstrap
             GameSession session = new();
             LevelSequenceController sequence = gameObject.GetComponent<LevelSequenceController>();
             if (sequence == null) sequence = gameObject.AddComponent<LevelSequenceController>();
-            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName, audioService), audioService, sequence);
+            services = new AppServices(session, new GameLauncher(session, new UnitySceneLoader(), lobbySceneName, audioService, sequence), audioService, sequence);
             sequence.Configure(services, catalog);
             SceneManager.sceneLoaded += ConfigureLoadedScene;
             SceneManager.sceneUnloaded += ForgetUnloadedScene;

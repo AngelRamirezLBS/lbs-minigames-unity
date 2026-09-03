@@ -20,3 +20,4 @@ MonoBehaviour:
   description: "Descubre h\xE1bitats, alimentaci\xF3n y curiosidades."
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
+  visibleInHub: 1

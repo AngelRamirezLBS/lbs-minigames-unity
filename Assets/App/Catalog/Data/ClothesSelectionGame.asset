@@ -23,3 +23,4 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
   - {fileID: 11400000, guid: a2261b7d548af084bb9f537581337446, type: 2}
   defaultDifficulty: {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
+  visibleInHub: 1
