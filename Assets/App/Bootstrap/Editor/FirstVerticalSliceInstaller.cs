@@ -13,6 +13,7 @@ using Lbs.MiniGames.Games.CandiesLogic;
 using Lbs.MiniGames.Games.KitchenMathLogic;
 using Lbs.MiniGames.Games.FunnyFaceDrag;
 using Lbs.MiniGames.Games.SquaresSuccession;
+using Lbs.MiniGames.Games.ChemistrySelection;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -61,6 +62,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string KitchenMathLogicScenePath = "Assets/App/Games/KitchenMathLogic/KitchenMathLogic.unity";
         private const string FunnyFaceDragDefinitionPath = CatalogFolder + "/FunnyFaceDragGame.asset";
         private const string FunnyFaceDragScenePath = "Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity";
+        private const string ChemistrySelectionDefinitionPath = CatalogFolder + "/ChemistrySelectionGame.asset";
+        private const string ChemistrySelectionScenePath = "Assets/App/Games/ChemistrySelection/ChemistrySelection.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -80,6 +83,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureSquaresSuccessionSprites();
             ConfigureKitchenMathLogicSprites();
             ConfigureFunnyFaceDragSprites();
+            ConfigureChemistrySelectionSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -182,6 +186,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             funnyFaceDragGame.SetThumbnail(funnyThumb);
             funnyFaceDragGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(funnyFaceDragGame);
+            GameDefinition chemistrySelectionGame = CreateOrLoad<GameDefinition>(ChemistrySelectionDefinitionPath);
+            chemistrySelectionGame.Configure("chemistry.selection", "Chemistry Selection", shapes, "ChemistrySelection", "Choose the correct chemistry relationship.");
+            chemistrySelectionGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Principal.png"));
+            chemistrySelectionGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(chemistrySelectionGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -212,6 +221,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(squaresSuccessionGame);
             EditorUtility.SetDirty(kitchenMathLogicGame);
             EditorUtility.SetDirty(funnyFaceDragGame);
+            EditorUtility.SetDirty(chemistrySelectionGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -257,6 +267,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureFunnyFaceDragSprites();
             CreateFunnyFaceDragScene(celebrationConfiguration);
             EnsureBuildScene(FunnyFaceDragScenePath, true);
+            ConfigureChemistrySelectionSprites();
+            CreateChemistrySelectionScene(celebrationConfiguration);
+            EnsureBuildScene(ChemistrySelectionScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -504,6 +517,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/FunnyFaceDrag/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureChemistrySelectionSprites()
+        {
+            string[] names = { "Principal.png", "Option1.png", "Option2.png", "Option3.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/ChemistrySelection/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -878,6 +909,41 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorSceneManager.SaveScene(scene, FunnyFaceDragScenePath);
         }
 
+        private static void CreateChemistrySelectionScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("ChemistrySelectionGame"); gameObject.transform.SetParent(canvas.transform, false);
+            ChemistrySelectionGame game = gameObject.AddComponent<ChemistrySelectionGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/ChemistrySelection/Instruction.mp3");
+            serialized.FindProperty("principalArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Principal.png");
+            serialized.FindProperty("option1Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option1.png");
+            serialized.FindProperty("option2Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option2.png");
+            serialized.FindProperty("option3Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Option3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("ChemistrySelectionGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, ChemistrySelectionScenePath);
+        }
+
         private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -986,7 +1052,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching",
                 "Assets/App/Games/ObjectSelection",
-                "Assets/App/Games/ObjectSelection/Art"
+                "Assets/App/Games/ObjectSelection/Art",
+                "Assets/App/Games/ChemistrySelection",
+                "Assets/App/Games/ChemistrySelection/Art"
             };
 
             foreach (string folder in folders)

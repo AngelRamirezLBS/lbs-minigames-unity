@@ -53,5 +53,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity
     guid: ece2f6b2e21c457c8efdba8a1c07ace4
+  - enabled: 1
+    path: Assets/App/Games/ChemistrySelection/ChemistrySelection.unity
+    guid: 7eafdde735e1e8442a2b1d504565c81b
   m_configObjects: {}
-
