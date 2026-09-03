@@ -10,16 +10,20 @@ using Lbs.MiniGames.Shared.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Lbs.MiniGames.Games.Thinking3D
+namespace Lbs.MiniGames.Games.CircleMath
 {
-    public sealed class Thinking3DGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
+    public sealed class CircleMathGame : MonoBehaviour, IAppScene, ILevelTransitionParticipant
     {
-        private static readonly Color Background = new(0.9686f, 0.9608f, 0.9804f, 1f);
+        private static readonly Color Background = new(0.9686f, 0.9608f, 0.9804f, 1f); // #F7F5FA
         private static readonly Color NormalBorder = new(.78f, .78f, .78f, 1f);
         private static readonly Color Error = new(.70f, .15f, .12f);
         private static readonly Color Success = new(.09f, .48f, .29f);
 
-        [SerializeField] private Sprite principalArtwork, option1Artwork, option2Artwork, option3Artwork;
+        [SerializeField] private Sprite principalSprite;
+        [SerializeField] private Sprite revealSprite;
+        [SerializeField] private Sprite option1Sprite;
+        [SerializeField] private Sprite option2Sprite;
+        [SerializeField] private Sprite option3Sprite;
         [SerializeField] private Sprite exitIcon, hongNeutral, hong1, hong2, hong3, finalStar;
         [SerializeField] private Sprite celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3;
         [SerializeField] private AudioClip instruction, successSfx, failSfx;
@@ -39,6 +43,10 @@ namespace Lbs.MiniGames.Games.Thinking3D
         private Coroutine selectionSequence;
         private FinalCelebrationPresenter celebrationPresenter;
         private bool transitionHandoffPending;
+
+        private RectTransform principalRoot;
+        private RectTransform optionsRoot;
+        private Image revealImage;
 
         public RectTransform TransitionRoot => board;
 
@@ -71,37 +79,72 @@ namespace Lbs.MiniGames.Games.Thinking3D
             Canvas canvas = GetComponentInParent<Canvas>();
             if (!canvas || board != null) return;
 
-            board = new GameObject("Thinking3DBoard", typeof(RectTransform)).GetComponent<RectTransform>();
+            board = new GameObject("CircleMathBoard", typeof(RectTransform)).GetComponent<RectTransform>();
             board.SetParent(canvas.transform, false);
             UiFactory.Stretch(board, 0);
-            UiFactory.Stretch(UiFactory.CreateImage(board, "Background", Background).rectTransform, 0);
 
-            Image principal = UiFactory.CreateImage(board, "Principal", Color.white);
-            principal.sprite = principalArtwork;
-            principal.preserveAspect = true;
-            principal.raycastTarget = false;
-            Pixel(principal.rectTransform, new Vector2(1010, 430), new Vector2(640, 585));
+            UiFactory.Stretch(UiFactory.CreateImage(board, "Background", Background).rectTransform, 0);
 
             levelChrome = LevelChromeFactory.Build(board, font, exitIcon, hongNeutral, ReturnToLobby, ToggleInstruction);
             hongImage = levelChrome.HongImage;
-            CreateAnswer("option1", option1Artwork, new Vector2(520, 880));
-            CreateAnswer("option2", option2Artwork, new Vector2(1010, 880));
-            CreateAnswer("option3", option3Artwork, new Vector2(1500, 880));
+
+            principalRoot = new GameObject("PrincipalRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+            principalRoot.SetParent(board, false);
+            Pixel(principalRoot, new Vector2(1000, 410), new Vector2(1500, 500));
+            Image principal = UiFactory.CreateImage(principalRoot, "Principal", Color.white);
+            principal.sprite = principalSprite;
+            principal.preserveAspect = true;
+            principal.raycastTarget = false;
+            UiFactory.Stretch(principal.rectTransform, 0);
+
+            GameObject revealRootObj = new("RevealRoot", typeof(RectTransform));
+            RectTransform revealRoot = revealRootObj.GetComponent<RectTransform>();
+            revealRoot.SetParent(board, false);
+            Pixel(revealRoot, new Vector2(1000, 410), new Vector2(1500, 500));
+            revealImage = UiFactory.CreateImage(revealRoot, "Reveal", Color.white);
+            revealImage.sprite = revealSprite;
+            revealImage.preserveAspect = true;
+            revealImage.raycastTarget = false;
+            UiFactory.Stretch(revealImage.rectTransform, 0);
+            revealRootObj.SetActive(false);
+            revealImage.gameObject.SetActive(false);
+
+            optionsRoot = new GameObject("OptionsRoot", typeof(RectTransform)).GetComponent<RectTransform>();
+            optionsRoot.SetParent(board, false);
+            UiFactory.Stretch(optionsRoot, 0);
+            CreateOption("option1", option1Sprite, new Vector2(520, 880));
+            CreateOption("option2", option2Sprite, new Vector2(1010, 880));
+            CreateOption("option3", option3Sprite, new Vector2(1500, 880));
+
             EnsureScoreFont();
         }
 
-        private void CreateAnswer(string id, Sprite artwork, Vector2 center)
+        private void EnsureScoreFont()
         {
-            RoundedSurface surface = UiFactory.CreateRoundedSurface(board, id + "Card", NormalBorder, 26f);
+            if (scoreFont) return;
+            scoreFont = Resources.Load<Font>("Fonts/Nunito-Black");
+            if (!scoreFont) scoreFont = Resources.Load<Font>("Nunito-Black");
+            if (!scoreFont) scoreFont = font;
+        }
+
+        private void CreateOption(string id, Sprite artwork, Vector2 center)
+        {
+            RoundedSurface surface = UiFactory.CreateRoundedSurface(optionsRoot, id + "Card", Color.white, 22f);
             Pixel(surface.rectTransform, center, new Vector2(410, 200));
-            surface.OutlineThickness = 5f;
-            RoundedSurface fill = UiFactory.CreateRoundedSurface(surface.rectTransform, "CardFill", Color.white, 21f, false);
-            UiFactory.Stretch(fill.rectTransform, surface.OutlineThickness);
+            surface.OutlineThickness = 4f;
+            surface.color = NormalBorder;
+            RoundedSurface inner = UiFactory.CreateRoundedSurface(surface.rectTransform, "Fill", Color.white, 18f, false);
+            UiFactory.Stretch(inner.rectTransform, surface.OutlineThickness);
+
             Image image = UiFactory.CreateImage(surface.rectTransform, "Artwork", Color.white);
             image.sprite = artwork;
             image.preserveAspect = true;
             image.raycastTarget = false;
-            UiFactory.Stretch(image.rectTransform, 24);
+            UiFactory.Stretch(image.rectTransform, 10);
+
+            surface.raycastTarget = true;
+            inner.raycastTarget = false;
+
             Button button = surface.gameObject.AddComponent<Button>();
             button.targetGraphic = surface;
             button.onClick.AddListener(() => Select(id, surface));
@@ -113,7 +156,7 @@ namespace Lbs.MiniGames.Games.Thinking3D
             if (state.Phase != SelectionPhase.Ready) return;
             StopInstruction();
             SetInteractable(false);
-            bool correct = state.Select(id, Thinking3DRule.CorrectAnswer);
+            bool correct = state.Select(id, CircleMathRule.CorrectAnswer);
             selectionSequence = StartCoroutine(correct ? ResolveCorrect(surface) : ResolveIncorrect(surface));
         }
 
@@ -134,25 +177,34 @@ namespace Lbs.MiniGames.Games.Thinking3D
             surface.color = Success;
             if (successSfx) audio?.PlaySfx(successSfx);
             PlayRandom(compliments);
-            celebrationPresenter.ShowCelebration(board, CelebrationInput());
+
+            if (principalRoot) principalRoot.gameObject.SetActive(false);
+            if (optionsRoot) optionsRoot.gameObject.SetActive(false);
+            if (revealImage)
+            {
+                revealImage.transform.parent.gameObject.SetActive(true);
+                revealImage.gameObject.SetActive(true);
+                yield return CardAnimator.PunchPlace(revealImage.rectTransform);
+            }
+
+            yield return new WaitForSecondsRealtime(0.5f);
+
+            CreateCelebration();
             yield return new WaitForSecondsRealtime(celebrationPresenter.PresentationDelay);
-            celebrationPresenter.ShowFinal(CelebrationInput());
-            services?.GameLauncher.Complete(new MiniGameResult("thinking.3d", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
+            CreateFinal();
             state.FinishCelebration();
-            // Non-terminal: 2s celebration pause then auto-advance to circle.math
+            // Standalone terminal: enable final tap to lobby (no sequence advance yet).
             yield return new WaitForSecondsRealtime(2f);
-            services?.LevelSequence?.Advance(LevelSequenceRoute.Thinking3DSuccessTarget);
+            state.EnableFinalInput();
             selectionSequence = null;
         }
 
         private FinalCelebrationInput CelebrationInput() => new(state.Score, state.StarCount, scoreFont ? scoreFont : font, finalStar, celebration4Star, celebration5Star, circleConfetti, rectangularConfetti, serpentina, serpentina2, serpentina3);
-
-        private void EnsureScoreFont()
+        private void CreateCelebration() => celebrationPresenter.ShowCelebration(board, CelebrationInput());
+        private void CreateFinal()
         {
-            if (scoreFont) return;
-            scoreFont = Resources.Load<Font>("Fonts/Nunito-Black");
-            if (!scoreFont) scoreFont = Resources.Load<Font>("Nunito-Black");
-            if (!scoreFont) scoreFont = font;
+            celebrationPresenter.ShowFinal(CelebrationInput());
+            services?.GameLauncher.Complete(new MiniGameResult("circle.math", MiniGameCompletionState.Completed, state.Score, 1, 1, services.Session.SelectedDifficultyId));
         }
 
         private void SetInteractable(bool value)
@@ -183,8 +235,8 @@ namespace Lbs.MiniGames.Games.Thinking3D
         private void ToggleInstruction() { if (state.Phase != SelectionPhase.Ready) return; if (audio != null && audio.IsVoicePlaying(instruction)) audio.StopVoiceIfPlaying(instruction); else PlayInstruction(); }
         private void PlayRandom(AudioClip[] clips) { if (clips != null && clips.Length > 0) audio?.PlayVoice(clips[Random.Range(0, clips.Length)]); }
         private IEnumerator AnimateHong() { int[] frames = { 1, 2, 3, 2, 1 }; int index = 0; while (true) { bool playing = audio != null && audio.IsVoicePlaying(instruction); if (hongImage) hongImage.sprite = playing ? (frames[index++ % frames.Length] == 1 ? hong1 : frames[(index - 1 + frames.Length) % frames.Length] == 2 ? hong2 : hong3) : hongNeutral; yield return new WaitForSecondsRealtime(.18f); } }
-        private void ReturnToLobby() { if (state.Phase == SelectionPhase.ResolvingIncorrect || state.Phase == SelectionPhase.Celebrating || state.Phase == SelectionPhase.Final) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
-
+        private void Update() { if (state.AcceptFinalInput() && (Input.GetMouseButtonDown(0) || Input.touchCount > 0)) ReturnToLobby(); }
+        private void ReturnToLobby() { if (state.Phase == SelectionPhase.ResolvingIncorrect || state.Phase == SelectionPhase.Celebrating || (state.Phase == SelectionPhase.Final && !state.IsFinalInputEnabled)) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
         private void OnDisable()
         {
             if (selectionSequence != null) StopCoroutine(selectionSequence);
