@@ -14,6 +14,7 @@ namespace Lbs.MiniGames.Navigation
         public const string KitchenMathLogicGameId = "kitchen.math.logic";
         public const string FunnyFaceDragGameId = "funnyface.drag";
         public const string ChemistrySelectionGameId = "chemistry.selection";
+        public const string TrianglesShapeLogicGameId = "triangles.shape.logic";
 
         public const string ShapeAnalogySuccessTarget = "clothes.selection";
         public const string ClothesSelectionSuccessTarget = "object.selection";
@@ -26,6 +27,7 @@ namespace Lbs.MiniGames.Navigation
         public const string SquaresSuccessionSuccessTarget = "kitchen.math.logic";
         public const string KitchenMathLogicSuccessTarget = "funnyface.drag";
         public const string FunnyFaceDragSuccessTarget = "chemistry.selection";
+        public const string ChemistrySelectionSuccessTarget = "triangles.shape.logic";
 
         /// <summary>
         /// Explicit membership boundary for games that share the logic-sequence BGM.
@@ -44,7 +46,8 @@ namespace Lbs.MiniGames.Navigation
                 || gameId == SquaresSuccessionGameId
                 || gameId == KitchenMathLogicGameId
                 || gameId == FunnyFaceDragGameId
-                || gameId == ChemistrySelectionGameId;
+                || gameId == ChemistrySelectionGameId
+                || gameId == TrianglesShapeLogicGameId;
         }
     }
 }
