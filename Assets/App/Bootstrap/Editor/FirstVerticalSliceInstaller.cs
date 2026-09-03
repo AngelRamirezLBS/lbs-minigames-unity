@@ -15,6 +15,7 @@ using Lbs.MiniGames.Games.FunnyFaceDrag;
 using Lbs.MiniGames.Games.SquaresSuccession;
 using Lbs.MiniGames.Games.ChemistrySelection;
 using Lbs.MiniGames.Games.TrianglesShapeLogic;
+using Lbs.MiniGames.Games.BubbleMath;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -99,6 +100,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string TrianglesShapeLogicScenePath = "Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity";
         private const string CircleMathDefinitionPath = CatalogFolder + "/CircleMathGame.asset";
         private const string CircleMathScenePath = "Assets/App/Games/CircleMath/CircleMath.unity";
+        private const string BubbleMathDefinitionPath = CatalogFolder + "/BubbleMathGame.asset";
+        private const string BubbleMathScenePath = "Assets/App/Games/BubbleMath/BubbleMath.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -111,6 +114,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EnsureFolders();
             ConfigureClothesSprites();
             ConfigureObjectSelectionSprites();
+            ConfigureBubbleMathSprites();
             ConfigureThumbnails();
             ConfigureOrientation();
 
@@ -213,6 +217,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             circleMathGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/CircleMath/Art/Principal.png"));
             circleMathGame.ConfigureDifficulties(allDifficulties, medium);
 
+            GameDefinition bubbleMathGame = CreateOrLoad<GameDefinition>(BubbleMathDefinitionPath);
+            bubbleMathGame.Configure("bubble.math", "Bubble Math", logica, "BubbleMath", "Encuentra el número binario que completa la secuencia de burbujas.");
+            bubbleMathGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Principal.png"));
+            bubbleMathGame.ConfigureDifficulties(allDifficulties, medium);
+
             List<GameDefinition> definitions = new()
             {
                 classification,
@@ -230,6 +239,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 chemistrySelectionGame,
                 trianglesShapeLogicGame,
                 circleMathGame,
+                bubbleMathGame,
                 numberPullGame,
                 // --- Mock placeholders (no scene -> never launch) ---
                 CreatePlaceholderDefinition("logica.series", "Series y Patrones", logica, "Completa las secuencias lógicas y descubre el patrón oculto.", SeriesThumbnailPath),
@@ -303,6 +313,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             CreateFunnyFaceDragScene(celebrationConfiguration);
             CreateChemistrySelectionScene(celebrationConfiguration);
             CreateTrianglesShapeLogicScene(celebrationConfiguration);
+            CreateBubbleMathScene(celebrationConfiguration);
 
             EditorBuildSettings.scenes = new[]
             {
@@ -323,6 +334,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 new EditorBuildSettingsScene(FunnyFaceDragScenePath, true),
                 new EditorBuildSettingsScene(ChemistrySelectionScenePath, true),
                 new EditorBuildSettingsScene(TrianglesShapeLogicScenePath, true),
+                new EditorBuildSettingsScene(BubbleMathScenePath, true),
                 new EditorBuildSettingsScene("Assets/App/Games/Thinking3D/Thinking3D.unity", true),
                 new EditorBuildSettingsScene(CircleMathScenePath, true)
             };
@@ -469,6 +481,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/ObjectSelection/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureBubbleMathSprites()
+        {
+            string[] names = { "Principal.png", "Option1.png", "Option2.png", "Option3.png", "Option4.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/BubbleMath/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -948,6 +978,43 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorSceneManager.SaveScene(scene, TrianglesShapeLogicScenePath);
         }
 
+        private static void CreateBubbleMathScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("BubbleMathGame");
+            gameObject.transform.SetParent(canvas.transform, false);
+            BubbleMathGame game = gameObject.AddComponent<BubbleMathGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/BubbleMath/Instruction.mp3");
+            serialized.FindProperty("principalSprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Principal.png");
+            serialized.FindProperty("option1Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Option1.png");
+            serialized.FindProperty("option2Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Option2.png");
+            serialized.FindProperty("option3Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Option3.png");
+            serialized.FindProperty("option4Sprite").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/BubbleMath/Art/Option4.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("BubbleMathGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, BubbleMathScenePath);
+        }
+
         private static Canvas CreateCanvas()
         {
             GameObject canvasObject = new("Canvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -1065,6 +1132,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/FunnyFaceDrag",
                 "Assets/App/Games/ChemistrySelection",
                 "Assets/App/Games/TrianglesShapeLogic",
+                "Assets/App/Games/BubbleMath",
+                "Assets/App/Games/BubbleMath/Art",
                 "Assets/App/Games/Memory",
                 "Assets/App/Games/Matching",
                 "Assets/App/Theme",

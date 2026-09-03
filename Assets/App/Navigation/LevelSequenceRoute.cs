@@ -17,6 +17,7 @@ namespace Lbs.MiniGames.Navigation
         public const string TrianglesShapeLogicGameId = "triangles.shape.logic";
         public const string Thinking3DGameId = "thinking.3d";
         public const string CircleMathGameId = "circle.math";
+        public const string BubbleMathGameId = "bubble.math";
 
         public const string ShapeAnalogySuccessTarget = "clothes.selection";
         public const string ClothesSelectionSuccessTarget = "object.selection";
@@ -32,6 +33,7 @@ namespace Lbs.MiniGames.Navigation
         public const string ChemistrySelectionSuccessTarget = "triangles.shape.logic";
         public const string TrianglesShapeLogicSuccessTarget = "circle.math";
         public const string Thinking3DSuccessTarget = "circle.math";
+        public const string CircleMathSuccessTarget = "bubble.math";
 
         /// <summary>
         /// Explicit membership boundary for games that share the logic-sequence BGM.
@@ -53,7 +55,8 @@ namespace Lbs.MiniGames.Navigation
                 || gameId == ChemistrySelectionGameId
                 || gameId == TrianglesShapeLogicGameId
                 || gameId == Thinking3DGameId
-                || gameId == CircleMathGameId;
+                || gameId == CircleMathGameId
+                || gameId == BubbleMathGameId;
         }
     }
 }
