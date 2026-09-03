@@ -198,7 +198,7 @@ GameObject:
   - component: {fileID: 1100555640}
   - component: {fileID: 1100555641}
   m_Layer: 0
-  m_Name: ChemistrySelectionGame
+  m_Name: TrianglesShapeLogicGame
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -228,13 +228,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 1100555639}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d72ce56118fc9145b4bbdfe7e9def9a, type: 3}
+  m_Script: {fileID: 11500000, guid: 9c1760781b1b3c943a133aee3367f25f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Games.ChemistrySelection.ChemistrySelectionGame
-  principalArtwork: {fileID: 21300000, guid: 136265f215c760540b7dce607c14a88e, type: 3}
-  option1Artwork: {fileID: 21300000, guid: cef56a501a0f37d4ca5372e7a97a4d16, type: 3}
-  option2Artwork: {fileID: 21300000, guid: 9e49ad0e19728d848bf533ba564fc5f3, type: 3}
-  option3Artwork: {fileID: 21300000, guid: 33eea53e23b9c054b9a32150f6363c9f, type: 3}
+  m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Games.TrianglesShapeLogic.TrianglesShapeLogicGame
+  principalArtwork: {fileID: 21300000, guid: 27d3786fb4181134fa338898f6c6afff, type: 3}
+  redTriangleArtwork: {fileID: 21300000, guid: fae5960a3c4679849af5779f84eff11f, type: 3}
+  blueTriangleArtwork: {fileID: 21300000, guid: 319da65407249d044a23a931b5d27aaf, type: 3}
   exitIcon: {fileID: 21300000, guid: b6786969a2db23c4fa75298085496f8a, type: 3}
   hongNeutral: {fileID: 21300000, guid: b161a33c2c749e04db570b764bbead75, type: 3}
   hong1: {fileID: 21300000, guid: 09d3ffd8b2a6dd846817e8d75b2f0d95, type: 3}
@@ -248,7 +247,7 @@ MonoBehaviour:
   serpentina: {fileID: 21300000, guid: ad40c9d7f8c1a034aa703e2fffc02c03, type: 3}
   serpentina2: {fileID: 21300000, guid: 0ed20a0a21944d86871ce62fb71fee94, type: 3}
   serpentina3: {fileID: 21300000, guid: 150c83a7361f402191c5f4bea519dd3a, type: 3}
-  instruction: {fileID: 8300000, guid: 0739f0791cf8e2e44ba0e09ca6025078, type: 3}
+  instruction: {fileID: 8300000, guid: a00a586698d5bf84fa4ebdd380e6ab1f, type: 3}
   successSfx: {fileID: 0}
   failSfx: {fileID: 0}
   compliments: []

@@ -14,6 +14,7 @@ using Lbs.MiniGames.Games.KitchenMathLogic;
 using Lbs.MiniGames.Games.FunnyFaceDrag;
 using Lbs.MiniGames.Games.SquaresSuccession;
 using Lbs.MiniGames.Games.ChemistrySelection;
+using Lbs.MiniGames.Games.TrianglesShapeLogic;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -64,6 +65,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string FunnyFaceDragScenePath = "Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity";
         private const string ChemistrySelectionDefinitionPath = CatalogFolder + "/ChemistrySelectionGame.asset";
         private const string ChemistrySelectionScenePath = "Assets/App/Games/ChemistrySelection/ChemistrySelection.unity";
+        private const string TrianglesShapeLogicDefinitionPath = CatalogFolder + "/TrianglesShapeLogicGame.asset";
+        private const string TrianglesShapeLogicScenePath = "Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -84,6 +87,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureKitchenMathLogicSprites();
             ConfigureFunnyFaceDragSprites();
             ConfigureChemistrySelectionSprites();
+            ConfigureTrianglesShapeLogicSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -191,6 +195,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             chemistrySelectionGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ChemistrySelection/Art/Principal.png"));
             chemistrySelectionGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(chemistrySelectionGame);
+            GameDefinition trianglesShapeLogicGame = CreateOrLoad<GameDefinition>(TrianglesShapeLogicDefinitionPath);
+            trianglesShapeLogicGame.Configure("triangles.shape.logic", "Triangles Shape Logic", shapes, "TrianglesShapeLogic", "Complete the table. Use the correct colored triangles.");
+            trianglesShapeLogicGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Principal.png"));
+            trianglesShapeLogicGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(trianglesShapeLogicGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -222,6 +231,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(kitchenMathLogicGame);
             EditorUtility.SetDirty(funnyFaceDragGame);
             EditorUtility.SetDirty(chemistrySelectionGame);
+            EditorUtility.SetDirty(trianglesShapeLogicGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -270,6 +280,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureChemistrySelectionSprites();
             CreateChemistrySelectionScene(celebrationConfiguration);
             EnsureBuildScene(ChemistrySelectionScenePath, true);
+            ConfigureTrianglesShapeLogicSprites();
+            CreateTrianglesShapeLogicScene(celebrationConfiguration);
+            EnsureBuildScene(TrianglesShapeLogicScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -535,6 +548,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/ChemistrySelection/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureTrianglesShapeLogicSprites()
+        {
+            string[] names = { "Principal.png", "Triangle1Drag1Drop2.png", "Triangle2Drag2Drop1.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/TrianglesShapeLogic/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -944,6 +975,40 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorSceneManager.SaveScene(scene, ChemistrySelectionScenePath);
         }
 
+        private static void CreateTrianglesShapeLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("TrianglesShapeLogicGame"); gameObject.transform.SetParent(canvas.transform, false);
+            TrianglesShapeLogicGame game = gameObject.AddComponent<TrianglesShapeLogicGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/TrianglesShapeLogic/Instruction.mp3");
+            serialized.FindProperty("principalArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Principal.png");
+            serialized.FindProperty("redTriangleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Triangle1Drag1Drop2.png");
+            serialized.FindProperty("blueTriangleArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Triangle2Drag2Drop1.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("TrianglesShapeLogicGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, TrianglesShapeLogicScenePath);
+        }
+
         private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -1054,7 +1119,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/ObjectSelection",
                 "Assets/App/Games/ObjectSelection/Art",
                 "Assets/App/Games/ChemistrySelection",
-                "Assets/App/Games/ChemistrySelection/Art"
+                "Assets/App/Games/ChemistrySelection/Art",
+                "Assets/App/Games/TrianglesShapeLogic",
+                "Assets/App/Games/TrianglesShapeLogic/Art"
             };
 
             foreach (string folder in folders)

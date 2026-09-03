@@ -1,0 +1,12 @@
+{
+    "name": "Lbs.MiniGames.TrianglesShapeLogic.Tests.Editor",
+    "references": [
+        "Lbs.MiniGames.TrianglesShapeLogic.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
