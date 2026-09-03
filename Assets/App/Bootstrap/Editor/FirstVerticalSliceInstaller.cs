@@ -15,6 +15,7 @@ using Lbs.MiniGames.Games.FunnyFaceDrag;
 using Lbs.MiniGames.Games.SquaresSuccession;
 using Lbs.MiniGames.Games.ChemistrySelection;
 using Lbs.MiniGames.Games.TrianglesShapeLogic;
+using Lbs.MiniGames.Games.Thinking3D;
 using Lbs.MiniGames.Lobby;
 using Lbs.MiniGames.Shared.Audio;
 using UnityEditor;
@@ -67,6 +68,8 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string ChemistrySelectionScenePath = "Assets/App/Games/ChemistrySelection/ChemistrySelection.unity";
         private const string TrianglesShapeLogicDefinitionPath = CatalogFolder + "/TrianglesShapeLogicGame.asset";
         private const string TrianglesShapeLogicScenePath = "Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity";
+        private const string Thinking3DDefinitionPath = CatalogFolder + "/Thinking3DGame.asset";
+        private const string Thinking3DScenePath = "Assets/App/Games/Thinking3D/Thinking3D.unity";
         private const string DifficultyEasyPath = CatalogFolder + "/DifficultyEasy.asset";
         private const string DifficultyMediumPath = CatalogFolder + "/DifficultyMedium.asset";
         private const string DifficultyHardPath = CatalogFolder + "/DifficultyHard.asset";
@@ -88,6 +91,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureFunnyFaceDragSprites();
             ConfigureChemistrySelectionSprites();
             ConfigureTrianglesShapeLogicSprites();
+            ConfigureThinking3DSprites();
             ConfigureOrientation();
 
             GameCategory animals = CreateOrLoad<GameCategory>(CategoryPath);
@@ -200,6 +204,11 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             trianglesShapeLogicGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/TrianglesShapeLogic/Art/Principal.png"));
             trianglesShapeLogicGame.ConfigureDifficulties(allDifficulties, medium);
             catalog.EnsureGame(trianglesShapeLogicGame);
+            GameDefinition thinking3DGame = CreateOrLoad<GameDefinition>(Thinking3DDefinitionPath);
+            thinking3DGame.Configure("thinking.3d", "Thinking 3D", shapes, "Thinking3D", "Which is the top view?");
+            thinking3DGame.SetThumbnail(AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/Thinking3D/Art/Principal.png"));
+            thinking3DGame.ConfigureDifficulties(allDifficulties, medium);
+            catalog.EnsureGame(thinking3DGame);
 
             // Global audio config (persistent music) — non-destructive, uses existing bg track
             AppAudioConfig audioConfig = CreateOrLoad<AppAudioConfig>(AudioConfigPath);
@@ -232,6 +241,7 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorUtility.SetDirty(funnyFaceDragGame);
             EditorUtility.SetDirty(chemistrySelectionGame);
             EditorUtility.SetDirty(trianglesShapeLogicGame);
+            EditorUtility.SetDirty(thinking3DGame);
             EditorUtility.SetDirty(audioConfig);
             AssetDatabase.SaveAssets();
             celebrationConfiguration = AssetDatabase.LoadAssetAtPath<Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration>(FinalCelebrationConfigurationPath);
@@ -283,6 +293,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             ConfigureTrianglesShapeLogicSprites();
             CreateTrianglesShapeLogicScene(celebrationConfiguration);
             EnsureBuildScene(TrianglesShapeLogicScenePath, true);
+            ConfigureThinking3DSprites();
+            CreateThinking3DScene(celebrationConfiguration);
+            EnsureBuildScene(Thinking3DScenePath, true);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Lbs.MiniGames.Catalog.Editor.GameCatalogValidation.ValidateCatalogs();
@@ -566,6 +579,24 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             foreach (string name in names)
             {
                 TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/TrianglesShapeLogic/Art/" + name) as TextureImporter;
+                if (importer == null) continue;
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.mipmapEnabled = false;
+                importer.alphaIsTransparency = true;
+                importer.filterMode = FilterMode.Bilinear;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                importer.SaveAndReimport();
+            }
+        }
+
+        private static void ConfigureThinking3DSprites()
+        {
+            string[] names = { "Principal.png", "Option1.png", "Option2.png", "Option3.png" };
+            foreach (string name in names)
+            {
+                TextureImporter importer = AssetImporter.GetAtPath("Assets/App/Games/Thinking3D/Art/" + name) as TextureImporter;
                 if (importer == null) continue;
                 importer.textureType = TextureImporterType.Sprite;
                 importer.spriteImportMode = SpriteImportMode.Single;
@@ -1009,6 +1040,41 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             EditorSceneManager.SaveScene(scene, TrianglesShapeLogicScenePath);
         }
 
+        private static void CreateThinking3DScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
+        {
+            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            Canvas canvas = CreateCanvas();
+            GameObject gameObject = new("Thinking3DGame"); gameObject.transform.SetParent(canvas.transform, false);
+            Thinking3DGame game = gameObject.AddComponent<Thinking3DGame>();
+            SerializedObject serialized = new(game);
+            serialized.FindProperty("font").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Font>(VolteRegularPath);
+            serialized.FindProperty("instruction").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/App/Games/Thinking3D/Instruction.mp3");
+            serialized.FindProperty("principalArtwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/Thinking3D/Art/Principal.png");
+            serialized.FindProperty("option1Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/Thinking3D/Art/Option1.png");
+            serialized.FindProperty("option2Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/Thinking3D/Art/Option2.png");
+            serialized.FindProperty("option3Artwork").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/Thinking3D/Art/Option3.png");
+            serialized.FindProperty("finalStar").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/FinalStar.png");
+            serialized.FindProperty("exitIcon").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/ExitLevelToHub.png");
+            serialized.FindProperty("hongNeutral").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Neutral.png");
+            serialized.FindProperty("hong1").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening1.png");
+            serialized.FindProperty("hong2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening2.png");
+            serialized.FindProperty("hong3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Hong_Listening3.png");
+            serialized.FindProperty("celebration4Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/4Star.png");
+            serialized.FindProperty("celebration5Star").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/5star.png");
+            serialized.FindProperty("circleConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/CircleConfetti.png");
+            serialized.FindProperty("rectangularConfetti").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/RectangularConfetti.png");
+            serialized.FindProperty("serpentina").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina.png");
+            serialized.FindProperty("serpentina2").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina2.png");
+            serialized.FindProperty("serpentina3").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/App/Games/ShapeAnalogy/Celebration/Serpentina3.png");
+            SerializedProperty celebrationConfigurationProperty = serialized.FindProperty("celebrationConfiguration");
+            if (celebrationConfigurationProperty == null) throw new System.InvalidOperationException("Thinking3DGame is missing the celebrationConfiguration serialized property.");
+            celebrationConfigurationProperty.objectReferenceValue = celebrationConfiguration;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(game);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene, Thinking3DScenePath);
+        }
+
         private static void CreateCandiesLogicScene(Lbs.MiniGames.Shared.Results.FinalCelebrationConfiguration celebrationConfiguration)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -1121,7 +1187,9 @@ namespace Lbs.MiniGames.Bootstrap.Editor
                 "Assets/App/Games/ChemistrySelection",
                 "Assets/App/Games/ChemistrySelection/Art",
                 "Assets/App/Games/TrianglesShapeLogic",
-                "Assets/App/Games/TrianglesShapeLogic/Art"
+                "Assets/App/Games/TrianglesShapeLogic/Art",
+                "Assets/App/Games/Thinking3D",
+                "Assets/App/Games/Thinking3D/Art"
             };
 
             foreach (string folder in folders)
