@@ -1,0 +1,12 @@
+{
+    "name": "Lbs.MiniGames.FunnyFaceDrag.Tests.Editor",
+    "references": [
+        "Lbs.MiniGames.FunnyFaceDrag.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

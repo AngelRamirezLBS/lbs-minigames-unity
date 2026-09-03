@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +11,27 @@ namespace Lbs.MiniGames.Catalog
         [SerializeField] private List<GameDefinition> games = new();
 
         public IReadOnlyList<GameCategory> Categories => categories;
+        public IReadOnlyList<GameDefinition> Games => games != null
+            ? (IReadOnlyList<GameDefinition>)games
+            : Array.Empty<GameDefinition>();
+
+        public GameDefinition FindGameById(string gameId)
+        {
+            if (string.IsNullOrWhiteSpace(gameId) || games == null)
+            {
+                return null;
+            }
+
+            foreach (GameDefinition game in games)
+            {
+                if (game != null && string.Equals(game.GameId, gameId, StringComparison.Ordinal))
+                {
+                    return game;
+                }
+            }
+
+            return null;
+        }
 
         public IEnumerable<GameDefinition> GetGames(GameCategory category)
         {
@@ -26,6 +48,52 @@ namespace Lbs.MiniGames.Catalog
         {
             categories = catalogCategories;
             games = catalogGames;
+        }
+
+        public void EnsureCategory(GameCategory category)
+        {
+            if (category == null || string.IsNullOrWhiteSpace(category.CategoryId))
+            {
+                return;
+            }
+
+            if (categories == null)
+            {
+                categories = new List<GameCategory>();
+            }
+
+            foreach (GameCategory existing in categories)
+            {
+                if (existing != null && string.Equals(existing.CategoryId, category.CategoryId, System.StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            categories.Add(category);
+        }
+
+        public void EnsureGame(GameDefinition game)
+        {
+            if (game == null || string.IsNullOrWhiteSpace(game.GameId))
+            {
+                return;
+            }
+
+            if (games == null)
+            {
+                games = new List<GameDefinition>();
+            }
+
+            foreach (GameDefinition existing in games)
+            {
+                if (existing != null && string.Equals(existing.GameId, game.GameId, System.StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            games.Add(game);
         }
     }
 }

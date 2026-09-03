@@ -1,0 +1,1 @@
+{"name":"Lbs.MiniGames.TrianglesCount.Tests.Editor","references":["Lbs.MiniGames.Selection.Core","Lbs.MiniGames.TrianglesCount.Core"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

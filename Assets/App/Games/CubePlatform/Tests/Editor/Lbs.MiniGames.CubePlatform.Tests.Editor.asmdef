@@ -1,0 +1,1 @@
+{"name":"Lbs.MiniGames.CubePlatform.Tests.Editor","references":["Lbs.MiniGames.Selection.Core","Lbs.MiniGames.CubePlatform.Core"],"includePlatforms":["Editor"],"optionalUnityReferences":["TestAssemblies"]}

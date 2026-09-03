@@ -14,4 +14,46 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/Classification/Classification.unity
     guid: 88a42033c88f14ef18540246ad7e2ad4
+  - enabled: 1
+    path: Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity
+    guid: 63e2d578163821f4db1c6eeb10e07322
+  - enabled: 1
+    path: Assets/App/Games/ClothesSelection/ClothesSelection.unity
+    guid: 6ad2df9add32e5245a41d41ca281f4f8
+  - enabled: 1
+    path: Assets/App/Games/ObjectSelection/ObjectSelection.unity
+    guid: 918c4c8b9d4d45c8a2b5a517432f9e10
+  - enabled: 1
+    path: Assets/App/Games/NumberPull/NumberPull.unity
+    guid: c3a8f9ec0e6547e18d47e48b93802f11
+  - enabled: 1
+    path: Assets/App/Games/MakeAnEmojiDrag/MakeAnEmojiDrag.unity
+    guid: 5bc1043e81964c0b8237bd8ab0f26a18
+  - enabled: 1
+    path: Assets/App/Games/AnimalDrag/AnimalDrag.unity
+    guid: 7e89e88ca19841d5b26e626eba430ec4
+  - enabled: 1
+    path: Assets/App/Games/TrianglesCount/TrianglesCount.unity
+    guid: 1c706f830e8048a88116b0a18ded1caa
+  - enabled: 1
+    path: Assets/App/Games/CubePlatform/CubePlatform.unity
+    guid: 291bc48f7f9b4d2d847115ba819e67ce
+  - enabled: 1
+    path: Assets/App/Games/CandiesLogic/CandiesLogic.unity
+    guid: a7c314e489dd475fbe6e83d43c300af1
+  - enabled: 1
+    path: Assets/App/Games/SquaresSuccession/SquaresSuccession.unity
+    guid: 03cda03961514ecea7fa72ec0bd2a207
+  - enabled: 1
+    path: Assets/App/Games/KitchenMathLogic/KitchenMathLogic.unity
+    guid: 216c0d711b5543f68e654ac7335d04c8
+  - enabled: 1
+    path: Assets/App/Games/FunnyFaceDrag/FunnyFaceDrag.unity
+    guid: ece2f6b2e21c457c8efdba8a1c07ace4
+  - enabled: 1
+    path: Assets/App/Games/ChemistrySelection/ChemistrySelection.unity
+    guid: 7eafdde735e1e8442a2b1d504565c81b
+  - enabled: 1
+    path: Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity
+    guid: fd67508ce0855cc4887bfa0343d9c13b
   m_configObjects: {}

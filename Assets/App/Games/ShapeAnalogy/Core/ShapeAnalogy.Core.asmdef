@@ -1,0 +1,14 @@
+{
+  "name": "ShapeAnalogy.Core",
+  "rootNamespace": "Lbs.MiniGames.Games.ShapeAnalogy",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": true
+}
