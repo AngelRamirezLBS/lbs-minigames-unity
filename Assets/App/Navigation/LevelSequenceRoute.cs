@@ -30,7 +30,7 @@ namespace Lbs.MiniGames.Navigation
         public const string KitchenMathLogicSuccessTarget = "funnyface.drag";
         public const string FunnyFaceDragSuccessTarget = "chemistry.selection";
         public const string ChemistrySelectionSuccessTarget = "triangles.shape.logic";
-        public const string TrianglesShapeLogicSuccessTarget = "thinking.3d";
+        public const string TrianglesShapeLogicSuccessTarget = "circle.math";
         public const string Thinking3DSuccessTarget = "circle.math";
 
         /// <summary>
