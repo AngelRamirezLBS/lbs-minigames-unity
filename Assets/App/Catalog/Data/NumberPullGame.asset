@@ -14,9 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Lbs.MiniGames.Catalog.GameDefinition
   gameId: math.number-pull
   visibleName: Number Pull
-  category: {fileID: 11400000, guid: a1c29b3b43054df09d51fce00dad8284, type: 2}
+  category: {fileID: 11400000, guid: 7402c3cde37344e38b42ae274515b6bb, type: 2}
   thumbnail: {fileID: 0}
   sceneName: NumberPull
-  description: Solve quick sums and differences in a two-player number pull.
-  supportedDifficulties: []
-  defaultDifficulty: {fileID: 0}
+  description: "Resuelve sumas y restas r\xE1pidas en un tira y afloja de dos jugadores."
+  supportedDifficulties:
+  - {fileID: 11400000, guid: 938eec21ce2baa347b1ebf0eed1c274a, type: 2}
+  - {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
+  - {fileID: 11400000, guid: a2261b7d548af084bb9f537581337446, type: 2}
+  defaultDifficulty: {fileID: 11400000, guid: 8b48491698ff68849ac6ba3afc58b2e8, type: 2}
+  visibleInHub: 1

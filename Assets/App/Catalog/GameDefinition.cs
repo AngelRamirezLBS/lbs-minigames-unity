@@ -14,6 +14,9 @@ namespace Lbs.MiniGames.Catalog
         [SerializeField, TextArea] private string description;
         [SerializeField] private List<DifficultyDefinition> supportedDifficulties = new();
         [SerializeField] private DifficultyDefinition defaultDifficulty;
+        // Show this game in the Hub. Test/legacy games keep their assets in the project but
+        // are hidden from the catalog's UI by setting this false (default is true).
+        [SerializeField] private bool visibleInHub = true;
 
         public string GameId => gameId;
         public string VisibleName => visibleName;
@@ -23,6 +26,7 @@ namespace Lbs.MiniGames.Catalog
         public string Description => description;
         public IReadOnlyList<DifficultyDefinition> SupportedDifficulties => supportedDifficulties;
         public DifficultyDefinition DefaultDifficulty => defaultDifficulty;
+        public bool VisibleInHub => visibleInHub;
 
         public bool IsValid()
         {
@@ -83,6 +87,11 @@ namespace Lbs.MiniGames.Catalog
         {
             supportedDifficulties = difficulties != null ? new List<DifficultyDefinition>(difficulties) : new List<DifficultyDefinition>();
             defaultDifficulty = defaultDiff;
+        }
+
+        public void SetVisibleInHub(bool visible)
+        {
+            visibleInHub = visible;
         }
 #endif
     }

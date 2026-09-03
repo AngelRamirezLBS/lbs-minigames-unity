@@ -33,10 +33,24 @@ namespace Lbs.MiniGames.Catalog.Editor
                     }
 
                     string definitionPath = AssetDatabase.GetAssetPath(game);
+                    // A placeholder "Próximamente" game intentionally ships with no scene
+                    // (IsValid() == false) and is never launchable. Treat it as a valid
+                    // catalog entry rather than a malformed one so the Hub's mock previews
+                    // do not trip the validator. Placeholders live at a path containing
+                    // "Placeholder." and carry no scene.
+                    bool isPlaceholderPreview = string.IsNullOrWhiteSpace(game.SceneName)
+                        && definitionPath != null
+                        && definitionPath.IndexOf("Placeholder.", System.StringComparison.Ordinal) >= 0;
                     if (!game.IsValid())
                     {
+                        if (isPlaceholderPreview)
+                        {
+                            continue; // placeholder preview: valid, just not launchable
+                        }
+
                         hasIssues = true;
                         Debug.LogError($"Game definition '{definitionPath}' in catalog '{catalogPath}' is malformed.", game);
+                        continue;
                     }
 
                     if (!HasEnabledBuildScene(game.SceneName))

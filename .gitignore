@@ -113,11 +113,13 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 
-# Gentle AI / local tooling
+# macOS Finder metadata
+.DS_Store
+[Ll]ibrary/.DS_Store
+
+# Local development tooling and reference evidence
 .codegraph/
 .playwright-mcp/
 .atl/
-
-# Local reference evidence (not part of build)
 hikvision-5c-user-manual.pdf
 hikvision-ds-d5c98rb-b-page.json

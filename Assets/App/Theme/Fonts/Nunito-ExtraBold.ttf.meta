@@ -1,15 +1,14 @@
 fileFormatVersion: 2
-guid: d97975c0f9faf9e40bbedea0bb1e865b
+guid: 1e5b7fa8d8db455fbf7488bfcc005457
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
   fontSize: 16
   forceTextureCase: -2
-  characterSpacing: 0
-  characterPadding: 1
+  characterSpacing: 1
+  characterPadding: 0
   includeFontData: 1
-  fontNames:
-  - Nunito
+  fontNames: []
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
