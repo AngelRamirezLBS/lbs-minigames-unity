@@ -307,9 +307,9 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
             string resultGameId = services?.Session?.CurrentRequest?.Game?.GameId ?? "funnyface.drag";
             string difficultyId = services?.Session?.SelectedDifficultyId;
             services?.GameLauncher.Complete(new MiniGameResult(resultGameId, MiniGameCompletionState.Completed, state.Score, 1, 1, difficultyId));
-            // Terminal game: 0.35s then enable final tap to lobby (no auto-advance)
-            yield return new WaitForSecondsRealtime(0.35f);
-            state.EnableFinalInput();
+            // Non-terminal: 2s celebration pause then auto-advance to chemistry.selection
+            yield return new WaitForSecondsRealtime(2f);
+            services?.LevelSequence?.Advance(LevelSequenceRoute.FunnyFaceDragSuccessTarget);
         }
 
         private void StartInstructionPlayback()
@@ -342,8 +342,7 @@ namespace Lbs.MiniGames.Games.FunnyFaceDrag
         private void PlayRandom(AudioClip[] clips) { if (clips != null && clips.Length > 0) audio?.PlayVoice(clips[Random.Range(0, clips.Length)]); }
         private static AudioClip[] CopyClips(System.Collections.Generic.IReadOnlyList<AudioClip> clips) { AudioClip[] copy = new AudioClip[clips.Count]; for (int i = 0; i < copy.Length; i++) copy[i] = clips[i]; return copy; }
         private IEnumerator AnimateHong() { int[] frames = { 1, 2, 3, 2, 1 }; int index = 0; while (true) { bool playing = audio != null && audio.IsVoicePlaying(instruction); if (hongImage) hongImage.sprite = playing ? (frames[index++ % frames.Length] == 1 ? hong1 : frames[(index - 1 + frames.Length) % frames.Length] == 2 ? hong2 : hong3) : hongNeutral; yield return new WaitForSecondsRealtime(.18f); } }
-        private void Update() { if (state.AcceptFinalInput() && (Input.GetMouseButtonDown(0) || Input.touchCount > 0)) ReturnToLobby(); }
-        private void ReturnToLobby() { if (state.Phase == FunnyFacePhase.ResolvingIncorrect || state.Phase == FunnyFacePhase.Celebrating || (state.Phase == FunnyFacePhase.Final && !state.FinalInputEnabled)) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
+        private void ReturnToLobby() { if (state.Phase == FunnyFacePhase.ResolvingIncorrect || state.Phase == FunnyFacePhase.Celebrating || state.Phase == FunnyFacePhase.Final) return; audio?.StopMusic(); services?.GameLauncher.ShowLobby(); }
         private static void Pixel(RectTransform rect, Vector2 topOriginCenter, Vector2 size) { rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f); rect.pivot = new Vector2(.5f, .5f); rect.anchoredPosition = LevelChromeLayout.ToAnchoredPosition(topOriginCenter); rect.sizeDelta = size; }
 
         private void OnDisable()
