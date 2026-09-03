@@ -1,0 +1,13 @@
+{
+    "name": "Lbs.MiniGames.CircleMath.Tests.Editor",
+    "references": [
+        "Lbs.MiniGames.Selection.Core",
+        "Lbs.MiniGames.CircleMath.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
