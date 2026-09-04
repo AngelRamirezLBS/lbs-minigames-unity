@@ -22,11 +22,13 @@ namespace Lbs.MiniGames.Lobby
         private sealed class DifficultyOptionView
         {
             public readonly RoundedSurface Surface;
+            public readonly RoundedSurface InnerSurface;
             public readonly Text Label;
 
-            public DifficultyOptionView(RoundedSurface surface, Text label)
+            public DifficultyOptionView(RoundedSurface surface, RoundedSurface innerSurface, Text label)
             {
                 Surface = surface;
+                InnerSurface = innerSurface;
                 Label = label;
             }
         }
@@ -35,6 +37,7 @@ namespace Lbs.MiniGames.Lobby
         private static readonly Color HeaderOverlay = new(0f, 0f, 0f, 0.38f);
         private static readonly Color Orange = new(1f, 0.718f, 0.251f);
         private static readonly Color DarkInk = new(0.141f, 0.102f, 0.208f);
+        private static readonly Color ProfileCapsulePurple = new(0f, 0f, 0f, 0.40f);
         // Game-card title ink: a cool grey (not the near-black violet DarkInk). LogicLike card
         // labels sit at ~#5B5968 (saturation ~8%) — a soft grey, not black and not purple. We
         // darken it a touch to #4D4B5C so it stays legible from a distance on tablets/TVs.
@@ -45,6 +48,32 @@ namespace Lbs.MiniGames.Lobby
         private static readonly Color SoftPurple = new(0.780f, 0.643f, 0.980f);
 
         private const float OpeningDelaySeconds = 0.16f;
+        // Reference-canvas values: 316x84 becomes 225x60 px at 1366x768.
+        private const float ProfileCapsuleWidth = 316f;
+        private const float ProfileCapsuleHeight = 84f;
+        private const float AvatarFrameSize = 96f;
+        // Keep the pill's left curve completely behind the circular avatar.
+        private const float ProfileCapsuleAvatarOverlap = AvatarFrameSize * 0.60f;
+        // Keep profile copy clear of the avatar's visible right edge.
+        private const float ProfileTextAvatarGap = 16f;
+        // Reference-canvas inset: 8.5 px on each side at the 1366 px-wide target.
+        private const float AvatarImageInset = 12f;
+        // Reference-canvas value: 422 px renders at ~300 px wide at 1366x768,
+        // a 12% reduction from the previous 480 px / ~342 px pill.
+        private const float DifficultyPillWidth = 422f;
+        private const float DifficultyPillHeight = 60f;
+        private const float DifficultySheetHeight = 620f;
+        private const float DifficultySheetVisibleY = -64f;
+        private const float DifficultySheetHiddenY = -684f;
+        private const float DifficultySheetAnimationSeconds = 0.24f;
+        // Reference-canvas values: 600 px renders as the approved 427 px-wide row at 1366 px.
+        private const float DifficultyOptionWidth = 600f;
+        private const float DifficultyOptionHeight = 96f;
+        private const float DifficultyOptionGap = 20f;
+        private const float DifficultyOptionsTopInset = 144f;
+        private const float DifficultyOptionBorderThickness = 4f;
+        private const string DifficultySheetTitleText = "Seleccione el nivel de dificultad";
+        private static readonly Color DifficultyOptionSurface = White;
 
         // Scroll content / section layout (reference 1920x1080).
         // Nunito-Black's line box at font size 50 is ~68 reference pixels (its hhea
@@ -64,9 +93,9 @@ namespace Lbs.MiniGames.Lobby
         // Inner margin from the screen edge for section labels and the first/last cards in
         // each horizontal row. Sized for comfortable tablet/TV breathing room (not cramped).
         private const float ContentInnerMargin = 40f;
-        // Left margin for section labels and the first card, aligned with the header logo
-        // (logo anchors at x=0.075 of the 1920 reference canvas -> 144px). Keeping this larger
-        // than the right margin lines the category titles and the first card up with the logo,
+        // Left margin for section labels and the first card, aligned with the profile avatar
+        // (avatar anchors at x=0.075 of the 1920 reference canvas -> 144px). Keeping this larger
+        // than the right margin lines the category titles and the first card up with the profile,
         // at the cost of slightly narrower tiles (the 3.5-card carousel is preserved).
         private const float ContentLeftMargin = 144f;
         private const float MaxTileWidth = 620f;
@@ -83,7 +112,6 @@ namespace Lbs.MiniGames.Lobby
         [Header("Card Title Font")]
         [Tooltip("Font used for game-card titles. Intentionally lighter than the interface font so cards read as calmer than the section headers.")]
         [SerializeField] private Font cardTitleFont;
-        [SerializeField] private Sprite brandLogo;
         [Header("Wolfie Avatar")]
         [Tooltip("Optional non-interactive Wolfie sprite shown as a round header avatar.")]
         [SerializeField] private Sprite mascotSprite;
@@ -100,7 +128,13 @@ namespace Lbs.MiniGames.Lobby
         // Difficulty selector state (design-only, it does not filter the catalog).
         private DifficultyLevel currentDifficulty = DifficultyLevel.PrimariaBaja;
         private Text difficultyLabel;
-        private GameObject difficultyDropdown;
+        private GameObject difficultySheet;
+        private RectTransform difficultySheetPanel;
+        private CanvasGroup difficultySheetCanvasGroup;
+        private Text difficultySheetTitle;
+        private Text difficultySheetTitlePrototype;
+        private Coroutine difficultySheetAnimation;
+        private bool difficultySheetTargetOpen;
         private readonly List<DifficultyOptionView> difficultyOptions = new();
 
         private bool launchInProgress;
@@ -139,11 +173,6 @@ namespace Lbs.MiniGames.Lobby
             cardTitleFont = font;
         }
 
-        public void SetBrandLogo(Sprite logo)
-        {
-            brandLogo = logo;
-        }
-
         public void SetMascotSprite(Sprite sprite)
         {
             mascotSprite = sprite;
@@ -174,6 +203,26 @@ namespace Lbs.MiniGames.Lobby
             {
                 BackgroundDecorView decor = backgroundDecor[index];
                 decor.Rect.Rotate(0f, 0f, decor.DegreesPerSecond * Time.deltaTime);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (difficultySheetAnimation != null)
+            {
+                StopCoroutine(difficultySheetAnimation);
+                difficultySheetAnimation = null;
+            }
+
+            if (difficultySheetCanvasGroup != null)
+            {
+                difficultySheetCanvasGroup.interactable = false;
+                difficultySheetCanvasGroup.blocksRaycasts = false;
+            }
+
+            if (difficultySheet != null)
+            {
+                Destroy(difficultySheet);
             }
         }
 
@@ -226,8 +275,8 @@ namespace Lbs.MiniGames.Lobby
             headerRoot.transform.SetAsLastSibling();
             CreateHeaderContent(headerRoot, font);
 
-            // 4. Pill difficulty selector: button in the header band + overlay dropdown.
-            CreateDifficultySelector(root, font);
+            // 4. Pill difficulty selector: button in the header band + full-screen bottom sheet.
+            CreateDifficultySelector(root, headerRoot, font);
         }
 
         private void CreateBackgroundDecorations(RectTransform root)
@@ -336,24 +385,40 @@ namespace Lbs.MiniGames.Lobby
 
         private void CreateHeaderContent(RectTransform headerRoot, Font font)
         {
-            if (brandLogo != null)
-            {
-                Image logo = UiFactory.CreateImage(headerRoot, "LbsPlusLogo", White);
-                logo.sprite = brandLogo;
-                logo.preserveAspect = true;
-                logo.raycastTarget = false;
-                UiFactory.Anchor(logo.rectTransform, new Vector2(0.075f, 0.16f), new Vector2(0.125f, 0.84f));
-            }
+            RoundedSurface profileCapsule = UiFactory.CreateRoundedSurface(headerRoot, "ProfileCapsule", ProfileCapsulePurple, 999f, false);
+            profileCapsule.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.pivot = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.anchoredPosition = new Vector2(
+                ContentLeftMargin + AvatarFrameSize - ProfileCapsuleAvatarOverlap,
+                0f);
+            profileCapsule.rectTransform.sizeDelta = new Vector2(ProfileCapsuleWidth, ProfileCapsuleHeight);
 
-            Text title = UiFactory.CreateText(headerRoot, "HubTitle", font, 48, TextAnchor.MiddleLeft, White);
-            title.text = "LBS+ Games";
-            // Nunito-Black already has enough weight; render it as clean solid white without
-            // the synthetic one-pixel outline. Keep Best Fit off for stable header metrics.
-            title.fontStyle = FontStyle.Normal;
-            title.resizeTextForBestFit = false;
-            title.raycastTarget = false;
-            float titleLeft = brandLogo != null ? 0.140f : 0.075f;
-            UiFactory.Anchor(title.rectTransform, new Vector2(titleLeft, 0.24f), new Vector2(0.40f, 0.76f));
+            GameObject textBoundsObject = new("ProfileTextBounds", typeof(RectTransform));
+            textBoundsObject.transform.SetParent(profileCapsule.rectTransform, false);
+            RectTransform textBounds = textBoundsObject.GetComponent<RectTransform>();
+            UiFactory.Stretch(textBounds, 0f);
+            textBounds.offsetMin = new Vector2(ProfileCapsuleAvatarOverlap + ProfileTextAvatarGap, 4f);
+            textBounds.offsetMax = new Vector2(-28f, -4f);
+
+            Text profileName = UiFactory.CreateText(textBounds, "ProfileName", font, 42, TextAnchor.MiddleLeft, White);
+            profileName.text = "Wolfie";
+            profileName.fontStyle = FontStyle.Normal;
+            profileName.resizeTextForBestFit = false;
+            profileName.horizontalOverflow = HorizontalWrapMode.Overflow;
+            profileName.verticalOverflow = VerticalWrapMode.Overflow;
+            profileName.raycastTarget = false;
+            UiFactory.Anchor(profileName.rectTransform, new Vector2(0f, 0.45f), new Vector2(1f, 1f));
+
+            Font profileRangeFont = cardTitleFont != null ? cardTitleFont : font;
+            Text profileRange = UiFactory.CreateText(textBounds, "ProfileRange", profileRangeFont, 26, TextAnchor.MiddleLeft, White);
+            profileRange.text = "Primaria baja";
+            profileRange.fontStyle = FontStyle.Normal;
+            profileRange.resizeTextForBestFit = false;
+            profileRange.horizontalOverflow = HorizontalWrapMode.Overflow;
+            profileRange.verticalOverflow = VerticalWrapMode.Overflow;
+            profileRange.raycastTarget = false;
+            UiFactory.Anchor(profileRange.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.42f));
 
             CreateWolfieAvatar(headerRoot);
         }
@@ -365,45 +430,106 @@ namespace Lbs.MiniGames.Lobby
                 return;
             }
 
-            // Round avatar: a white circular plate behind the masked mascot image,
-            // placed to the right of the logo/title (no longer a lateral panel).
-            RoundedSurface ring = UiFactory.CreateRoundedSurface(headerRoot, "WolfieAvatar", White, 999f, false);
-            UiFactory.Anchor(ring.rectTransform, new Vector2(0.415f, 0.16f), new Vector2(0.478f, 0.84f));
-            Mask mask = ring.gameObject.AddComponent<Mask>();
+            GameObject frameObject = new("WolfieAvatar", typeof(RectTransform), typeof(CanvasRenderer), typeof(EllipseSurface));
+            frameObject.transform.SetParent(headerRoot, false);
+            RectTransform avatarFrame = frameObject.GetComponent<RectTransform>();
+            avatarFrame.anchorMin = new Vector2(0f, 0.5f);
+            avatarFrame.anchorMax = new Vector2(0f, 0.5f);
+            avatarFrame.pivot = new Vector2(0.5f, 0.5f);
+            avatarFrame.anchoredPosition = new Vector2(ContentLeftMargin + (AvatarFrameSize * 0.5f), 0f);
+            avatarFrame.sizeDelta = Vector2.one * AvatarFrameSize;
+
+            EllipseSurface avatarBackground = frameObject.GetComponent<EllipseSurface>();
+            avatarBackground.color = SoftPurple;
+            avatarBackground.raycastTarget = false;
+            Mask mask = frameObject.AddComponent<Mask>();
             mask.showMaskGraphic = true;
 
-            Image mascot = UiFactory.CreateImage(ring.rectTransform, "Mascot", Color.white);
+            Image mascot = UiFactory.CreateImage(avatarFrame, "Mascot", Color.white);
             mascot.sprite = mascotSprite;
             mascot.preserveAspect = true;
             mascot.raycastTarget = false;
-            UiFactory.Stretch(mascot.rectTransform, 4f);
+            UiFactory.Stretch(mascot.rectTransform, AvatarImageInset);
+
+            VerifyWolfieAvatarFrame(avatarFrame, avatarBackground);
         }
 
-        private void CreateDifficultySelector(RectTransform root, Font font)
+        private static void VerifyWolfieAvatarFrame(RectTransform avatarFrame, EllipseSurface avatarBackground)
+        {
+            bool fixedSquare = avatarFrame.anchorMin == avatarFrame.anchorMax
+                && Mathf.Approximately(avatarFrame.sizeDelta.x, avatarFrame.sizeDelta.y)
+                && Mathf.Approximately(avatarFrame.rect.width, avatarFrame.rect.height);
+            bool uniformScale = Mathf.Approximately(avatarFrame.lossyScale.x, avatarFrame.lossyScale.y);
+            bool hasLayoutAncestor = false;
+            for (Transform current = avatarFrame.parent; current != null; current = current.parent)
+            {
+                if (current.GetComponent<LayoutGroup>() != null || current.GetComponent<ContentSizeFitter>() != null)
+                {
+                    hasLayoutAncestor = true;
+                    break;
+                }
+            }
+
+            Debug.Assert(
+                fixedSquare && uniformScale && !hasLayoutAncestor && avatarBackground != null,
+                "WolfieAvatar must remain a fixed-size circular mask without layout-driven distortion.");
+        }
+
+        private void CreateDifficultySelector(RectTransform root, RectTransform headerRoot, Font font)
         {
             // Pill button in the header band.
-            RoundedSurface pill = UiFactory.CreateRoundedSurface(root, "DifficultyPill", White, 999f, true);
-            UiFactory.Anchor(pill.rectTransform, new Vector2(0.70f, 0.885f), new Vector2(0.95f, 0.940f));
+            RoundedSurface pill = UiFactory.CreateRoundedSurface(headerRoot, "DifficultyPill", White, 999f, true);
+            pill.rectTransform.anchorMin = new Vector2(0.95f, 0.5f);
+            pill.rectTransform.anchorMax = new Vector2(0.95f, 0.5f);
+            pill.rectTransform.pivot = new Vector2(1f, 0.5f);
+            pill.rectTransform.anchoredPosition = Vector2.zero;
+            pill.rectTransform.sizeDelta = new Vector2(DifficultyPillWidth, DifficultyPillHeight);
             Button pillButton = pill.gameObject.AddComponent<Button>();
             pillButton.targetGraphic = pill;
 
             Text pillLabel = UiFactory.CreateText(pill.rectTransform, "Label", font, 28, TextAnchor.MiddleCenter, DarkInk);
             pillLabel.text = "Dificultad: " + DifficultyLabel(currentDifficulty);
             pillLabel.raycastTarget = false;
+            pillLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             UiFactory.Stretch(pillLabel.rectTransform, 8f);
             difficultyLabel = pillLabel;
-            pillButton.onClick.AddListener(ToggleDifficultyDropdown);
+            pillButton.onClick.AddListener(OpenDifficultySheet);
 
-            // Overlay dropdown panel (drops below the pill, never filters the catalog).
-            GameObject dropdownObject = new("DifficultyDropdown", typeof(RectTransform));
-            dropdownObject.transform.SetParent(root, false);
-            dropdownObject.transform.SetAsLastSibling();
-            RectTransform dropdown = dropdownObject.GetComponent<RectTransform>();
-            UiFactory.Anchor(dropdown, new Vector2(0.66f, 0.58f), new Vector2(0.95f, 0.84f));
+            // The modal root covers the complete canvas, so its backdrop blocks all Hub input
+            // while the sheet is visible. Its lower rounded corners remain below the viewport,
+            // leaving only the strong top corners visible.
+            GameObject sheetObject = new("DifficultySheet", typeof(RectTransform), typeof(CanvasGroup));
+            sheetObject.transform.SetParent(root, false);
+            sheetObject.transform.SetAsLastSibling();
+            RectTransform sheetRoot = sheetObject.GetComponent<RectTransform>();
+            UiFactory.Stretch(sheetRoot, 0f);
+            difficultySheetCanvasGroup = sheetObject.GetComponent<CanvasGroup>();
 
-            RoundedSurface panel = UiFactory.CreateRoundedSurface(dropdown, "PanelSurface", White, 24f, true);
-            UiFactory.Stretch(panel.rectTransform, 3f);
+            Image backdrop = UiFactory.CreateImage(sheetRoot, "Backdrop", new Color(0f, 0f, 0f, 0.54f));
+            UiFactory.Stretch(backdrop.rectTransform, 0f);
+            Button backdropButton = backdrop.gameObject.AddComponent<Button>();
+            backdropButton.targetGraphic = backdrop;
+            backdropButton.onClick.AddListener(CloseDifficultySheet);
+
+            RoundedSurface panel = UiFactory.CreateRoundedSurface(sheetRoot, "PanelSurface", White, 56f, true);
             RectTransform panelRoot = panel.rectTransform;
+            panelRoot.anchorMin = new Vector2(0f, 0f);
+            panelRoot.anchorMax = new Vector2(1f, 0f);
+            panelRoot.pivot = new Vector2(0.5f, 0f);
+            panelRoot.anchoredPosition = new Vector2(0f, DifficultySheetHiddenY);
+            panelRoot.sizeDelta = new Vector2(0f, DifficultySheetHeight);
+
+            // Keep a generous tap target while rendering the close affordance as plain text.
+            Image closeSurface = UiFactory.CreateImage(panelRoot, "CloseButton", Transparent);
+            UiFactory.Anchor(closeSurface.rectTransform, new Vector2(0.03f, 0.844f), new Vector2(0.09f, 0.924f));
+            Button closeButton = closeSurface.gameObject.AddComponent<Button>();
+            closeButton.targetGraphic = closeSurface;
+            Text closeLabel = UiFactory.CreateText(closeSurface.rectTransform, "Label", font, 52, TextAnchor.MiddleCenter, DarkInk);
+            closeLabel.text = "×";
+            closeLabel.resizeTextForBestFit = false;
+            closeLabel.raycastTarget = false;
+            UiFactory.Stretch(closeLabel.rectTransform, 0f);
+            closeButton.onClick.AddListener(CloseDifficultySheet);
 
             DifficultyLevel[] levels =
             {
@@ -414,27 +540,74 @@ namespace Lbs.MiniGames.Lobby
 
             for (int index = 0; index < levels.Length; index++)
             {
-                float minY = index == 0 ? 0.66f : index == 1 ? 0.335f : 0.01f;
-                float maxY = index == 0 ? 0.99f : index == 1 ? 0.655f : 0.325f;
-                RoundedSurface option = UiFactory.CreateRoundedSurface(panelRoot, "Option", White, 16f, true);
-                UiFactory.Anchor(option.rectTransform, new Vector2(0.03f, minY), new Vector2(0.97f, maxY));
+                RoundedSurface option = UiFactory.CreateRoundedSurface(panelRoot, "Option", DifficultyOptionSurface, 28f, true);
+                option.rectTransform.anchorMin = new Vector2(0.5f, 1f);
+                option.rectTransform.anchorMax = new Vector2(0.5f, 1f);
+                option.rectTransform.pivot = new Vector2(0.5f, 1f);
+                option.rectTransform.anchoredPosition = new Vector2(
+                    0f,
+                    -(DifficultyOptionsTopInset + (index * (DifficultyOptionHeight + DifficultyOptionGap))));
+                option.rectTransform.sizeDelta = new Vector2(DifficultyOptionWidth, DifficultyOptionHeight);
 
-                Text optionLabel = UiFactory.CreateText(option.rectTransform, "Label", font, 26, TextAnchor.MiddleCenter, DarkInk);
+                // Every row has the same two-layer construction. Selection only changes the
+                // outer tint, exposing a thin brand-purple border without adding an icon.
+                RoundedSurface optionInner = UiFactory.CreateRoundedSurface(
+                    option.rectTransform,
+                    "Surface",
+                    DifficultyOptionSurface,
+                    24f,
+                    false);
+                UiFactory.Stretch(optionInner.rectTransform, DifficultyOptionBorderThickness);
+
+                Text optionLabel = UiFactory.CreateText(optionInner.rectTransform, "Label", font, 32, TextAnchor.MiddleCenter, new Color32(57, 62, 69, 255));
                 optionLabel.text = DifficultyLabel(levels[index]);
                 optionLabel.raycastTarget = false;
-                UiFactory.Stretch(optionLabel.rectTransform, 6f);
+                UiFactory.Stretch(optionLabel.rectTransform, 12f);
 
                 Button optionButton = option.gameObject.AddComponent<Button>();
                 optionButton.targetGraphic = option;
                 int capturedIndex = index;
                 optionButton.onClick.AddListener(() => SelectDifficulty(capturedIndex));
 
-                difficultyOptions.Add(new DifficultyOptionView(option, optionLabel));
+                difficultyOptions.Add(new DifficultyOptionView(option, optionInner, optionLabel));
             }
 
-            dropdownObject.SetActive(false);
-            difficultyDropdown = dropdownObject;
+            difficultySheetTitlePrototype = difficultyOptions[0].Label;
+            difficultySheetTitle = CreateDifficultySheetTitle(panelRoot, difficultySheetTitlePrototype);
+
+            sheetObject.SetActive(false);
+            difficultySheet = sheetObject;
+            difficultySheetPanel = panelRoot;
             RefreshDifficultyPresentation();
+        }
+
+        private static Text CreateDifficultySheetTitle(RectTransform panelRoot, Text visibleLabelPrototype)
+        {
+            // Use the same legacy UGUI Text, font asset, and material as a rendered option label.
+            // The previous standalone title path did not have a visible-label rendering reference.
+            Text title = UiFactory.CreateText(
+                panelRoot,
+                "DifficultySheetTitle",
+                visibleLabelPrototype.font,
+                42,
+                TextAnchor.MiddleCenter,
+                new Color32(57, 62, 69, 255));
+            title.material = visibleLabelPrototype.material;
+            title.fontStyle = visibleLabelPrototype.fontStyle;
+            title.resizeTextForBestFit = visibleLabelPrototype.resizeTextForBestFit;
+            title.resizeTextMinSize = visibleLabelPrototype.resizeTextMinSize;
+            title.resizeTextMaxSize = 42;
+            title.horizontalOverflow = visibleLabelPrototype.horizontalOverflow;
+            title.verticalOverflow = visibleLabelPrototype.verticalOverflow;
+            title.text = DifficultySheetTitleText;
+            title.color = new Color32(57, 62, 69, 255);
+            title.raycastTarget = false;
+            title.enabled = true;
+            title.gameObject.SetActive(true);
+            title.rectTransform.localScale = Vector3.one;
+            UiFactory.Anchor(title.rectTransform, new Vector2(0.14f, 0.844f), new Vector2(0.86f, 0.924f));
+            title.transform.SetAsLastSibling();
+            return title;
         }
 
         private static string DifficultyLabel(DifficultyLevel level)
@@ -450,15 +623,155 @@ namespace Lbs.MiniGames.Lobby
             }
         }
 
-        private void ToggleDifficultyDropdown()
+        private void OpenDifficultySheet()
         {
-            if (difficultyDropdown != null && difficultyDropdown.activeSelf)
+            SetDifficultySheetOpen(true);
+        }
+
+        private void CloseDifficultySheet()
+        {
+            SetDifficultySheetOpen(false);
+        }
+
+        private void SetDifficultySheetOpen(bool open)
+        {
+            if (difficultySheet == null || difficultySheetPanel == null || difficultySheetCanvasGroup == null)
             {
-                difficultyDropdown.SetActive(false);
+                return;
             }
-            else if (difficultyDropdown != null)
+
+            if (difficultySheetTargetOpen == open
+                && difficultySheetAnimation == null
+                && difficultySheet.activeSelf == open)
             {
-                difficultyDropdown.SetActive(true);
+                return;
+            }
+
+            difficultySheetTargetOpen = open;
+            if (difficultySheetAnimation != null)
+            {
+                StopCoroutine(difficultySheetAnimation);
+                difficultySheetAnimation = null;
+            }
+
+            if (open)
+            {
+                if (!difficultySheet.activeSelf)
+                {
+                    difficultySheetPanel.anchoredPosition = new Vector2(0f, DifficultySheetHiddenY);
+                    difficultySheetCanvasGroup.alpha = 0f;
+                    difficultySheet.SetActive(true);
+                }
+
+                difficultySheetCanvasGroup.interactable = true;
+                difficultySheetCanvasGroup.blocksRaycasts = true;
+                ValidateDifficultySheetTitle();
+            }
+            else if (!difficultySheet.activeSelf)
+            {
+                difficultySheetCanvasGroup.blocksRaycasts = false;
+                return;
+            }
+            else
+            {
+                // Keep raycasts blocked until the reverse animation has fully left the screen.
+                difficultySheetCanvasGroup.interactable = false;
+                difficultySheetCanvasGroup.blocksRaycasts = true;
+            }
+
+            float targetY = open ? DifficultySheetVisibleY : DifficultySheetHiddenY;
+            float targetAlpha = open ? 1f : 0f;
+            difficultySheetAnimation = StartCoroutine(AnimateDifficultySheet(targetY, targetAlpha, !open));
+        }
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void ValidateDifficultySheetTitle()
+        {
+            Canvas.ForceUpdateCanvases();
+
+            if (difficultySheetTitle == null || difficultySheetTitlePrototype == null || difficultySheetPanel == null)
+            {
+                Debug.Assert(false, "Difficulty sheet title was not constructed.");
+                return;
+            }
+
+            RectTransform titleRect = difficultySheetTitle.rectTransform;
+            bool activeAndEnabled = difficultySheetTitle.isActiveAndEnabled && difficultySheetTitle.gameObject.activeInHierarchy;
+            bool opaqueTitleInk = difficultySheetTitle.color == new Color32(57, 62, 69, 255)
+                && difficultySheetTitle.color.a > 0.99f;
+            bool matchesVisibleLabelRendering = difficultySheetTitle.font != null
+                && difficultySheetTitle.font == difficultySheetTitlePrototype.font
+                && difficultySheetTitle.material != null
+                && difficultySheetTitle.material == difficultySheetTitlePrototype.material;
+            bool fixedPresentation = difficultySheetTitle.text == DifficultySheetTitleText
+                && titleRect.parent == difficultySheetPanel
+                && titleRect.GetSiblingIndex() == difficultySheetPanel.childCount - 1
+                && titleRect.localScale == Vector3.one
+                && Mathf.Approximately(titleRect.lossyScale.x, titleRect.lossyScale.y)
+                && titleRect.rect.width > 0f
+                && titleRect.rect.height > 0f;
+            bool hasMaskAncestor = false;
+            for (Transform current = titleRect.parent; current != null; current = current.parent)
+            {
+                if (current.GetComponent<Mask>() != null || current.GetComponent<RectMask2D>() != null)
+                {
+                    hasMaskAncestor = true;
+                    break;
+                }
+            }
+
+            Debug.Assert(
+                activeAndEnabled
+                && opaqueTitleInk
+                && matchesVisibleLabelRendering
+                && fixedPresentation
+                && difficultySheetTitle.canvas != null
+                && !hasMaskAncestor
+                && IsRectWithinParentBounds(titleRect, difficultySheetPanel),
+                "Difficulty sheet title must remain visible, opaque, unmasked, and inside the sheet.");
+        }
+
+        private static bool IsRectWithinParentBounds(RectTransform child, RectTransform parent)
+        {
+            Vector3[] corners = new Vector3[4];
+            child.GetWorldCorners(corners);
+            for (int index = 0; index < corners.Length; index++)
+            {
+                Vector3 localCorner = parent.InverseTransformPoint(corners[index]);
+                if (!parent.rect.Contains(localCorner))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private IEnumerator AnimateDifficultySheet(float targetY, float targetAlpha, bool deactivateWhenFinished)
+        {
+            float startY = difficultySheetPanel.anchoredPosition.y;
+            float startAlpha = difficultySheetCanvasGroup.alpha;
+            float elapsed = 0f;
+
+            while (elapsed < DifficultySheetAnimationSeconds)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float progress = Mathf.Clamp01(elapsed / DifficultySheetAnimationSeconds);
+                float easedProgress = progress * progress * (3f - (2f * progress));
+                difficultySheetPanel.anchoredPosition = new Vector2(0f, Mathf.Lerp(startY, targetY, easedProgress));
+                difficultySheetCanvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, easedProgress);
+                yield return null;
+            }
+
+            difficultySheetPanel.anchoredPosition = new Vector2(0f, targetY);
+            difficultySheetCanvasGroup.alpha = targetAlpha;
+            difficultySheetAnimation = null;
+
+            if (deactivateWhenFinished && !difficultySheetTargetOpen)
+            {
+                difficultySheetCanvasGroup.blocksRaycasts = false;
+                difficultySheet.SetActive(false);
             }
         }
 
@@ -466,10 +779,7 @@ namespace Lbs.MiniGames.Lobby
         {
             currentDifficulty = (DifficultyLevel)index;
             RefreshDifficultyPresentation();
-            if (difficultyDropdown != null)
-            {
-                difficultyDropdown.SetActive(false);
-            }
+            CloseDifficultySheet();
         }
 
         private void RefreshDifficultyPresentation()
@@ -482,8 +792,9 @@ namespace Lbs.MiniGames.Lobby
             for (int index = 0; index < difficultyOptions.Count; index++)
             {
                 bool selected = index == (int)currentDifficulty;
-                difficultyOptions[index].Surface.color = selected ? PalePurple : White;
-                difficultyOptions[index].Label.color = selected ? Purple : DarkInk;
+                difficultyOptions[index].Surface.color = selected ? Purple : DifficultyOptionSurface;
+                difficultyOptions[index].InnerSurface.color = selected ? PalePurple : DifficultyOptionSurface;
+                difficultyOptions[index].Label.color = new Color32(57, 62, 69, 255);
             }
         }
 
