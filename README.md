@@ -1,6 +1,6 @@
 # LBS Mini Games
 
-A Unity project for a modular collection of educational mini-games. The current vertical slice is **Animal Classification**: open the lobby, choose **Animals**, launch **Animal Classification**, drag the dolphin to **Mammal**, and return to the lobby to see the last result.
+A catalog-driven Unity application containing **22 playable educational mini-games** across logic, mathematics, science, and language-oriented content. The Hub also contains seven visible preview cards for games that are not playable yet. The application starts at `Bootstrap`, builds the shared services, loads the `Lobby`, and launches each game from its catalog definition.
 
 ## Prerequisites
 
@@ -12,12 +12,12 @@ A Unity project for a modular collection of educational mini-games. The current 
 | Android Build Support, OpenJDK, Android SDK and NDK | Required only to run on an Android tablet. Install them with Unity 6000.5.9f1 through Unity Hub. |
 | iOS Build Support and Xcode | Required only for iOS work. |
 
-The package manifest uses Unity's built-in UGUI package (`com.unity.ugui` 2.5.0), Multiplayer Center (1.0.1), and Unity modules. Unity resolves these when the project opens.
+The project uses Unity's built-in UGUI package (`com.unity.ugui` 2.5.0), Multiplayer Center (1.0.1), the Unity Test Framework (1.7.0), and Unity modules. Unity resolves these when the project opens.
 
 ## Clone and open
 
 ```bash
-git clone git@github.com:AngelRamirezLBS/lbs-minigames-unity.git
+git clone https://github.com/eguerralbs/lbs-minigames-unity.git
 cd lbs-minigames-unity
 git lfs install
 git lfs pull
@@ -29,11 +29,25 @@ In Unity Hub, select **Add** and choose the cloned project directory. Open it wi
 
 1. Open `Assets/App/Bootstrap/Bootstrap.unity`.
 2. Enter Play mode.
-3. The persistent bootstrap creates the application services and loads `Lobby`.
-4. In the lobby, select **Animals**, then **Animal Classification**.
-5. Drag the **DOLPHIN** token onto **Mammal**. The finish button becomes available; use it to return to the lobby and confirm the displayed last result.
+3. The persistent bootstrap creates `AppServices`, configures the catalog and level sequence, and loads `Lobby`.
+4. In the Hub, choose a category and launch any playable game card.
+5. Complete the game and confirm that the result is recorded before returning to the Hub.
 
-`Bootstrap`, `Lobby`, and `Classification` are enabled in Build Settings, in that order. Start the application from `Bootstrap`; opening a downstream scene directly bypasses bootstrap service configuration.
+`Bootstrap` is the entry scene. `Lobby` and every launchable game scene are enabled in Build Settings. Start the application from `Bootstrap`; opening a downstream scene directly bypasses bootstrap service configuration.
+
+### Logic sequence
+
+The main progression is:
+
+```text
+Shape Analogy → Clothes Selection → Object Selection → Make An Emoji Drag → Animal Drag
+→ Triangles Count → Cube Platform → Candies Logic → Squares Succession → Kitchen Math Logic
+→ Funny Face Drag → Chemistry Selection → Triangles Shape Logic → Thinking 3D → Circle Math
+→ Bubble Math → LadyBug Place → Fraction Succession → Thinking Figures → Stickers Placement
+→ Wolfie Flasks
+```
+
+The sequence advances after each successful celebration and ends at **Wolfie Flasks**. `Number Pull` is a separate playable catalog entry.
 
 ## Test on an Android tablet
 
@@ -45,20 +59,39 @@ In Unity Hub, select **Add** and choose the cloned project directory. Open it wi
 
 The application is configured for auto-rotation with **Landscape Left** and **Landscape Right** enabled; both portrait orientations are disabled. UI canvases use a 1920×1080 reference resolution.
 
+## Test and verification
+
+Run the EditMode suite from Unity's Test Runner, or use batch mode:
+
+```bash
+Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode -testResults Library/EditModeTestResults.xml
+```
+
+Pure game rules and state transitions have focused EditMode tests. Visual and device behavior still requires running the representative scenes in the Unity Editor or on the target device.
+
 ## Project layout and modularity
 
 | Path | Responsibility |
 | --- | --- |
-| `Assets/App/Bootstrap` | Persistent application bootstrap and editor-only vertical-slice installer. |
-| `Assets/App/Lobby` | Catalog-driven lobby scene and controller. |
-| `Assets/App/Catalog` | `GameCatalog`, categories, game definitions, and the catalog data assets. |
-| `Assets/App/Navigation` | Session state, scene loading, and game launch/completion flow. |
-| `Assets/App/Shared` | Cross-game contracts, result model, and shared UI helpers. |
-| `Assets/App/Games/Common` | Reusable game interaction mechanics. |
-| `Assets/App/Games/Classification` | The Animal Classification scene and game-specific behavior. |
+| `Assets/App/Bootstrap` | Persistent application bootstrap and service composition. |
+| `Assets/App/Lobby` | Catalog-driven Hub scene and controller. |
+| `Assets/App/Catalog` | `GameCatalog`, categories, game definitions, validation, and catalog data assets. |
+| `Assets/App/Navigation` | Session state, scene loading, level sequencing, and game completion flow. |
+| `Assets/App/Shared` | Cross-game contracts, result model, audio, level chrome, and shared UI helpers. |
+| `Assets/App/GameKits/DragDrop` | Reusable drag-and-drop mechanic components and state. |
+| `Assets/App/Games/<GameName>` | An individual game's scene, rules, art, audio, and tests. |
+| `Assets/Tests/Editor` | Shared EditMode tests. |
 | `Packages` / `ProjectSettings` | Unity package lockfiles and project-wide settings. |
 
-Keep a mini-game's scene, rules, and presentation inside its own `Assets/App/Games/<GameName>` folder. Put reusable mechanics in `Games/Common` and app-wide contracts or helpers in `Shared`; do not make the bootstrap or lobby depend on a specific game's implementation.
+Keep a mini-game's scene, rules, and presentation inside its own `Assets/App/Games/<GameName>` folder. Put reusable mechanics in `GameKits`, app-wide contracts and helpers in `Shared`, and composition in `ApplicationBootstrap`; do not make the bootstrap or lobby depend on a specific game's implementation.
+
+## Runtime architecture
+
+- `ApplicationBootstrap` owns persistent services and injects them through `AppServices`.
+- Each game scene implements `IAppScene` so it can be configured after loading.
+- Game-specific mutable state lives in plain C# state objects; catalog and definition assets are authoring-only `ScriptableObject`s.
+- Games report completion through `GameLauncher.Complete(new MiniGameResult(...))`.
+- `GameDefinition` stores the game ID, display data, category, scene name, difficulty support, and Hub visibility.
 
 ## Git and Unity collaboration
 
@@ -70,12 +103,14 @@ Keep a mini-game's scene, rules, and presentation inside its own `Assets/App/Gam
 
 ## Add a mini-game
 
-1. Create the game scene and game-specific code under `Assets/App/Games/<GameName>`.
-2. Implement the existing game contracts as appropriate: the scene component needs `IAppScene` so the bootstrap can configure it after loading, and a playable mini-game should expose `IMiniGame` and report its result through `GameLauncher`.
-3. Add the scene to Build Settings, preserving `Bootstrap` as the entry scene.
-4. Create a `GameDefinition` asset with a unique ID, display information, category, and exact scene name. Add it to `MiniGameCatalog`; create and register a `GameCategory` only when needed.
-5. Run the complete Bootstrap → Lobby → game → Lobby flow in the editor and on the target device.
+1. Create the game scene, code, art, audio, and tests under `Assets/App/Games/<GameName>`.
+2. Implement `IAppScene` and receive injected `AppServices` in `Configure(AppServices)`; keep rules and mutable state in the game's own plain C# types.
+3. Build the UI with the existing shared factories and follow the approved `LevelChromeLayout` coordinates.
+4. Add the scene to Build Settings, preserving `Bootstrap` as the entry scene.
+5. Create a `GameDefinition` asset with a unique ID, display information, category, exact scene name, and supported difficulties. Add it to `MiniGameCatalog` and set `visibleInHub` deliberately.
+6. If the game belongs to the progression, add its ID and success target to `LevelSequenceRoute`.
+7. Run the focused EditMode tests, batch compilation, and the complete Bootstrap → Lobby → game → Lobby flow in the Editor and on the target device.
 
-## Prototype scope
+## Current scope
 
-This repository currently contains one category (**Animals**) and one playable game (**Animal Classification**) with one dolphin classification interaction. The last result is held only for the running session. There are no committed automated test assets or test suites, persistent progression, account/service integration, or production content pipeline in the current vertical slice.
+The project is an educational mini-game Hub with catalog-driven launching, shared audio and navigation, level sequencing, and session-scoped results. It does not yet provide persistent progression, account or backend integration, or a production content pipeline.
