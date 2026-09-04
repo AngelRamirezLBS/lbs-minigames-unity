@@ -60,6 +60,9 @@ EditorBuildSettings:
     path: Assets/App/Games/BubbleMath/BubbleMath.unity
     guid: e4e07cc2709a474aadca72f326e92cbc
   - enabled: 1
+    path: Assets/App/Games/LadyBugPlace/LadyBugPlace.unity
+    guid: fb947c53038e4a9490daed16ee387ca4
+  - enabled: 1
     path: Assets/App/Games/Thinking3D/Thinking3D.unity
     guid: 506bcbeab4eda5a4fa7d31347948f1d8
   - enabled: 1
