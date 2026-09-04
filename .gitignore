@@ -116,3 +116,10 @@ InitTestScene*.unity*
 # macOS Finder metadata
 .DS_Store
 [Ll]ibrary/.DS_Store
+
+# Local development tooling and reference evidence
+.codegraph/
+.playwright-mcp/
+.atl/
+hikvision-5c-user-manual.pdf
+hikvision-ds-d5c98rb-b-page.json

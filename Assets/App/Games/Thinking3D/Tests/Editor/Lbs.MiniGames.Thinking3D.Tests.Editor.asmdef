@@ -1,0 +1,13 @@
+{
+    "name": "Lbs.MiniGames.Thinking3D.Tests.Editor",
+    "references": [
+        "Lbs.MiniGames.Selection.Core",
+        "Lbs.MiniGames.Thinking3D.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

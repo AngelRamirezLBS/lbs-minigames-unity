@@ -1101,7 +1101,9 @@ namespace Lbs.MiniGames.Lobby
 
             try
             {
-                services.GameLauncher.Launch(game);
+                // Future-ready difficulty plumbing: lobby auto-launches default difficulty without visible selector.
+                GameLaunchRequest request = LobbyLaunchModel.CreateRequest(game);
+                services.GameLauncher.Launch(request);
             }
             catch (Exception exception)
             {

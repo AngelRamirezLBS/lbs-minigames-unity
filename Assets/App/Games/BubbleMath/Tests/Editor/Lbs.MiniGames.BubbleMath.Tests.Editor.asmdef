@@ -1,0 +1,13 @@
+{
+    "name": "Lbs.MiniGames.BubbleMath.Tests.Editor",
+    "references": [
+        "Lbs.MiniGames.Selection.Core",
+        "Lbs.MiniGames.BubbleMath.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

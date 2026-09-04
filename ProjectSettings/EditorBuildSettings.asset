@@ -12,9 +12,6 @@ EditorBuildSettings:
     path: Assets/App/Lobby/Lobby.unity
     guid: 9f7af4003291f46218cf0201e58a9901
   - enabled: 1
-    path: Assets/App/Games/Classification/Classification.unity
-    guid: 88a42033c88f14ef18540246ad7e2ad4
-  - enabled: 1
     path: Assets/App/Games/ShapeAnalogy/ShapeAnalogy.unity
     guid: 63e2d578163821f4db1c6eeb10e07322
   - enabled: 1
@@ -56,4 +53,28 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/App/Games/TrianglesShapeLogic/TrianglesShapeLogic.unity
     guid: fd67508ce0855cc4887bfa0343d9c13b
+  - enabled: 1
+    path: Assets/App/Games/BubbleMath/BubbleMath.unity
+    guid: e4e07cc2709a474aadca72f326e92cbc
+  - enabled: 1
+    path: Assets/App/Games/LadyBugPlace/LadyBugPlace.unity
+    guid: fb947c53038e4a9490daed16ee387ca4
+  - enabled: 1
+    path: Assets/App/Games/FractionSuccession/FractionSuccession.unity
+    guid: d61f5302e4e14d27bcc219ed3b74b421
+  - enabled: 1
+    path: Assets/App/Games/ThinkingFigures/ThinkingFigures.unity
+    guid: 70bbeba2961b446cbb083fd2e54d90e0
+  - enabled: 1
+    path: Assets/App/Games/StickersPlacement/StickersPlacement.unity
+    guid: 1142c98d215c4c6a883d39b90ed03253
+  - enabled: 1
+    path: Assets/App/Games/WolfieFlasks/WolfieFlasks.unity
+    guid: d0da7df5b4b1457a9b8ffa0cbcc6e148
+  - enabled: 1
+    path: Assets/App/Games/Thinking3D/Thinking3D.unity
+    guid: 506bcbeab4eda5a4fa7d31347948f1d8
+  - enabled: 1
+    path: Assets/App/Games/CircleMath/CircleMath.unity
+    guid: 121e9ee38787c8c45a9ba7d0599353c2
   m_configObjects: {}

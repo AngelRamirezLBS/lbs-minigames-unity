@@ -20,4 +20,4 @@ MonoBehaviour:
   description: "Gu\xEDa al personaje a trav\xE9s de laberintos y sortea los obst\xE1culos."
   supportedDifficulties: []
   defaultDifficulty: {fileID: 0}
-  visibleInHub: 1
+  visibleInHub: 0

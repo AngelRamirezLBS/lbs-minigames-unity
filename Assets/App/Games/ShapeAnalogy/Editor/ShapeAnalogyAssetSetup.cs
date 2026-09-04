@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System.IO;
-using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -29,8 +28,6 @@ namespace Lbs.MiniGames.Games.ShapeAnalogy.Editor
             foreach (string file in Directory.GetFiles(Root, "*.svg", SearchOption.AllDirectories))
                 AssetDatabase.ImportAsset(file.Replace('\\', '/'), ImportAssetOptions.ForceUpdate);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            MethodInfo rebuild = typeof(Lbs.MiniGames.Bootstrap.Editor.FirstVerticalSliceInstaller).GetMethod("CreateShapeAnalogyScene", BindingFlags.Static | BindingFlags.NonPublic);
-            rebuild?.Invoke(null, null);
             Debug.Log("SHAPE_ANALOGY_ASSET_SETUP_SUMMARY pngs=" + Directory.GetFiles(Root, "*.png", SearchOption.AllDirectories).Length + " svgs=" + Directory.GetFiles(Root, "*.svg", SearchOption.AllDirectories).Length);
         }
     }

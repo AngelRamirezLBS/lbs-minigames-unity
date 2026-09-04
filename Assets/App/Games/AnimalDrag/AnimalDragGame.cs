@@ -303,6 +303,7 @@ namespace Lbs.MiniGames.Games.AnimalDrag
             hongPlayback = null;
             activePointer = int.MinValue;
             ClearHoverHighlight();
+            audio?.StopVoiceIfPlaying(instruction);
         }
 
         private void OnDestroy()
