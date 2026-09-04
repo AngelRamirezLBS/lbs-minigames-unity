@@ -159,7 +159,7 @@ namespace Lbs.MiniGames.Games.ThinkingFigures
             CreateFinal();
             state.FinishCelebration();
             yield return new WaitForSecondsRealtime(2f);
-            state.EnableFinalInput();
+            services?.LevelSequence?.Advance(LevelSequenceRoute.ThinkingFiguresSuccessTarget);
             selectionSequence = null;
         }
 
