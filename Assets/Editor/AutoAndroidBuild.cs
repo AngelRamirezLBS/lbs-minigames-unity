@@ -59,7 +59,7 @@ public static class AutoAndroidBuild
         }
 
         // Verify expected 4 scenes present
-        var expected = new[] { "Assets/App/Bootstrap/Bootstrap.unity", "Assets/App/Lobby/Lobby.unity", "Assets/App/Games/Classification/Classification.unity", "Assets/App/Games/CountAndSelect/CountAndSelect.unity" };
+        var expected = new[] { "Assets/App/Bootstrap/Bootstrap.unity", "Assets/App/Lobby/Lobby.unity", "Assets/App/Games/CountAndSelect/CountAndSelect.unity" };
         foreach (var e in expected)
         {
             if (!scenes.Contains(e))
