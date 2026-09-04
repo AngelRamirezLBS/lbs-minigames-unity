@@ -45,7 +45,6 @@ namespace Lbs.MiniGames.Bootstrap.Editor
         private const string CatalogPath = CatalogFolder + "/MiniGameCatalog.asset";
         private const string InterfaceFontPath = "Assets/App/Theme/Fonts/Nunito-Black.ttf";
         private const string CardTitleFontPath = "Assets/App/Theme/Fonts/Nunito-Medium.ttf";
-        private const string BrandLogoPath = "Assets/App/Theme/Brand/LbsPlusLogo.png";
         private const string WolfieAvatarPath = "Assets/App/Theme/Brand/WolfieAvatar.png";
         private const string BackgroundFolder = "Assets/App/Theme/Background";
         private static readonly string[] BackgroundDecorationPaths =
@@ -376,7 +375,6 @@ namespace Lbs.MiniGames.Bootstrap.Editor
             controller.SetCatalog(catalog);
             controller.SetInterfaceFont(AssetDatabase.LoadAssetAtPath<Font>(InterfaceFontPath));
             controller.SetCardTitleFont(AssetDatabase.LoadAssetAtPath<Font>(CardTitleFontPath));
-            controller.SetBrandLogo(AssetDatabase.LoadAssetAtPath<Sprite>(BrandLogoPath));
             controller.SetMascotSprite(LoadSprite(WolfieAvatarPath));
             controller.SetBackgroundDecorations(LoadBackgroundDecorations());
             EditorUtility.SetDirty(controller);

@@ -35,6 +35,7 @@ namespace Lbs.MiniGames.Lobby
         private static readonly Color HeaderOverlay = new(0f, 0f, 0f, 0.38f);
         private static readonly Color Orange = new(1f, 0.718f, 0.251f);
         private static readonly Color DarkInk = new(0.141f, 0.102f, 0.208f);
+        private static readonly Color ProfileCapsulePurple = new(0f, 0f, 0f, 0.40f);
         // Game-card title ink: a cool grey (not the near-black violet DarkInk). LogicLike card
         // labels sit at ~#5B5968 (saturation ~8%) — a soft grey, not black and not purple. We
         // darken it a touch to #4D4B5C so it stays legible from a distance on tablets/TVs.
@@ -45,6 +46,20 @@ namespace Lbs.MiniGames.Lobby
         private static readonly Color SoftPurple = new(0.780f, 0.643f, 0.980f);
 
         private const float OpeningDelaySeconds = 0.16f;
+        // Reference-canvas values: 316x84 becomes 225x60 px at 1366x768.
+        private const float ProfileCapsuleWidth = 316f;
+        private const float ProfileCapsuleHeight = 84f;
+        private const float AvatarFrameSize = 96f;
+        // Keep the pill's left curve completely behind the circular avatar.
+        private const float ProfileCapsuleAvatarOverlap = AvatarFrameSize * 0.60f;
+        // Keep profile copy clear of the avatar's visible right edge.
+        private const float ProfileTextAvatarGap = 16f;
+        // Reference-canvas inset: 8.5 px on each side at the 1366 px-wide target.
+        private const float AvatarImageInset = 12f;
+        // Reference-canvas value: 422 px renders at ~300 px wide at 1366x768,
+        // a 12% reduction from the previous 480 px / ~342 px pill.
+        private const float DifficultyPillWidth = 422f;
+        private const float DifficultyPillHeight = 60f;
 
         // Scroll content / section layout (reference 1920x1080).
         // Nunito-Black's line box at font size 50 is ~68 reference pixels (its hhea
@@ -64,9 +79,9 @@ namespace Lbs.MiniGames.Lobby
         // Inner margin from the screen edge for section labels and the first/last cards in
         // each horizontal row. Sized for comfortable tablet/TV breathing room (not cramped).
         private const float ContentInnerMargin = 40f;
-        // Left margin for section labels and the first card, aligned with the header logo
-        // (logo anchors at x=0.075 of the 1920 reference canvas -> 144px). Keeping this larger
-        // than the right margin lines the category titles and the first card up with the logo,
+        // Left margin for section labels and the first card, aligned with the profile avatar
+        // (avatar anchors at x=0.075 of the 1920 reference canvas -> 144px). Keeping this larger
+        // than the right margin lines the category titles and the first card up with the profile,
         // at the cost of slightly narrower tiles (the 3.5-card carousel is preserved).
         private const float ContentLeftMargin = 144f;
         private const float MaxTileWidth = 620f;
@@ -83,7 +98,6 @@ namespace Lbs.MiniGames.Lobby
         [Header("Card Title Font")]
         [Tooltip("Font used for game-card titles. Intentionally lighter than the interface font so cards read as calmer than the section headers.")]
         [SerializeField] private Font cardTitleFont;
-        [SerializeField] private Sprite brandLogo;
         [Header("Wolfie Avatar")]
         [Tooltip("Optional non-interactive Wolfie sprite shown as a round header avatar.")]
         [SerializeField] private Sprite mascotSprite;
@@ -137,11 +151,6 @@ namespace Lbs.MiniGames.Lobby
         public void SetCardTitleFont(Font font)
         {
             cardTitleFont = font;
-        }
-
-        public void SetBrandLogo(Sprite logo)
-        {
-            brandLogo = logo;
         }
 
         public void SetMascotSprite(Sprite sprite)
@@ -227,7 +236,7 @@ namespace Lbs.MiniGames.Lobby
             CreateHeaderContent(headerRoot, font);
 
             // 4. Pill difficulty selector: button in the header band + overlay dropdown.
-            CreateDifficultySelector(root, font);
+            CreateDifficultySelector(root, headerRoot, font);
         }
 
         private void CreateBackgroundDecorations(RectTransform root)
@@ -336,24 +345,40 @@ namespace Lbs.MiniGames.Lobby
 
         private void CreateHeaderContent(RectTransform headerRoot, Font font)
         {
-            if (brandLogo != null)
-            {
-                Image logo = UiFactory.CreateImage(headerRoot, "LbsPlusLogo", White);
-                logo.sprite = brandLogo;
-                logo.preserveAspect = true;
-                logo.raycastTarget = false;
-                UiFactory.Anchor(logo.rectTransform, new Vector2(0.075f, 0.16f), new Vector2(0.125f, 0.84f));
-            }
+            RoundedSurface profileCapsule = UiFactory.CreateRoundedSurface(headerRoot, "ProfileCapsule", ProfileCapsulePurple, 999f, false);
+            profileCapsule.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.pivot = new Vector2(0f, 0.5f);
+            profileCapsule.rectTransform.anchoredPosition = new Vector2(
+                ContentLeftMargin + AvatarFrameSize - ProfileCapsuleAvatarOverlap,
+                0f);
+            profileCapsule.rectTransform.sizeDelta = new Vector2(ProfileCapsuleWidth, ProfileCapsuleHeight);
 
-            Text title = UiFactory.CreateText(headerRoot, "HubTitle", font, 48, TextAnchor.MiddleLeft, White);
-            title.text = "LBS+ Games";
-            // Nunito-Black already has enough weight; render it as clean solid white without
-            // the synthetic one-pixel outline. Keep Best Fit off for stable header metrics.
-            title.fontStyle = FontStyle.Normal;
-            title.resizeTextForBestFit = false;
-            title.raycastTarget = false;
-            float titleLeft = brandLogo != null ? 0.140f : 0.075f;
-            UiFactory.Anchor(title.rectTransform, new Vector2(titleLeft, 0.24f), new Vector2(0.40f, 0.76f));
+            GameObject textBoundsObject = new("ProfileTextBounds", typeof(RectTransform));
+            textBoundsObject.transform.SetParent(profileCapsule.rectTransform, false);
+            RectTransform textBounds = textBoundsObject.GetComponent<RectTransform>();
+            UiFactory.Stretch(textBounds, 0f);
+            textBounds.offsetMin = new Vector2(ProfileCapsuleAvatarOverlap + ProfileTextAvatarGap, 4f);
+            textBounds.offsetMax = new Vector2(-28f, -4f);
+
+            Text profileName = UiFactory.CreateText(textBounds, "ProfileName", font, 42, TextAnchor.MiddleLeft, White);
+            profileName.text = "Wolfie";
+            profileName.fontStyle = FontStyle.Normal;
+            profileName.resizeTextForBestFit = false;
+            profileName.horizontalOverflow = HorizontalWrapMode.Overflow;
+            profileName.verticalOverflow = VerticalWrapMode.Overflow;
+            profileName.raycastTarget = false;
+            UiFactory.Anchor(profileName.rectTransform, new Vector2(0f, 0.45f), new Vector2(1f, 1f));
+
+            Font profileRangeFont = cardTitleFont != null ? cardTitleFont : font;
+            Text profileRange = UiFactory.CreateText(textBounds, "ProfileRange", profileRangeFont, 26, TextAnchor.MiddleLeft, White);
+            profileRange.text = "Primaria baja";
+            profileRange.fontStyle = FontStyle.Normal;
+            profileRange.resizeTextForBestFit = false;
+            profileRange.horizontalOverflow = HorizontalWrapMode.Overflow;
+            profileRange.verticalOverflow = VerticalWrapMode.Overflow;
+            profileRange.raycastTarget = false;
+            UiFactory.Anchor(profileRange.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0.42f));
 
             CreateWolfieAvatar(headerRoot);
         }
@@ -365,31 +390,67 @@ namespace Lbs.MiniGames.Lobby
                 return;
             }
 
-            // Round avatar: a white circular plate behind the masked mascot image,
-            // placed to the right of the logo/title (no longer a lateral panel).
-            RoundedSurface ring = UiFactory.CreateRoundedSurface(headerRoot, "WolfieAvatar", White, 999f, false);
-            UiFactory.Anchor(ring.rectTransform, new Vector2(0.415f, 0.16f), new Vector2(0.478f, 0.84f));
-            Mask mask = ring.gameObject.AddComponent<Mask>();
+            GameObject frameObject = new("WolfieAvatar", typeof(RectTransform), typeof(CanvasRenderer), typeof(EllipseSurface));
+            frameObject.transform.SetParent(headerRoot, false);
+            RectTransform avatarFrame = frameObject.GetComponent<RectTransform>();
+            avatarFrame.anchorMin = new Vector2(0f, 0.5f);
+            avatarFrame.anchorMax = new Vector2(0f, 0.5f);
+            avatarFrame.pivot = new Vector2(0.5f, 0.5f);
+            avatarFrame.anchoredPosition = new Vector2(ContentLeftMargin + (AvatarFrameSize * 0.5f), 0f);
+            avatarFrame.sizeDelta = Vector2.one * AvatarFrameSize;
+
+            EllipseSurface avatarBackground = frameObject.GetComponent<EllipseSurface>();
+            avatarBackground.color = SoftPurple;
+            avatarBackground.raycastTarget = false;
+            Mask mask = frameObject.AddComponent<Mask>();
             mask.showMaskGraphic = true;
 
-            Image mascot = UiFactory.CreateImage(ring.rectTransform, "Mascot", Color.white);
+            Image mascot = UiFactory.CreateImage(avatarFrame, "Mascot", Color.white);
             mascot.sprite = mascotSprite;
             mascot.preserveAspect = true;
             mascot.raycastTarget = false;
-            UiFactory.Stretch(mascot.rectTransform, 4f);
+            UiFactory.Stretch(mascot.rectTransform, AvatarImageInset);
+
+            VerifyWolfieAvatarFrame(avatarFrame, avatarBackground);
         }
 
-        private void CreateDifficultySelector(RectTransform root, Font font)
+        private static void VerifyWolfieAvatarFrame(RectTransform avatarFrame, EllipseSurface avatarBackground)
+        {
+            bool fixedSquare = avatarFrame.anchorMin == avatarFrame.anchorMax
+                && Mathf.Approximately(avatarFrame.sizeDelta.x, avatarFrame.sizeDelta.y)
+                && Mathf.Approximately(avatarFrame.rect.width, avatarFrame.rect.height);
+            bool uniformScale = Mathf.Approximately(avatarFrame.lossyScale.x, avatarFrame.lossyScale.y);
+            bool hasLayoutAncestor = false;
+            for (Transform current = avatarFrame.parent; current != null; current = current.parent)
+            {
+                if (current.GetComponent<LayoutGroup>() != null || current.GetComponent<ContentSizeFitter>() != null)
+                {
+                    hasLayoutAncestor = true;
+                    break;
+                }
+            }
+
+            Debug.Assert(
+                fixedSquare && uniformScale && !hasLayoutAncestor && avatarBackground != null,
+                "WolfieAvatar must remain a fixed-size circular mask without layout-driven distortion.");
+        }
+
+        private void CreateDifficultySelector(RectTransform root, RectTransform headerRoot, Font font)
         {
             // Pill button in the header band.
-            RoundedSurface pill = UiFactory.CreateRoundedSurface(root, "DifficultyPill", White, 999f, true);
-            UiFactory.Anchor(pill.rectTransform, new Vector2(0.70f, 0.885f), new Vector2(0.95f, 0.940f));
+            RoundedSurface pill = UiFactory.CreateRoundedSurface(headerRoot, "DifficultyPill", White, 999f, true);
+            pill.rectTransform.anchorMin = new Vector2(0.95f, 0.5f);
+            pill.rectTransform.anchorMax = new Vector2(0.95f, 0.5f);
+            pill.rectTransform.pivot = new Vector2(1f, 0.5f);
+            pill.rectTransform.anchoredPosition = Vector2.zero;
+            pill.rectTransform.sizeDelta = new Vector2(DifficultyPillWidth, DifficultyPillHeight);
             Button pillButton = pill.gameObject.AddComponent<Button>();
             pillButton.targetGraphic = pill;
 
             Text pillLabel = UiFactory.CreateText(pill.rectTransform, "Label", font, 28, TextAnchor.MiddleCenter, DarkInk);
             pillLabel.text = "Dificultad: " + DifficultyLabel(currentDifficulty);
             pillLabel.raycastTarget = false;
+            pillLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             UiFactory.Stretch(pillLabel.rectTransform, 8f);
             difficultyLabel = pillLabel;
             pillButton.onClick.AddListener(ToggleDifficultyDropdown);
