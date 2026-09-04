@@ -19,6 +19,7 @@ namespace Lbs.MiniGames.Navigation
         public const string CircleMathGameId = "circle.math";
         public const string BubbleMathGameId = "bubble.math";
         public const string LadyBugPlaceGameId = "ladybug.place";
+        public const string FractionSuccessionGameId = "fraction.succession";
 
         public const string ShapeAnalogySuccessTarget = "clothes.selection";
         public const string ClothesSelectionSuccessTarget = "object.selection";
@@ -36,6 +37,7 @@ namespace Lbs.MiniGames.Navigation
         public const string Thinking3DSuccessTarget = "circle.math";
         public const string CircleMathSuccessTarget = "bubble.math";
         public const string BubbleMathSuccessTarget = "ladybug.place";
+        public const string LadyBugPlaceSuccessTarget = "fraction.succession";
 
         /// <summary>
         /// Explicit membership boundary for games that share the logic-sequence BGM.
@@ -59,7 +61,8 @@ namespace Lbs.MiniGames.Navigation
                 || gameId == Thinking3DGameId
                 || gameId == CircleMathGameId
                 || gameId == BubbleMathGameId
-                || gameId == LadyBugPlaceGameId;
+                || gameId == LadyBugPlaceGameId
+                || gameId == FractionSuccessionGameId;
         }
     }
 }
