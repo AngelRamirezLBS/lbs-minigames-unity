@@ -334,6 +334,7 @@ namespace Lbs.MiniGames.Games.StickersPlacement
             string difficultyId = services?.Session?.SelectedDifficultyId;
             services?.GameLauncher.Complete(new MiniGameResult(resultGameId, MiniGameCompletionState.Completed, state.Score, 1, 1, difficultyId));
             yield return new WaitForSecondsRealtime(2f);
+            services?.LevelSequence?.Advance(LevelSequenceRoute.StickersPlacementSuccessTarget);
             state.EnableFinalInput();
         }
 

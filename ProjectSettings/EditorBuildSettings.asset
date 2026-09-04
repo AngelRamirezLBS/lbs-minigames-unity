@@ -69,6 +69,9 @@ EditorBuildSettings:
     path: Assets/App/Games/StickersPlacement/StickersPlacement.unity
     guid: 1142c98d215c4c6a883d39b90ed03253
   - enabled: 1
+    path: Assets/App/Games/WolfieFlasks/WolfieFlasks.unity
+    guid: d0da7df5b4b1457a9b8ffa0cbcc6e148
+  - enabled: 1
     path: Assets/App/Games/Thinking3D/Thinking3D.unity
     guid: 506bcbeab4eda5a4fa7d31347948f1d8
   - enabled: 1
